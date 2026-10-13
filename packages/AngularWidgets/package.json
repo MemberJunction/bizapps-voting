@@ -12,7 +12,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "ngc",
+    "build": "ngc && pnpm run build:element",
+    "build:element": "node scripts/build-element.mjs",
     "test": "vitest run --passWithNoTests"
   },
   "repository": {
@@ -39,7 +40,9 @@
     "@memberjunction/global": "6.2.0-edge.2",
     "@memberjunction/ng-base-types": "6.2.0-edge.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "esbuild": "^0.27.2",
+    "@babel/core": "^7.28.0"
   },
   "mjUILayer": "widgets"
 }
