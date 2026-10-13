@@ -11,14 +11,19 @@ The extension `VotingBallotEdge` is mounted at the root `/vote` (`MJ_SERVER_EXTE
 |---|---|
 | `GET /vote/element/main.js` | The element bundle (`AngularWidgets/dist-element/main.js`; served only if built). Public, cross-origin readable, cached 5 minutes |
 | `GET /vote/:slug` | First-party host page with a nonce CSP. 404 unless the distribution is `Active` and its election `Open` |
-| `GET /vote/:slug/info` | `{ ElectionName, AllowedMethods, Theme, DefaultLanguage }` for an Active distribution of an Open election |
+| `GET /vote/:slug/info` | `{ ElectionName, AllowedMethods, Theme, DefaultLanguage, GraphQLUrl? }` for an Active distribution of an Open election. `GraphQLUrl` is MJ's GraphQL endpoint as an absolute URL |
 | `POST /vote/session` (and `OPTIONS`) | Body `{ Slug, MethodCode, Credential }`; returns `{ Token, ExpiresAt, ElectionID }` |
 
 `slug` is a `BallotDistribution.Slug` (not the election id). Once signed in, the widget runs `Voting.GetMyBallot`,
 `Voting.CastBallot` and `Voting.GetResults` through MJ's generic `ExecuteRemoteOperation` GraphQL mutation with
-`Authorization: Bearer <session token>`. The endpoint defaults to `<api-root>/graphql`, which is only right if your MJAPI
-serves GraphQL under the edge root; otherwise set `graphql-url` on the element. The first-party host page
-(`GET /vote/:slug`) does not set it, so check that the default resolves in your deployment.
+`Authorization: Bearer <session token>`.
+
+**GraphQL endpoint discovery.** The edge root is not MJ's GraphQL endpoint, so the element never derives it from `api-root`.
+It uses, in order: the `graphql-url` attribute; the `GraphQLUrl` from `/info`; then `<page origin>/` (MJ's default
+`graphqlRootPath`). The first-party host page renders `graphql-url` from MJAPI's configured `graphqlRootPath` (a path,
+since it is served by the same server). `/info` builds `GraphQLUrl` from the scheme and Host the request arrived on plus
+`graphqlRootPath`; an unusable Host yields no `GraphQLUrl`. Behind a gateway whose public address differs, set the edge
+setting `GraphQLUrl` (an absolute `http(s)` URL), which overrides the derived value.
 
 **Gates** on `POST /session`, in order (`edge-core.ts`): 8 KB body cap; rate limit (per IP across slugs, then per IP + slug;
 fixed window, in memory); allowlist validation of the body; Active distribution of an Open election (else 404); origin
@@ -28,7 +33,7 @@ must be same-origin or listed in the distribution's `AllowedOrigins` (the `*` wi
 same-origin only), otherwise 403 with no CORS grant. The `OPTIONS` preflight carries no slug, so it grants any well-formed
 origin; the `POST` enforces the allowlist.
 
-Edge `Settings` (extension config; defaults in parentheses): `SessionTtlMinutes` (30, clamped 1-240; also read as
+Edge `Settings` (extension config; defaults in parentheses): `GraphQLUrl` (derived; see above), `SessionTtlMinutes` (30, clamped 1-240; also read as
 `voting.sessionTtlMinutes`), `RateLimitWindowMs` (60000), `RateLimitMax` (20 per IP + slug per window),
 `RateLimitMaxGlobal` (90 per IP per window), `TrustedProxyHops` (0: client IP is the socket address; set it to the number of
 reverse proxies appending to `X-Forwarded-For`), `ApplicationName` (`BizApps Voting`), `GuestRoleName` (MJ's
@@ -53,7 +58,7 @@ For a script embed the host page's origin must be in the distribution's `Allowed
 |---|---|---|
 | `slug` | none (required) | Distribution slug. Changing it reloads the ballot |
 | `api-root` | `<page origin>/vote` | Base URL of the edge (`/info` and `/session` live under it) |
-| `graphql-url` | `<api-root>/graphql` | GraphQL endpoint for the voter operations. Changing it rebuilds the element |
+| `graphql-url` | the `/info` `GraphQLUrl`, else `<page origin>/` | GraphQL endpoint for the voter operations. Changing it rebuilds the element |
 | `host-assertion` | none | Host-signed RS256 assertion; used for sign-in when present. Changing it rebuilds the element |
 | `language` | the distribution's `DefaultLanguage`, else `en` | Ballot language sent to `GetMyBallot` / `CastBallot` |
 | `email` | none | Accepted and passed through configuration, but **has no effect**: no sign-in flow reads it |
@@ -76,8 +81,8 @@ bar. SSO and `mj-session` are refused by the edge (a voter with an MJ login uses
 - **Roster key + PIN** (`second-factor`). The PIN is stored as a salted scrypt hash on `VoterCredential`; wrong guesses
   are counted durably (`FailedAttempts`, `LockedUntil`; `MaxFailedAttempts` 5 and `LockoutMinutes` 15 from the method's
   `Configuration`). The server also supports layering it on another method (when the distribution allows `second-factor`
-  next to others, both must pass) but the element sends a second factor only as a stand-alone sign-in. PIN issuing has no
-  operation yet (`CredentialEngine.IssueSecondFactorPins` only).
+  next to others, both must pass) but the element sends a second factor only as a stand-alone sign-in. PINs are issued with
+  `Voting.IssueSecondFactorPins` (Credentials tab; see the runbook), so this sign-in works end to end.
 
 The distribution's `AllowedCredentialMethods` (else the election configuration's list) decides which methods the edge
 accepts.

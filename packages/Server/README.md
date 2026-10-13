@@ -9,7 +9,7 @@ The server bootstrap package. MJAPI's dynamic package loader calls `LoadBizAppsV
 | Folder | Contents |
 |---|---|
 | `engines/` | `ElectionAdministrationEngine`, `BallotStyleBuilder`, `CastEngine`, `VoterRollEngine`, `CredentialEngine`, `NominationEngine`, `CommentEngine`, `TallyEngine`, `ResultsEngine`, `CertificationEngine`, `TrusteeEngine`, `ReminderEngine` (`BaseSingleton`s; all the logic) |
-| `operations/` | The 24 Remote Operations (`@RegisterClass(BaseRemotableOperation, 'Voting.<Name>')`): 7 voter (guest-scoped via `GuestMayAccessElection`), 16 administrator, 1 trustee. Thin wrappers over engines |
+| `operations/` | The 29 Remote Operations (`@RegisterClass(BaseRemotableOperation, 'Voting.<Name>')`): 7 voter (guest-scoped via `GuestMayAccessElection`), 21 administrator, 1 trustee. Thin wrappers over engines |
 | `edge/` | `VotingBallotEdge` server extension: `GET /vote/:slug`, `GET /vote/:slug/info`, `POST /vote/session`, `GET /vote/element/main.js`; pure policy, rate limiter, request validation, session claims |
 | `credentials/` | `BaseVoterCredentialMethod` and the drivers: emailed link, host assertion, SSO, MJ session, second factor |
 | `eligibility/` | `BaseEligibilitySource` and the drivers: Entity Query, CSV |

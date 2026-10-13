@@ -30,7 +30,7 @@ operations, `voting:trustee` for `SubmitKeyShare`. Then each operation's `Author
 | Audience | Rule |
 |---|---|
 | **Voter** (7) | A normal MJ user passes `Authorize`; the roll check happens when the voter is resolved (the user's linked `Person`, by `LinkedUserID` then email, must be an `Eligible` roll entry). A **guest** principal passes only with a ballot-session scope (`VotingBallotSession`, `electionId:eligibleVoterId`) for exactly this election (`GuestMayAccessElection`). `SubmitNomination` receives only a contest id, so it checks the contest's election inside the operation |
-| **Administrator** (16) | `VotingAuthorization.IsAdministrator`: role `Voting Administrator`, MJ roles `Developer` / `Integration`, or the system user. `Certify` and `GetTurnout` also allow role `Election Inspector` |
+| **Administrator** (21) | `VotingAuthorization.IsAdministrator`: role `Voting Administrator`, MJ roles `Developer` / `Integration`, or the system user. `Certify` and `GetTurnout` also allow role `Election Inspector` |
 | **Trustee** (1) | Any non-guest principal passes `Authorize`; the engine then requires the acting user's linked `Person` to be the trustee that owns the submitted `ShareIndex` |
 
 ## Voter operations

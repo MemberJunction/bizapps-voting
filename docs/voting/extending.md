@@ -43,8 +43,13 @@ Contexts share `ContextUser`, `Provider`, `Election`, `ElectionType`, `Configura
 overrides). `ElectionResultsContext` adds `PrimaryAnchor` and `Results` (`ContestID`, `ContestName`, `Outcome`
 `Passed|Failed|Decided|Tied|Void`; a no-quorum contest is reported as `Void`). If the type's `ServerDriverClass` is not
 registered, writes to elections of that type are refused with a clear message. The seeded **Standards Ballot** type names
-`StandardsBallotServerDriver` and `StandardsBallotUIDriver`, which are not implemented in this repo: register them
-(or clear the names) before using that type.
+`StandardsBallotServerDriver` (`CoreEntitiesServer`, a worked example of a driver) and `StandardsBallotUIDriver`
+(`AngularWidgets`), both shipped and registered. The server driver enforces: `SecrecyMode` Open; every contest a
+`StandardsItem` with exactly Approve then Disapprove; a comment on every Disapprove (checked in `ValidateBallotStyle` and
+`ValidateCast`); at Open, a Standards Ballot details row with a `DocumentTitle` (not at Create or Update, since the Document
+step saves the row after the election); and a recirculation (`RecirculationRound` 1+) following a Certified ballot of the
+same type with the same `DocumentTitle`. The UI driver uses the vocabulary Item / Position / Ballot, adds a **Document**
+setup step and details form, and, for Open ballots, a **Comments** results view listing comments with their resolutions.
 
 ## Election type: UI driver and contributions
 

@@ -11,3 +11,5 @@ export { CredentialsTabComponent } from './tabs/credentials.tab';
 export { TurnoutTabComponent } from './tabs/turnout.tab';
 export { TallyTabComponent } from './tabs/tally.tab';
 export { CertificationTabComponent } from './tabs/certification.tab';
+export { PaperTabComponent } from './tabs/paper.tab';
+export { TrusteesTabComponent } from './tabs/trustees.tab';

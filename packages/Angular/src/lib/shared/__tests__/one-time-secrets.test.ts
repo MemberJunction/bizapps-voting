@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BuildCsv, ControlNumbersCsv, CsvCell, PinsCsv } from '../one-time-secrets';
+import { BuildCsv, ControlNumbersCsv, CsvCell, PinsCsv, TrusteeSharesCsv } from '../one-time-secrets';
 
 describe('CsvCell', () => {
     it('leaves plain text alone', () => {
@@ -28,5 +28,11 @@ describe('CSV builders', () => {
     });
     it('builds the PIN file with the roster key', () => {
         expect(PinsCsv([{ Voter: 'Ada', SourceKey: 'k1', Secret: '12345678' }])).toBe('Voter,Roster key,PIN\r\nAda,k1,12345678\r\n');
+    });
+});
+
+describe('TrusteeSharesCsv', () => {
+    it('writes trustee, index and share', () => {
+        expect(TrusteeSharesCsv([{ Trustee: 'Ada', ShareIndex: 2, Share: 'abc' }])).toBe('Trustee,Share index,Share\r\nAda,2,abc\r\n');
     });
 });

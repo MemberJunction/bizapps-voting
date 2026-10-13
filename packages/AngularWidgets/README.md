@@ -12,6 +12,7 @@ Explorer imports.
 - Contribution bases for other apps: `BaseElectionAdminTab`, `BaseElectionSetupStep` (outputs `Valid`, `Changed`),
   `BaseElectionResultsView`; helpers `overlayDescriptors` and `assembleElectionContributions` (contributions only add;
   clashing keys are refused and logged).
+- `StandardsBallotUIDriver` (registered as `StandardsBallotUIDriver`): Item / Position / Ballot vocabulary, a Document setup step and details form, and a Comments results view for Open ballots.
 - Descriptor and context types (`ElectionUIContext`, `ElectionAdminTabDescriptor`, ...).
 
 ## The `<mj-ballot>` element (`src/element`)
@@ -24,7 +25,7 @@ enters it (`scripts/ballot-bundle-guard.mjs`). The ballot edge in `@mj-biz-apps/
 | File | Role |
 |---|---|
 | `mj-ballot.component.ts` | The ballot UI: sign-in, ballot, review, cast, receipt, results; events; iframe messaging |
-| `element-attributes.ts` | Observed attributes: `slug`, `api-root`, `graphql-url`, `host-assertion`, `email` (no effect), `language` |
+| `element-attributes.ts` | Observed attributes: `slug`, `api-root`, `graphql-url` (else `/info` `GraphQLUrl`, else `<origin>/`), `host-assertion`, `email` (no effect), `language` |
 | `register-element.ts`, `element-host.ts`, `main.ts` | Custom-element registration and rebuild handling |
 | `api/ballot-api.client.ts`, `ballot-flow.ts` | `/info`, `/session` and the `ExecuteRemoteOperation` GraphQL calls |
 

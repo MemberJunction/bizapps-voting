@@ -43,6 +43,7 @@ interface ElectionListItem {
     ElectionTypeID: string;
     Status: ElectionStatus;
     SecrecyMode: string;
+    AssuranceTier: string;
     RecordDate: string | null;
     OpensAt: string | null;
     ClosesAt: string | null;
@@ -349,7 +350,7 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
             const res = await rv.RunView<ElectionListItem>({
                 EntityName: ELECTION_ENTITY,
                 ResultType: 'simple',
-                Fields: ['ID', 'Name', 'ElectionTypeID', 'Status', 'SecrecyMode', 'RecordDate', 'OpensAt', 'ClosesAt'],
+                Fields: ['ID', 'Name', 'ElectionTypeID', 'Status', 'SecrecyMode', 'AssuranceTier', 'RecordDate', 'OpensAt', 'ClosesAt'],
                 OrderBy: '__mj_CreatedAt DESC',
             });
             if (!res.Success) {
@@ -377,7 +378,7 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
                 EntityName: ELECTION_ENTITY,
                 ExtraFilter: `ID='${id}'`,
                 ResultType: 'simple',
-                Fields: ['ID', 'Name', 'ElectionTypeID', 'Status', 'SecrecyMode', 'RecordDate', 'OpensAt', 'ClosesAt'],
+                Fields: ['ID', 'Name', 'ElectionTypeID', 'Status', 'SecrecyMode', 'AssuranceTier', 'RecordDate', 'OpensAt', 'ClosesAt'],
             });
             if (!res.Success) {
                 throw new Error(res.ErrorMessage || 'The election could not be loaded.');
@@ -413,7 +414,10 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
             IsAdministrator: this.IsAdministrator,
             ViewingUser: this.ProviderToUse.CurrentUser,
         };
-        return AssembleAdminTabs(ctx, type?.UIDriverClass ?? null).map((d) => ({ Descriptor: d, Component: ResolveTabComponent(d) }));
+        // The key ceremony applies only to high-assurance elections.
+        return AssembleAdminTabs(ctx, type?.UIDriverClass ?? null)
+            .filter((d) => d.key !== 'trustees' || election.AssuranceTier === 'HighAssurance')
+            .map((d) => ({ Descriptor: d, Component: ResolveTabComponent(d) }));
     }
 
     // -- navigation + query params --------------------------------------------------------------------------------

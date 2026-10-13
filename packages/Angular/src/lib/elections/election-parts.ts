@@ -22,6 +22,8 @@ import { CredentialsTabComponent } from './tabs/credentials.tab';
 import { TurnoutTabComponent } from './tabs/turnout.tab';
 import { TallyTabComponent } from './tabs/tally.tab';
 import { CertificationTabComponent } from './tabs/certification.tab';
+import { PaperTabComponent } from './tabs/paper.tab';
+import { TrusteesTabComponent } from './tabs/trustees.tab';
 import type { HostedContribution } from './contribution-host.component';
 
 /** Keys of the built-in wizard steps, in order. */
@@ -32,7 +34,9 @@ const BUILT_IN_TABS: ElectionAdminTabDescriptor[] = [
     { key: 'overview', label: 'Overview', icon: 'fa-solid fa-circle-info', sequence: 10, electionTypes: ['*'] },
     { key: 'roll', label: 'Roll', icon: 'fa-solid fa-users', sequence: 20, electionTypes: ['*'] },
     { key: 'credentials', label: 'Credentials', icon: 'fa-solid fa-key', sequence: 30, electionTypes: ['*'] },
+    { key: 'paper', label: 'Paper ballots', icon: 'fa-solid fa-file-pen', sequence: 35, electionTypes: ['*'] },
     { key: 'turnout', label: 'Turnout', icon: 'fa-solid fa-gauge-high', sequence: 40, electionTypes: ['*'] },
+    { key: 'trustees', label: 'Trustees', icon: 'fa-solid fa-user-shield', sequence: 45, electionTypes: ['*'] },
     { key: 'tally', label: 'Close & Tally', icon: 'fa-solid fa-calculator', sequence: 50, electionTypes: ['*'] },
     { key: 'certification', label: 'Certification', icon: 'fa-solid fa-certificate', sequence: 60, electionTypes: ['*'] },
 ];
@@ -41,7 +45,9 @@ const BUILT_IN_TAB_TYPES: Record<string, Type<BaseElectionAdminTab>> = {
     overview: OverviewTabComponent,
     roll: RollTabComponent,
     credentials: CredentialsTabComponent,
+    paper: PaperTabComponent,
     turnout: TurnoutTabComponent,
+    trustees: TrusteesTabComponent,
     tally: TallyTabComponent,
     certification: CertificationTabComponent,
 };

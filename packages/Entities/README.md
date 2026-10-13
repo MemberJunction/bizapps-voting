@@ -5,7 +5,7 @@ Browser-safe entity and contract package for BizApps Voting.
 ## Exports
 
 - **Entity classes** `mjBizAppsVoting*Entity` (CodeGen output, `src/generated/entity_subclasses.ts`; never hand-edit).
-- **Remote Operation bases**: 24 `Voting<Name>Operation` classes with `Voting<Name>Input` / `Voting<Name>Output` types
+- **Remote Operation bases**: 29 `Voting<Name>Operation` classes with `Voting<Name>Input` / `Voting<Name>Output` types
   (`src/generated/remote_operations.ts`, generated from `metadata/remote-operations`). The server bodies are in
   `@mj-biz-apps/voting-server`.
 - **`ElectionSubtypeResolver` / `ElectionSubtypeDirectory`** and `LoadElectionSubtypeResolver()`: the IS-A resolver for

@@ -32,3 +32,8 @@ const PRIVILEGED_ROLES = ['voting administrator', 'election inspector'];
 export function HasVotingPrivilege(roleNames: string[]): boolean {
     return roleNames.some((r) => PRIVILEGED_ROLES.includes(r.trim().toLowerCase()));
 }
+
+/** True when the role names include the voting administrator role (the server enforces the real check). */
+export function HasVotingAdministratorRole(roleNames: string[]): boolean {
+    return roleNames.some((r) => r.trim().toLowerCase() === 'voting administrator');
+}

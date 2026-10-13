@@ -38,3 +38,15 @@ export function ControlNumbersCsv(rows: ReadonlyArray<IssuedSecretRow>): string 
 export function PinsCsv(rows: ReadonlyArray<IssuedSecretRow>): string {
     return BuildCsv(['Voter', 'Roster key', 'PIN'], rows.map((r) => [r.Voter, r.SourceKey, r.Secret]));
 }
+
+/** One trustee's key share as shown once after key creation. */
+export interface TrusteeShareRow {
+    Trustee: string;
+    ShareIndex: number;
+    Share: string;
+}
+
+/** CSV for trustee key shares. */
+export function TrusteeSharesCsv(rows: ReadonlyArray<TrusteeShareRow>): string {
+    return BuildCsv(['Trustee', 'Share index', 'Share'], rows.map((r) => [r.Trustee, String(r.ShareIndex), r.Share]));
+}

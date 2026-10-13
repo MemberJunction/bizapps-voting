@@ -65,6 +65,37 @@ The guard against guessing is the **durable per-credential lockout** in the data
   and `VOTING_EMAIL_FROM`, or `ProviderName` / `From` in the job's Configuration. It mails eligible voters who have not
   voted, once per threshold (days before close).
 
+## Control numbers and PINs (offline credentials)
+
+For paper ballots and roster-key + PIN sign-in. The election must be Ready or Open.
+
+1. In the election's **Credentials** tab, use the offline credentials panel (or call `Voting.IssueControlNumbers` /
+   `Voting.IssueSecondFactorPins`, optionally with `EligibleVoterIDs`). The UI issues for all eligible voters after a
+   confirm step.
+2. The values are shown **once**, as a table with Copy CSV / Download CSV (formula-safe). They are not stored or
+   recoverable: the server keeps only a SHA-256 of each control number and a salted scrypt hash of each PIN. Issuing again
+   revokes the voter's earlier unused value. Hand them out through a channel you trust.
+3. Voters with no roster key cannot be given a PIN (it is presented together with the roster key); they count in `Skipped`.
+4. A staff member enters a paper ballot with `Voting.EnterPaperBallot` and the voter's control number; PIN voters sign in
+   to `<mj-ballot>` with roster key + PIN.
+
+## Nominations
+
+For elections with an Office contest. In the **Overview** tab (or `Voting.OpenNominations`), open nominations: Draft to
+`Nominations`. It is refused without an Office contest or when `NominationsCloseAt` has already passed (a future
+`NominationsOpenAt` is fine; submissions wait for it). Voters submit with `Voting.SubmitNomination`; the Overview
+**Nominations** panel lists them, and an administrator approves (which creates the contest option) or rejects each one
+(`Voting.DecideNomination`, until voting opens). Close nominations (`Voting.CloseNominations`) to move to `Ready`.
+
+## Proxies
+
+1. A voter designates a proxy with `Voting.SubmitProxy` (needs `ProxyDeadline` set and not passed); it is `Pending`.
+2. An administrator accepts or rejects it in the **Roll** tab's proxy panel (or `Voting.DecideProxy`), before the election
+   closes. The decision and notes are audited.
+3. To record the proxy's vote, issue the grantor a control number, then call `Voting.EnterPaperBallot` with
+   `Channel: 'Proxy'` and the `ProxyDesignationID`. It requires an Accepted designation of that voter and marks it `Used`
+   in the cast transaction.
+
 ## Certification
 
 1. The election is `Tallied`. If `ChallengeWindowEndsAt` is set, certification is refused until it has passed.

@@ -28,7 +28,8 @@ import { StatusChipComponent } from '../shared/status-chip.component';
 import { ContestOutcomeComponent } from './contest-outcome.component';
 import { CertificationPanelComponent } from './certification-panel.component';
 import { ReceiptVerifyComponent } from './receipt-verify.component';
-import { HasVotingPrivilege, UnwrapOperation } from './op-result';
+import { CommentsPanelComponent } from './comments-panel.component';
+import { HasVotingAdministratorRole, HasVotingPrivilege, UnwrapOperation } from './op-result';
 import { BuildReportHtml, PrintReport, type CertificationView, type ReportContest } from './results-report';
 
 type ElectionStatus = 'Draft' | 'Nominations' | 'Ready' | 'Open' | 'Closed' | 'Tallied' | 'Certified' | 'Cancelled';
@@ -39,6 +40,7 @@ interface ElectionPick {
     Status: ElectionStatus;
     ResultsTiming: string;
     ResultsAudience: string;
+    SecrecyMode: string;
     ClosesAt: string | null;
 }
 
@@ -66,6 +68,7 @@ const REFRESH_MS = 60000;
         ContestOutcomeComponent,
         CertificationPanelComponent,
         ReceiptVerifyComponent,
+        CommentsPanelComponent,
     ],
     selector: 'voting-results-resource',
     template: `
@@ -168,6 +171,10 @@ const REFRESH_MS = 60000;
                                 }
                             }
 
+                            @if (ShowComments) {
+                                <voting-comments-panel [ElectionID]="SelectedElection.ID" [Provider]="ProviderToUse" [CanResolve]="CanResolveComments"></voting-comments-panel>
+                            }
+
                             <div class="lower">
                                 <voting-certification-panel
                                     [ElectionID]="SelectedElection.ID"
@@ -230,15 +237,18 @@ export class VotingResultsResourceComponent extends BaseResourceComponent implem
     public ContestViews: ReportContest[] = [];
 
     public CanCertify = false;
+    public CanResolveComments = false;
     public PrintBlocked = false;
 
     private certification: CertificationView | null = null;
+    private StandardsElectionIDs = new Set<string>();
     private refreshTimer: ReturnType<typeof setInterval> | null = null;
     private loadToken = 0;
 
     override async ngOnInit(): Promise<void> {
         super.ngOnInit();
         this.CanCertify = this.ComputeCanCertify();
+        this.CanResolveComments = this.ComputeCanResolveComments();
         await this.LoadElections();
         const initial = this.GetQueryParams()['electionId'];
         if (initial) {
@@ -268,6 +278,15 @@ export class VotingResultsResourceComponent extends BaseResourceComponent implem
         return RESULTS_TIMING_TEXT[timing] ?? timing;
     }
 
+    /** Comments are listed for Open-mode ballots that carry standards items. */
+    public get ShowComments(): boolean {
+        return this.SelectedElection?.SecrecyMode === 'Open' && this.HasStandardsItems;
+    }
+
+    private get HasStandardsItems(): boolean {
+        return this.StandardsElectionIDs.has(this.SelectedElectionID?.toLowerCase() ?? '');
+    }
+
     public get CanPrint(): boolean {
         return !!this.Results && this.Results.Visible !== false && this.ContestViews.length > 0;
     }
@@ -280,18 +299,34 @@ export class VotingResultsResourceComponent extends BaseResourceComponent implem
             const res = await rv.RunView<ElectionPick>({
                 EntityName: 'MJ_BizApps_Voting: Elections',
                 ResultType: 'simple',
-                Fields: ['ID', 'Name', 'Status', 'ResultsTiming', 'ResultsAudience', 'ClosesAt'],
+                Fields: ['ID', 'Name', 'Status', 'ResultsTiming', 'ResultsAudience', 'SecrecyMode', 'ClosesAt'],
                 OrderBy: '__mj_CreatedAt DESC',
             });
             if (!res.Success) {
                 throw new Error(res.ErrorMessage || 'Elections could not be loaded.');
             }
             this.Elections = res.Results;
+            await this.LoadStandardsElections();
         } catch (error) {
             LogError('[VotingResults] Failed to load elections', undefined, error);
             this.ElectionsError = error instanceof Error ? error.message : 'Elections could not be loaded.';
         } finally {
             this.IsLoadingElections = false;
+        }
+    }
+
+    /** Which elections contain standards-item contests (the ones whose comments are worth listing). */
+    private async LoadStandardsElections(): Promise<void> {
+        this.StandardsElectionIDs = new Set<string>();
+        const rv = RunView.FromMetadataProvider(this.ProviderToUse);
+        const res = await rv.RunView<{ ElectionID: string }>({
+            EntityName: 'MJ_BizApps_Voting: Contests',
+            ExtraFilter: `Kind='StandardsItem'`,
+            ResultType: 'simple',
+            Fields: ['ElectionID'],
+        });
+        if (res.Success) {
+            this.StandardsElectionIDs = new Set(res.Results.map((c) => c.ElectionID.toLowerCase()));
         }
     }
 
@@ -392,6 +427,15 @@ export class VotingResultsResourceComponent extends BaseResourceComponent implem
     private OrderByContestSequence(views: ReportContest[], meta: Map<string, ContestMetaWithSequence>): ReportContest[] {
         const seq = (v: ReportContest): number => meta.get(v.Meta.ContestID.toLowerCase())?.Sequence ?? Number.MAX_SAFE_INTEGER;
         return [...views].sort((a, b) => seq(a) - seq(b));
+    }
+
+    private ComputeCanResolveComments(): boolean {
+        try {
+            const roles = this.ProviderToUse.CurrentUser?.UserRoles ?? [];
+            return HasVotingAdministratorRole(roles.map((r) => r.Role));
+        } catch {
+            return false;
+        }
     }
 
     private ComputeCanCertify(): boolean {

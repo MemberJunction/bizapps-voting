@@ -40,6 +40,12 @@
           "Icon": "fa-solid fa-gear",
           "ResourceType": "Custom",
           "DriverClass": "VotingSettingsResource"
+        },
+        {
+          "Label": "Trustee Share",
+          "Icon": "fa-solid fa-key",
+          "ResourceType": "Custom",
+          "DriverClass": "VotingTrusteeShareResource"
         }
       ]
     },

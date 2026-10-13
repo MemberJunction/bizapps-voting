@@ -26,6 +26,10 @@ import {
     VotingIssueSecondFactorPinsOperation,
     VotingOpenNominationsOperation,
     VotingUpdateElectionOperation,
+    VotingCreateTrusteeKeysOperation,
+    VotingSubmitKeyShareOperation,
+    VotingEnterPaperBallotOperation,
+    VotingResolveCommentOperation,
     type VotingAmendRollInput,
     type VotingAmendRollOutput,
     type VotingCancelElectionInput,
@@ -62,6 +66,14 @@ import {
     type VotingTallyOutput,
     type VotingUpdateElectionInput,
     type VotingUpdateElectionOutput,
+    type VotingCreateTrusteeKeysInput,
+    type VotingCreateTrusteeKeysOutput,
+    type VotingSubmitKeyShareInput,
+    type VotingSubmitKeyShareOutput,
+    type VotingEnterPaperBallotInput,
+    type VotingEnterPaperBallotOutput,
+    type VotingResolveCommentInput,
+    type VotingResolveCommentOutput,
 } from '@mj-biz-apps/voting-entities';
 
 /** Result of an operation: `Success` is true only when the envelope and the typed output both succeeded. */
@@ -144,6 +156,22 @@ export class VotingApiService {
 
     public OpenNominations(input: VotingOpenNominationsInput): Promise<OperationResult<VotingOpenNominationsOutput>> {
         return this.Run(new VotingOpenNominationsOperation(), input, 'Nominations could not be opened.');
+    }
+
+    public CreateTrusteeKeys(input: VotingCreateTrusteeKeysInput): Promise<OperationResult<VotingCreateTrusteeKeysOutput>> {
+        return this.Run(new VotingCreateTrusteeKeysOperation(), input, 'Trustee keys could not be created.');
+    }
+
+    public SubmitKeyShare(input: VotingSubmitKeyShareInput): Promise<OperationResult<VotingSubmitKeyShareOutput>> {
+        return this.Run(new VotingSubmitKeyShareOperation(), input, 'The key share could not be submitted.');
+    }
+
+    public EnterPaperBallot(input: VotingEnterPaperBallotInput): Promise<OperationResult<VotingEnterPaperBallotOutput>> {
+        return this.Run(new VotingEnterPaperBallotOperation(), input, 'The ballot could not be recorded.');
+    }
+
+    public ResolveComment(input: VotingResolveCommentInput): Promise<OperationResult<VotingResolveCommentOutput>> {
+        return this.Run(new VotingResolveCommentOperation(), input, 'The comment could not be resolved.');
     }
 
     private async Run<TInput, TOutput extends { Success: boolean; Message?: string }>(

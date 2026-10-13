@@ -25,8 +25,8 @@
 
 ---
 
-> **Status: implemented; pre-release (`0.0.0`).** Server engines, 24 Remote Operations, the public ballot edge, the
-> `<mj-ballot>` element, Explorer dashboards and a 27-test database-backed integration tier exist. It depends on two
+> **Status: implemented; pre-release (`0.0.0`).** Server engines, 29 Remote Operations, the public ballot edge, the
+> `<mj-ballot>` element, Explorer dashboards and a database-backed integration tier exist. It depends on two
 > MemberJunction changes that are not released yet (see [Running it](#running-it)). Assurance tier C (ElectionGuard) is
 > not implemented. Everything below describes what the code does today; gaps are in
 > [known limitations](docs/voting/known-limitations.md). The original [design](plans/bizapps-voting-design.md) is the
@@ -141,11 +141,17 @@ non-guest MJ user" because Voting has no host-membership concept of its own.
 
 | Plug-in point | Base class | Ships with Voting |
 |---|---|---|
-| Election type (server) | `BaseElectionTypeServerDriver` (`@mj-biz-apps/voting-core-entities-server`) | Types: Motion, Board Election, Organization-wide Election, Charter/Bylaw Amendment, Referendum, Ratification, Poll, Standards Ballot. Only the default (no-op) driver is used, except Standards Ballot, which names a driver class that is **not yet shipped** |
-| Election type (UI) | `BaseElectionTypeUIDriver` + contribution bases (`@mj-biz-apps/voting-ng-widgets`) | Defaults; contributions may add admin tabs, wizard steps and results views |
+| Election type (server) | `BaseElectionTypeServerDriver` (`@mj-biz-apps/voting-core-entities-server`) | Types: Motion, Board Election, Organization-wide Election, Charter/Bylaw Amendment, Referendum, Ratification, Poll, Standards Ballot. Only the default (no-op) driver is used, except Standards Ballot, which has its own server driver (`StandardsBallotServerDriver`) |
+| Election type (UI) | `BaseElectionTypeUIDriver` + contribution bases (`@mj-biz-apps/voting-ng-widgets`) | Defaults, plus `StandardsBallotUIDriver` (Document step, Comments results view); contributions may add admin tabs, wizard steps and results views |
 | Tally method | `BaseTallyMethodContract` (pure, deterministic) | Plurality, Majority (with thresholds), Approval, IRV, STV. The registry is a fixed record in `@mj-biz-apps/voting-entities`; adding a method means changing that package |
 | Eligibility source | `BaseEligibilitySource` (`@mj-biz-apps/voting-server`) | Entity Query, CSV |
 | Sign-in method | `BaseVoterCredentialMethod` (`@mj-biz-apps/voting-server`) | Emailed link, host assertion, MJ session, second factor (roster key + PIN), SSO (not accepted at the public edge) |
+
+**Standards Ballot rules** (`StandardsBallotServerDriver`): a roll call, so `SecrecyMode` must be `Open`; every contest is a
+`StandardsItem` offering exactly Approve then Disapprove; a Disapprove needs a comment (the ballot style must require one
+and a cast without it is refused); opening requires the Standards Ballot details row with a `DocumentTitle` (not needed at
+create, because the Document step saves that row after the election); a recirculation (`RecirculationRound` 1 or more) must
+name a `Certified` prior ballot of the same type on the same document.
 
 Details and examples: [docs/voting/extending.md](docs/voting/extending.md).
 
@@ -207,7 +213,7 @@ export class CommitteeMotionDriver extends BaseElectionTypeServerDriver {
 }
 ```
 
-The 24 operations, their audiences and fields: [docs/voting/operations.md](docs/voting/operations.md).
+The 29 operations, their audiences and fields: [docs/voting/operations.md](docs/voting/operations.md).
 Six Actions (Create Motion Vote, Open/Close Election, Get Turnout, Get Election Results, Tally Election) wrap the
 operations for agents and workflows; there is no reminder action (reminders run as a scheduled job).
 
@@ -217,21 +223,20 @@ The **BizApps Voting** app in MJ Explorer has five pages: **Elections** (list, c
 Overview, Roll, Credentials, Turnout, Close & Tally, Certification), **My Ballot** (the signed-in user's ballot),
 **Election Types** (read-only catalog of types, tally methods, eligibility sources and sign-in methods),
 **Results & Certification** (results, certify, printable report, receipt check) and **Settings** (ballot distributions,
-embed snippets, credential issuing). Trustee ceremonies, nominations, comment resolution, paper-ballot entry and proxies
-are Remote Operations only; there is no UI for them yet.
+embed snippets, credential issuing). The Credentials tab issues emailed links and, for paper and PIN voting, control numbers and second-factor PINs (shown once, with CSV copy/download); the Overview tab opens and closes nominations and decides them; the Roll tab lists proxy designations and accepts or rejects them. Trustee ceremonies, comment resolution and paper-ballot entry are Remote Operations only; there is no UI for them yet.
 
 ## Repository structure
 
 ```
 packages/
-  Entities/             @mj-biz-apps/voting-entities       generated entities, 24 operation bases, ./contracts (pure rules, tally methods)
+  Entities/             @mj-biz-apps/voting-entities       generated entities, 29 operation bases, ./contracts (pure rules, tally methods)
   EngineBase/           @mj-biz-apps/voting-engine-base    VotingEngineBase cache of types, methods, sources, sign-in methods
   CoreEntitiesServer/   @mj-biz-apps/voting-core-entities-server   entity server classes, driver base + registry, write guards
   Server/               @mj-biz-apps/voting-server         engines, operations, ballot edge, sign-in methods, jobs, crypto, bootstrap
   Actions/              @mj-biz-apps/voting-actions        six Actions calling Remote Operations
   AngularWidgets/       @mj-biz-apps/voting-ng-widgets     UI driver base, contribution bases, <mj-ballot> element
   Angular/              @mj-biz-apps/voting-ng             Explorer dashboards (L3) + generated forms
-  IntegrationTests/     (private)                          27 database-backed tests
+  IntegrationTests/     (private)                          database-backed integration tests
 migrations/  metadata/  codegen/  docs/voting/  plans/
 ```
 
@@ -246,7 +251,7 @@ There is no MJAPI or MJExplorer in this repo; it loads into a host MJ (on the M5
      tables get timestamp columns and default permissions.
   2. *New `@memberjunction/server` exports*: `BuildSessionClaims`, `MagicLinkKeyManager`, `MagicLinkService`, `HashToken`,
      `GenerateRawToken`, `VerifyHostAssertion`, `IsScopeLimitedPrincipal`. The ballot edge cannot mint sessions without them.
-- `bizapps-common` installed (elections reference its `Person` / `Organization` tables).
+- `bizapps-common` installed (elections reference its `Person` / `Organization` tables); `mj-app.json` declares it as the `mj-bizapps-common` dependency (`>=5.46.1 <6.0.0`).
 - MJ `>=6.2.0-edge.2 <7.0.0` (`mj-app.json`).
 
 **Install** (full recipe: [docs/template-docs/linking-to-mj.md](docs/template-docs/linking-to-mj.md))
@@ -279,7 +284,7 @@ pnpm run build:packages
 pnpm test                                   # unit tests (turbo)
 cd packages/IntegrationTests && pnpm test:integration   # database-backed tier
 ```
-The integration tier connects to a database named `MJ_Voting_Dev` (pinned in the suite) using `DB_HOST`, `DB_PORT`,
+The integration tier (ten test files covering lifecycle, cast atomicity, unlinkability, access, invariants, results timing, tier B, paper ballots, nominations/proxies/offline credentials and standards ballots) connects to a database named `MJ_Voting_Dev` (pinned in the suite) using `DB_HOST`, `DB_PORT`,
 `DB_USERNAME`, `DB_PASSWORD` (and optionally `DB_TRUST_SERVER_CERTIFICATE`) from this repo's `.env`, which must hold your
 own credentials and never be committed. The database needs the migration, metadata and CodeGen applied. If the database
 cannot be reached the tests print `SKIPPED` rather than fail, so check the output.
@@ -289,7 +294,7 @@ cannot be reached the tests print `SKIPPED` rather than fail, so check the outpu
 | Document | Content |
 |---|---|
 | [Architecture](docs/voting/architecture.md) | Packages, cast transaction, engines, secrecy controls, tiers |
-| [Operations reference](docs/voting/operations.md) | The 24 Remote Operations, audiences, fields; Actions |
+| [Operations reference](docs/voting/operations.md) | The 29 Remote Operations, audiences, fields; Actions |
 | [Embedding](docs/voting/embedding.md) | `<mj-ballot>` attributes, events, sign-in, edge routes and gates |
 | [Extending](docs/voting/extending.md) | Drivers, tally methods, sources, sign-in methods, UI contributions |
 | [Runbook](docs/voting/operations-runbook.md) | Keys, trustee ceremony, rate limits, certification, recovery |

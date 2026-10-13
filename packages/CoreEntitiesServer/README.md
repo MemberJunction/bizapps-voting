@@ -16,6 +16,7 @@ Server-only entity subclasses and driver infrastructure. It must never be import
   `OnRollFrozen`, `ValidateBallotStyle`, `BuildBallotStyle`, `ValidateCast`, `OnResultsTallied`, `OnResultsCertified`), its
   context types, and **`ElectionTypeDriverRegistry`** (`GetDriver(electionType)` resolves `ServerDriverClass` through the
   `ClassFactory`; an unregistered class returns an error and writes are refused; `Clear()`).
+- **`StandardsBallotServerDriver`** (registered as `StandardsBallotServerDriver`): the Standards Ballot election type's rules (Open secrecy, Approve/Disapprove items, comment required on Disapprove, `DocumentTitle` required at Open, recirculation follows a Certified ballot on the same document). Its decision logic is exported as pure functions.
 - Invariant helpers (`ComputeLockedFieldViolations`, `DescribeConfigurationLockRefusal`, ...) used by the entity classes.
 - `LoadBizAppsVotingEntitiesServer()`: references every class so a bundler cannot drop a registration.
 
