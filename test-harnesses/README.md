@@ -6,7 +6,7 @@ and unchanged.
 
 | Piece | Where |
 |---|---|
-| Voting-only MJAPI host (port 4104, `MJ_Voting_Dev`) | `packages/TestHost` (`mj.config.cjs`, `src/start-host.mjs`) |
+| Voting-only MJAPI host (port 4104, `MJ_Voting_Dev`, or the private database named by `VOTING_IT_DATABASE`) | `packages/TestHost` (`mj.config.cjs`, `src/start-host.mjs`) |
 | Start / stop / status | `node test-harnesses/host.mjs start\|stop\|restart\|status` |
 | Persona provisioning (idempotent) | `packages/IntegrationTests/src/provision` |
 | Wire client (one provider per identity) | `packages/IntegrationTests/src/wire` |
@@ -86,7 +86,7 @@ Needs the built `IntegrationTests` package (`pnpm wire:provision` builds it), th
 | `a11y` `a11y-dark` `mobile` | keyboard-only ballot, labels, focus ring, axe (WCAG 2.x A/AA, light and dark), 360px layout |
 | `language` | the `language` attribute does not break the ballot (the UI has English strings only) |
 | `csp` | host-page CSP/headers, bundle headers, injected inline script blocked |
-| `receipt` | the element has no verification UI; the shown code verifies over the wire |
+| `receipt` | "Verify a Receipt" in the element: after casting (prefilled, focus on the heading, empty and unknown codes, Enter submits, axe) and from the sign-in screen (explains the sign-in, opens the check first); a re-vote's replaced receipt reads "no longer counted", matching the wire |
 
 ## Explorer browser tier (`test-harnesses/explorer-live.mjs`)
 

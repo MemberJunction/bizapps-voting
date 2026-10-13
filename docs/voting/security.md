@@ -45,12 +45,14 @@ immutability, lifecycle locks) stay in force underneath the grants.
 | Contest Results, Contest Option Results | - | CRU | R | CRU |
 | Election Certifications, Election Certifiers | R, certified elections only | CRU | CRU | CRU |
 | Election Trustees | - | CRU | - | CRU |
-| Trustee Key Commitments | - | CR (the key ceremony writes each once; never rewritten) | - | CRU |
+| Trustee Key Commitments | - | CR (the key ceremony writes each once; never rewritten) | - | CR (no role may rewrite a commitment: every submitted share is checked against it) |
 | Ballot Comments | R, Open ballots only | R | R | CRUD (a revote replaces its comments) |
 | Comment Resolutions | R, Open ballots only | CRU | R | CRU |
 | Cast Ballots, Ballot Selections, Contest Running Tallies, Ballot Attributions | - | - | - | CRU |
 
 No role holds DELETE anywhere except the engine on Ballot Comments (and Developer/Integration on the four catalogs).
+Ballot Distributions are also guarded by their entity server class: a distribution cannot be created for (or moved to) a
+Closed, Tallied, Certified or Cancelled election, whoever holds the grant.
 The engine role is a superset of what a Voting Administrator holds because administrative operations run as the system
 user in tests, jobs and API-key flows.
 
@@ -59,9 +61,29 @@ user in tests, jobs and API-key flows.
 UI read on the configuration tables is filtered, and a user who also holds an unfiltered grant (administrators, inspectors,
 the system user) is exempt:
 
-- **Elections, Contests, Contest Options, Standards Ballot Elections**: visible once `RollFrozenAt IS NOT NULL`. A draft
-  election can still carry an inline CSV roll (voters' emails) in its eligibility source settings, and the freeze redacts
-  those rows (`RedactInlineRoll`) because the election row is readable by every member afterwards.
+- **Elections, Contests, Contest Options, Standards Ballot Elections**: visible once `RollFrozenAt IS NOT NULL`.
+
+### What a member can read of an election row
+
+Row-level security hides rows, not columns, and MJ has no field-level read permission, so every column of a frozen election
+is readable by members. The two free-form JSON columns are made safe on the write side:
+
+- **`EligibilitySourceSettings`** says how to find the roll: an inline CSV of voters' emails, an entity name and filter that
+  reveal how voters were selected, or a third-party source's keys. Nothing reads it after the freeze (the roll then lives in
+  Eligible Voters, and a roll is frozen once), so the freeze replaces it with `{ SettingsRedactedAtFreeze, SettingsSha256 }`
+  (`RedactSourceSettingsAtFreeze`); the same digest is recorded in the `RollFrozen` audit event, so an administrator holding
+  the original settings can match them. Draft elections, which still carry the settings, are hidden from members.
+- **`Configuration`** is needed at run time (quorum, reminders, required certifiers), so it cannot be redacted. It is limited
+  instead: the Elections entity server refuses any key that is not documented (`ELECTION_CONFIGURATION_KEYS`: `Quorum`,
+  `Reminders`, `Languages`, `IndependentAdministrator`, `RequiredCertifiers` and the overridable type defaults such as
+  `ResultsMinCast` or `AllowRevote`), listed in the type's `OverridableKeys`, or declared by the type's server driver
+  (`ConfigurationKeys`). Each of those is a public governance parameter that members are entitled to know (how many votes
+  make a quorum, how many certifiers sign). Free text, notes, credentials or roll data have no key to go in.
+- The remaining columns are the election's public definition (name, dates, modes, `RollHash`, `ElectionPublicKey`, which is
+  a public key) and hold nothing secret.
+
+`wire-secrecy.X13` reads frozen election rows as a member and asserts both; `12-permission-model` checks the stored
+values and the refusal.
 - **Ballot Comments, Comment Resolutions**: only for Open-secrecy elections with a frozen roll.
 - **Election Certifications, Certifiers**: only once `Status = 'Certified'`.
 
@@ -90,8 +112,14 @@ Election Inspector, the signer writes the certification and certifier rows as th
 the last required signature's move of the election to `Certified` (plus the type driver's `OnResultsCertified`) runs as the
 system principal, since inspectors hold only R on Elections (`CertificationEngine.markElectionCertified`).
 
-Side effect on the audit trail: events written during voter operations record no acting user (the system user is stored as
-no actor), which is also the right default for voter privacy.
+Audit attribution: the system context a voter operation runs under keeps the authorized caller as its `Actor`
+(`SystemContext`, `VotingContext.Actor`), and `ElectionAudit.Record` names that caller: `ActorUserID` is the member's MJ user,
+and a guest ballot session (whose principal is not a stored user) is recorded in the event's details as
+`ActorEligibleVoterID`. Only events that already existed get an actor; the cast writes no audit event, and no event carries
+ballot content (`wire-secrecy.X06`), so naming the actor reveals nothing the poll book does not already hold. The plain
+system user (scheduled jobs, the public edge before sign-in) is still recorded as no actor. Administrative operations run as
+the administrator, who is named as before; the certification's status move, made as the system principal, names the
+signer.
 
 ## API scopes
 
@@ -105,5 +133,6 @@ the operation still authorizes the caller (roll entry or session binding for vot
 `packages/IntegrationTests/src/__tests__/12-permission-model.test.ts` asserts the matrix against the database (no
 sensitive grant to UI/Developer/Integration, no DELETE outside the allowed few, UI read only with a filter), the role
 behaviour of in-memory principals, the draft/frozen visibility and redaction, and the scopes.
-`04-access.test.ts` covers the ballot box. Unit tests: `voter-session.test.ts`, `redact-inline-roll.test.ts`,
-`operations.auth.test.ts`.
+`04-access.test.ts` covers the ballot box. Unit tests: `voter-session.test.ts`, `redact-source-settings.test.ts`,
+`audit-actor.test.ts`, `operations.auth.test.ts`; the wire tier asserts the matrix cell by cell (`wire-access`), including
+that not even the system user may update a trustee key commitment.

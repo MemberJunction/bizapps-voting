@@ -44,7 +44,11 @@ The widget bundle imports only `@mj-biz-apps/voting-entities/contracts` and Angu
 
 ## Tally, results, certification
 
-- `TallyEngine.Tally` needs `Closed` (or `Tallied`, for a re-tally until certification). Tier B needs the reconstructed
+- `TallyEngine.Tally` needs `Closed`, or `Tallied` for a re-tally (the recount path) until a certifier has signed
+  (`TallyRefusal`: `AlreadyCertified`, `CertificationInProgress`, `ElectionCancelled`, `NotClosed`). The write transaction
+  takes the election's results lock (`ResultsLockResource`, also taken by every certification signature) and re-checks the
+  status and certification there, so two re-tallies or a re-tally racing a signature cannot both write; a re-tally demotes
+  the previous final result rows (kept as history, `IsFinal = 0`) and writes exactly one final per contest. Tier B needs the reconstructed
   key in memory (otherwise `KeyNotAvailable`: trustees submit shares, then tally again); tier C needs a registered
   `BaseVerifiableTallyProvider`. Counted ballots are read as the system user, **shuffled with a CSPRNG, then decrypted**.
   Per contest the registered tally method runs with a recorded seed (given, or 32 random hex characters). In one
@@ -102,6 +106,10 @@ All are `BaseSingleton`s in `Server/src/engines`. Operations, Actions-via-operat
 | No `BallotAttribution` for Secret elections | `CastEngine.NeedsAttribution`; schema check `CK_Election_SecretIsFinal` forbids Secret revotes |
 | Running results only at tier A, only from batched snapshots | `CK_Election_RunningResultsTierA`, `ResultsEngine` |
 | Errors and logs carry codes, not input | `operation-support.ts` (`FailOperation`), cast and edge code |
+
+Write-ins: a contest spec with `AllowWriteIn` gets an option flagged `IsWriteIn` (label `Write-in`) appended by
+`CreateElection` when the spec names none (`EffectiveOptions`); the write-in text is validated and kept on the ballot
+selection, and the votes count on that option.
 
 The `PollBookVisible` contract helper encodes "do not show the poll book to an audience that sees running results", but
 no operation currently exposes the poll book (turnout is counts only), so it is not enforced anywhere.
