@@ -27,6 +27,8 @@
   "peerDependencies": {
     "@angular/common": "^21.2.22",
     "@angular/core": "^21.2.22",
+    "@angular/forms": "^21.2.22",
+    "@angular/platform-browser": "^21.2.22",
     "@memberjunction/core": "^6.2.0-edge.2",
     "@memberjunction/global": "^6.2.0-edge.2",
     "@memberjunction/ng-base-types": "^6.2.0-edge.2"
@@ -36,6 +38,8 @@
     "@angular/compiler": "21.2.22",
     "@angular/compiler-cli": "21.2.22",
     "@angular/core": "21.2.22",
+    "@angular/forms": "21.2.22",
+    "@angular/platform-browser": "21.2.22",
     "@memberjunction/core": "6.2.0-edge.2",
     "@memberjunction/global": "6.2.0-edge.2",
     "@memberjunction/ng-base-types": "6.2.0-edge.2",
