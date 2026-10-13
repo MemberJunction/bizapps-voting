@@ -18,3 +18,4 @@
  * hand-written helpers in src/ (NOT src/generated/ — CodeGen owns that).
  */
 export * from './generated/entity_subclasses';
+export * from './contracts/index.js';
