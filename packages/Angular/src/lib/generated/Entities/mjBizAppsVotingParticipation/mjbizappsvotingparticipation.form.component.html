@@ -10,11 +10,11 @@
     <!-- ========================================
          FIELD PANELS
          ======================================== -->
-    <!-- Election and Voter Details Section -->
+    <!-- Election and Voting Details Section -->
     <mj-collapsible-panel
-        SectionKey="electionAndVoterDetails"
-        SectionName="Election and Voter Details"
-        Icon="fa fa-id-card"
+        SectionKey="electionAndVotingDetails"
+        SectionName="Election and Voting Details"
+        Icon="fa fa-vote-yea"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -35,16 +35,6 @@
             [FormContext]="formContext"
             LinkType="Record"
         ></mj-form-field>
-
-    </mj-collapsible-panel>
-
-    <!-- Voting Process Section -->
-    <mj-collapsible-panel
-        SectionKey="votingProcess"
-        SectionName="Voting Process"
-        Icon="fa fa-vote-yea"
-        [Form]="this"
-        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
@@ -68,7 +58,7 @@
     <mj-collapsible-panel
         SectionKey="verificationAndStaffing"
         SectionName="Verification and Staffing"
-        Icon="fa fa-user-shield"
+        Icon="fa fa-user-check"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -133,6 +123,31 @@
          RELATED ENTITY PANELS
          ======================================== -->
 
+    <!-- Ballot Comments Section -->
+    <mj-collapsible-panel
+        SectionKey="mJBizAppsVotingBallotComments"
+        SectionName="Ballot Comments"
+        Icon="fa fa-comment-dots"
+        Variant="related-entity"
+        [Form]="this"
+        [FormContext]="formContext"
+        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingBallotComments')"
+        [DefaultExpanded]="false">
+        @if (record.IsSaved) {
+        <div>
+            <mj-explorer-entity-data-grid
+                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Ballot Comments','ParticipationID')"
+                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Ballot Comments','ParticipationID')"
+                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingBallotComments')"
+                [ShowToolbar]="true"
+                (Navigate)="OnFormNavigate($event)"
+                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingBallotComments', $event.totalRowCount)"
+                >
+            </mj-explorer-entity-data-grid>
+        </div>
+        }
+    </mj-collapsible-panel>
+
     <!-- Ballot Attributions Section -->
     <mj-collapsible-panel
         SectionKey="mJBizAppsVotingBallotAttributions"
@@ -152,31 +167,6 @@
                 [ShowToolbar]="true"
                 (Navigate)="OnFormNavigate($event)"
                 (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingBallotAttributions', $event.totalRowCount)"
-                >
-            </mj-explorer-entity-data-grid>
-        </div>
-        }
-    </mj-collapsible-panel>
-
-    <!-- Ballot Comments Section -->
-    <mj-collapsible-panel
-        SectionKey="mJBizAppsVotingBallotComments"
-        SectionName="Ballot Comments"
-        Icon="fa fa-comment-alt"
-        Variant="related-entity"
-        [Form]="this"
-        [FormContext]="formContext"
-        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingBallotComments')"
-        [DefaultExpanded]="false">
-        @if (record.IsSaved) {
-        <div>
-            <mj-explorer-entity-data-grid
-                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Ballot Comments','ParticipationID')"
-                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Ballot Comments','ParticipationID')"
-                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingBallotComments')"
-                [ShowToolbar]="true"
-                (Navigate)="OnFormNavigate($event)"
-                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingBallotComments', $event.totalRowCount)"
                 >
             </mj-explorer-entity-data-grid>
         </div>

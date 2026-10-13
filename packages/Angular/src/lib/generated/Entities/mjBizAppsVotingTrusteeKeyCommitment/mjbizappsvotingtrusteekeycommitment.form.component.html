@@ -10,32 +10,22 @@
     <!-- ========================================
          FIELD PANELS
          ======================================== -->
-    <!-- Trustee Information Section -->
+    <!-- Key Ceremony Details Section -->
     <mj-collapsible-panel
-        SectionKey="trusteeInformation"
-        SectionName="Trustee Information"
-        Icon="fa fa-user-shield"
+        SectionKey="keyCeremonyDetails"
+        SectionName="Key Ceremony Details"
+        Icon="fa fa-shield-alt"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
-            [ShowLabel]="false"
+            [ShowLabel]="true"
             FieldName="ElectionTrusteeID"
             Type="textbox"
             [EditMode]="EditMode"
             [FormContext]="formContext"
             LinkType="Record"
         ></mj-form-field>
-
-    </mj-collapsible-panel>
-
-    <!-- Key Ceremony Data Section -->
-    <mj-collapsible-panel
-        SectionKey="keyCeremonyData"
-        SectionName="Key Ceremony Data"
-        Icon="fa fa-lock"
-        [Form]="this"
-        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"

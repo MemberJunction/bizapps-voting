@@ -44,9 +44,37 @@
             [FormContext]="formContext"
             LinkType="Record"
         ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Status and Workflow Section -->
+    <mj-collapsible-panel
+        SectionKey="statusAndWorkflow"
+        SectionName="Status and Workflow"
+        Icon="fa fa-tasks"
+        [Form]="this"
+        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
-            [ShowLabel]="true"
+            [ShowLabel]="false"
+            FieldName="Status"
+            Type="select"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Candidacy Information Section -->
+    <mj-collapsible-panel
+        SectionKey="candidacyInformation"
+        SectionName="Candidacy Information"
+        Icon="fa fa-file-alt"
+        [Form]="this"
+        [FormContext]="formContext">
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="false"
             FieldName="Statement"
             Type="textarea"
             [EditMode]="EditMode"
@@ -55,21 +83,13 @@
 
     </mj-collapsible-panel>
 
-    <!-- Status and Review Section -->
+    <!-- Dates and Decisions Section -->
     <mj-collapsible-panel
-        SectionKey="statusAndReview"
-        SectionName="Status and Review"
-        Icon="fa fa-check-circle"
+        SectionKey="datesAndDecisions"
+        SectionName="Dates and Decisions"
+        Icon="fa fa-calendar-check"
         [Form]="this"
         [FormContext]="formContext">
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="Status"
-            Type="select"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
@@ -142,7 +162,7 @@
     <mj-collapsible-panel
         SectionKey="mJBizAppsVotingNominationEndorsements"
         SectionName="Nomination Endorsements"
-        Icon="fa fa-signature"
+        Icon="fa fa-file-signature"
         Variant="related-entity"
         [Form]="this"
         [FormContext]="formContext"

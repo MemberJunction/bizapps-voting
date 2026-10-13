@@ -10,10 +10,10 @@
     <!-- ========================================
          FIELD PANELS
          ======================================== -->
-    <!-- Election Certification Section -->
+    <!-- Certification Details Section -->
     <mj-collapsible-panel
-        SectionKey="electionCertification"
-        SectionName="Election Certification"
+        SectionKey="certificationDetails"
+        SectionName="Certification Details"
         Icon="fa fa-certificate"
         [Form]="this"
         [FormContext]="formContext">
@@ -42,6 +42,16 @@
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Documentation and Disclosures Section -->
+    <mj-collapsible-panel
+        SectionKey="documentationAndDisclosures"
+        SectionName="Documentation and Disclosures"
+        Icon="fa fa-file-alt"
+        [Form]="this"
+        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
@@ -51,13 +61,29 @@
             [FormContext]="formContext"
             LinkType="Record"
         ></mj-form-field>
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="true"
+            FieldName="ResultsTimingDisclosure"
+            Type="textarea"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="true"
+            FieldName="Notes"
+            Type="textarea"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
 
     </mj-collapsible-panel>
 
-    <!-- Verification Hashes Section -->
+    <!-- Security and Verification Section -->
     <mj-collapsible-panel
-        SectionKey="verificationHashes"
-        SectionName="Verification Hashes"
+        SectionKey="securityAndVerification"
+        SectionName="Security and Verification"
         Icon="fa fa-shield-alt"
         [Form]="this"
         [FormContext]="formContext">
@@ -74,32 +100,6 @@
             [ShowLabel]="true"
             FieldName="BallotSetHash"
             Type="textbox"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
-
-    </mj-collapsible-panel>
-
-    <!-- Audit and Disclosures Section -->
-    <mj-collapsible-panel
-        SectionKey="auditAndDisclosures"
-        SectionName="Audit and Disclosures"
-        Icon="fa fa-file-alt"
-        [Form]="this"
-        [FormContext]="formContext">
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="ResultsTimingDisclosure"
-            Type="textarea"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="Notes"
-            Type="textarea"
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>

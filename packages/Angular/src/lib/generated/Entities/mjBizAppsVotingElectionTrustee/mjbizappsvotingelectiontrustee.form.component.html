@@ -10,11 +10,11 @@
     <!-- ========================================
          FIELD PANELS
          ======================================== -->
-    <!-- Trustee and Election Information Section -->
+    <!-- Trustee and Election Section -->
     <mj-collapsible-panel
-        SectionKey="trusteeAndElectionInformation"
-        SectionName="Trustee and Election Information"
-        Icon="fa fa-user-shield"
+        SectionKey="trusteeAndElection"
+        SectionName="Trustee and Election"
+        Icon="fa fa-users"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -35,6 +35,16 @@
             [FormContext]="formContext"
             LinkType="Record"
         ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Tally and Security Section -->
+    <mj-collapsible-panel
+        SectionKey="tallyAndSecurity"
+        SectionName="Tally and Security"
+        Icon="fa fa-key"
+        [Form]="this"
+        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"

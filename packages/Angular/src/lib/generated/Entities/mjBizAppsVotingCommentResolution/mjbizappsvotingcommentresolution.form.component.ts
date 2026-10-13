@@ -15,7 +15,7 @@ export class mjBizAppsVotingCommentResolutionFormComponent extends BaseFormCompo
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'resolutionDetails', sectionName: 'Resolution Details', isExpanded: true },
+            { sectionKey: 'commentResolutionDetails', sectionName: 'Comment Resolution Details', isExpanded: true },
             { sectionKey: 'resolutionTracking', sectionName: 'Resolution Tracking', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false }
         ]);

@@ -15,8 +15,7 @@ export class mjBizAppsVotingElectionAnchorFormComponent extends BaseFormComponen
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'anchorDetails', sectionName: 'Anchor Details', isExpanded: true },
-            { sectionKey: 'configurationAndDisplay', sectionName: 'Configuration and Display', isExpanded: true },
+            { sectionKey: 'electionAnchorDetails', sectionName: 'Election Anchor Details', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false }
         ]);
     }

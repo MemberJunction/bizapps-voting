@@ -16,11 +16,12 @@ export class mjBizAppsVotingVoterCredentialMethodFormComponent extends BaseFormC
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'methodConfiguration', sectionName: 'Method Configuration', isExpanded: true },
-            { sectionKey: 'technicalImplementation', sectionName: 'Technical Implementation', isExpanded: true },
+            { sectionKey: 'credentialMethodDetails', sectionName: 'Credential Method Details', isExpanded: true },
+            { sectionKey: 'implementationAndConfiguration', sectionName: 'Implementation and Configuration', isExpanded: true },
+            { sectionKey: 'behavioralRules', sectionName: 'Behavioral Rules', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingVoterCredentials', sectionName: 'Voter Credentials', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingParticipations', sectionName: 'Participations', isExpanded: false }
+            { sectionKey: 'mJBizAppsVotingParticipations', sectionName: 'Participations', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingVoterCredentials', sectionName: 'Voter Credentials', isExpanded: false }
         ]);
     }
 }

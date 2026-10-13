@@ -17,7 +17,7 @@ export class mjBizAppsVotingElectionTypeFormComponent extends BaseFormComponent 
         await super.ngOnInit();
         this.initSections([
             { sectionKey: 'electionTypeDetails', sectionName: 'Election Type Details', isExpanded: true },
-            { sectionKey: 'driversAndExtensions', sectionName: 'Drivers and Extensions', isExpanded: true },
+            { sectionKey: 'driversAndIntegration', sectionName: 'Drivers and Integration', isExpanded: true },
             { sectionKey: 'presentationAndConfiguration', sectionName: 'Presentation and Configuration', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingElections', sectionName: 'Elections', isExpanded: false }

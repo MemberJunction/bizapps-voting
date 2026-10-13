@@ -17,15 +17,15 @@ export class mjBizAppsVotingContestFormComponent extends BaseFormComponent {
         await super.ngOnInit();
         this.initSections([
             { sectionKey: 'contestDetails', sectionName: 'Contest Details', isExpanded: true },
-            { sectionKey: 'ballotRules', sectionName: 'Ballot Rules', isExpanded: true },
-            { sectionKey: 'tallyAndThresholdRules', sectionName: 'Tally and Threshold Rules', isExpanded: true },
+            { sectionKey: 'votingRules', sectionName: 'Voting Rules', isExpanded: true },
+            { sectionKey: 'ballotConfiguration', sectionName: 'Ballot Configuration', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingBallotSelections', sectionName: 'Ballot Selections', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingContestResults', sectionName: 'Contest Results', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingBallotComments', sectionName: 'Ballot Comments', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingContestOptions', sectionName: 'Contest Options', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingNominations', sectionName: 'Nominations', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingContestResults', sectionName: 'Contest Results', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingBallotSelections', sectionName: 'Ballot Selections', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingContestRunningTallies', sectionName: 'Contest Running Tallies', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingBallotComments', sectionName: 'Ballot Comments', isExpanded: false }
+            { sectionKey: 'mJBizAppsVotingNominations', sectionName: 'Nominations', isExpanded: false }
         ]);
     }
 }

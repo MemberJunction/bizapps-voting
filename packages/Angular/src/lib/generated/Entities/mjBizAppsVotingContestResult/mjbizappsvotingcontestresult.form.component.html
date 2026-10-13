@@ -10,32 +10,22 @@
     <!-- ========================================
          FIELD PANELS
          ======================================== -->
-    <!-- Contest Association Section -->
+    <!-- Contest Information Section -->
     <mj-collapsible-panel
-        SectionKey="contestAssociation"
-        SectionName="Contest Association"
-        Icon="fa fa-link"
+        SectionKey="contestInformation"
+        SectionName="Contest Information"
+        Icon="fa fa-poll-h"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
-            [ShowLabel]="false"
+            [ShowLabel]="true"
             FieldName="ContestID"
             Type="textbox"
             [EditMode]="EditMode"
             [FormContext]="formContext"
             LinkType="Record"
         ></mj-form-field>
-
-    </mj-collapsible-panel>
-
-    <!-- Tally Outcomes Section -->
-    <mj-collapsible-panel
-        SectionKey="tallyOutcomes"
-        SectionName="Tally Outcomes"
-        Icon="fa fa-flag-checkered"
-        [Form]="this"
-        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
@@ -55,10 +45,10 @@
 
     </mj-collapsible-panel>
 
-    <!-- Voting Statistics Section -->
+    <!-- Tally Statistics Section -->
     <mj-collapsible-panel
-        SectionKey="votingStatistics"
-        SectionName="Voting Statistics"
+        SectionKey="tallyStatistics"
+        SectionName="Tally Statistics"
         Icon="fa fa-chart-bar"
         [Form]="this"
         [FormContext]="formContext">
@@ -97,11 +87,11 @@
 
     </mj-collapsible-panel>
 
-    <!-- Ranked Method and Tie-Breaks Section -->
+    <!-- Detailed Records Section -->
     <mj-collapsible-panel
-        SectionKey="rankedMethodAndTieBreaks"
-        SectionName="Ranked Method and Tie-Breaks"
-        Icon="fa fa-random"
+        SectionKey="detailedRecords"
+        SectionName="Detailed Records"
+        Icon="fa fa-list-alt"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 

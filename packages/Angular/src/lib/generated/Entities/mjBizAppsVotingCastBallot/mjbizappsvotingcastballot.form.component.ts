@@ -16,12 +16,11 @@ export class mjBizAppsVotingCastBallotFormComponent extends BaseFormComponent {
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'electionDetails', sectionName: 'Election Details', isExpanded: true },
-            { sectionKey: 'ballotVerification', sectionName: 'Ballot Verification', isExpanded: true },
-            { sectionKey: 'ballotContent', sectionName: 'Ballot Content', isExpanded: true },
+            { sectionKey: 'ballotInformation', sectionName: 'Ballot Information', isExpanded: true },
+            { sectionKey: 'encryptedSelections', sectionName: 'Encrypted Selections', isExpanded: true },
             { sectionKey: 'voterDemographics', sectionName: 'Voter Demographics', isExpanded: true },
-            { sectionKey: 'mJBizAppsVotingBallotSelections', sectionName: 'Ballot Selections', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingBallotAttributions', sectionName: 'Ballot Attributions', isExpanded: false }
+            { sectionKey: 'mJBizAppsVotingBallotAttributions', sectionName: 'Ballot Attributions', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingBallotSelections', sectionName: 'Ballot Selections', isExpanded: false }
         ]);
     }
 }

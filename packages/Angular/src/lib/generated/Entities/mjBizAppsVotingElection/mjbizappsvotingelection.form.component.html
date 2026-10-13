@@ -14,7 +14,7 @@
     <mj-collapsible-panel
         SectionKey="electionDetails"
         SectionName="Election Details"
-        Icon="fa fa-vote-yea"
+        Icon="fa fa-info-circle"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -53,10 +53,10 @@
 
     </mj-collapsible-panel>
 
-    <!-- Security and Verification Section -->
+    <!-- Security and Assurance Section -->
     <mj-collapsible-panel
-        SectionKey="securityAndVerification"
-        SectionName="Security and Verification"
+        SectionKey="securityAndAssurance"
+        SectionName="Security and Assurance"
         Icon="fa fa-shield-alt"
         [Form]="this"
         [FormContext]="formContext">
@@ -79,6 +79,14 @@
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
+            FieldName="AllowRevote"
+            Type="checkbox"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="true"
             FieldName="TrusteeThreshold"
             Type="number"
             [EditMode]="EditMode"
@@ -95,10 +103,10 @@
 
     </mj-collapsible-panel>
 
-    <!-- Voter Eligibility and Roll Section -->
+    <!-- Voter Roll and Eligibility Section -->
     <mj-collapsible-panel
-        SectionKey="voterEligibilityAndRoll"
-        SectionName="Voter Eligibility and Roll"
+        SectionKey="voterRollAndEligibility"
+        SectionName="Voter Roll and Eligibility"
         Icon="fa fa-users"
         [Form]="this"
         [FormContext]="formContext">
@@ -220,21 +228,13 @@
 
     </mj-collapsible-panel>
 
-    <!-- Voting Rules and Results Section -->
+    <!-- Results Configuration Section -->
     <mj-collapsible-panel
-        SectionKey="votingRulesAndResults"
-        SectionName="Voting Rules and Results"
+        SectionKey="resultsConfiguration"
+        SectionName="Results Configuration"
         Icon="fa fa-chart-bar"
         [Form]="this"
         [FormContext]="formContext">
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="AllowRevote"
-            Type="checkbox"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
@@ -283,9 +283,19 @@
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Advanced Configuration Section -->
+    <mj-collapsible-panel
+        SectionKey="advancedConfiguration"
+        SectionName="Advanced Configuration"
+        Icon="fa fa-sliders-h"
+        [Form]="this"
+        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
-            [ShowLabel]="true"
+            [ShowLabel]="false"
             FieldName="Configuration"
             Type="textarea"
             [EditMode]="EditMode"
@@ -325,56 +335,6 @@
     <!-- ========================================
          RELATED ENTITY PANELS
          ======================================== -->
-
-    <!-- Proxy Designations Section -->
-    <mj-collapsible-panel
-        SectionKey="mJBizAppsVotingProxyDesignations"
-        SectionName="Proxy Designations"
-        Icon="fa fa-vote-yea"
-        Variant="related-entity"
-        [Form]="this"
-        [FormContext]="formContext"
-        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingProxyDesignations')"
-        [DefaultExpanded]="false">
-        @if (record.IsSaved) {
-        <div>
-            <mj-explorer-entity-data-grid
-                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Proxy Designations','ElectionID')"
-                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Proxy Designations','ElectionID')"
-                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingProxyDesignations')"
-                [ShowToolbar]="true"
-                (Navigate)="OnFormNavigate($event)"
-                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingProxyDesignations', $event.totalRowCount)"
-                >
-            </mj-explorer-entity-data-grid>
-        </div>
-        }
-    </mj-collapsible-panel>
-
-    <!-- Contests Section -->
-    <mj-collapsible-panel
-        SectionKey="mJBizAppsVotingContests"
-        SectionName="Contests"
-        Icon="fa fa-vote-yea"
-        Variant="related-entity"
-        [Form]="this"
-        [FormContext]="formContext"
-        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingContests')"
-        [DefaultExpanded]="false">
-        @if (record.IsSaved) {
-        <div>
-            <mj-explorer-entity-data-grid
-                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Contests','ElectionID')"
-                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Contests','ElectionID')"
-                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingContests')"
-                [ShowToolbar]="true"
-                (Navigate)="OnFormNavigate($event)"
-                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingContests', $event.totalRowCount)"
-                >
-            </mj-explorer-entity-data-grid>
-        </div>
-        }
-    </mj-collapsible-panel>
 
     <!-- Participations Section -->
     <mj-collapsible-panel
@@ -426,6 +386,56 @@
         }
     </mj-collapsible-panel>
 
+    <!-- Proxy Designations Section -->
+    <mj-collapsible-panel
+        SectionKey="mJBizAppsVotingProxyDesignations"
+        SectionName="Proxy Designations"
+        Icon="fa fa-vote-yea"
+        Variant="related-entity"
+        [Form]="this"
+        [FormContext]="formContext"
+        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingProxyDesignations')"
+        [DefaultExpanded]="false">
+        @if (record.IsSaved) {
+        <div>
+            <mj-explorer-entity-data-grid
+                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Proxy Designations','ElectionID')"
+                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Proxy Designations','ElectionID')"
+                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingProxyDesignations')"
+                [ShowToolbar]="true"
+                (Navigate)="OnFormNavigate($event)"
+                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingProxyDesignations', $event.totalRowCount)"
+                >
+            </mj-explorer-entity-data-grid>
+        </div>
+        }
+    </mj-collapsible-panel>
+
+    <!-- Ballot Distributions Section -->
+    <mj-collapsible-panel
+        SectionKey="mJBizAppsVotingBallotDistributions"
+        SectionName="Ballot Distributions"
+        Icon="fa fa-vote-yea"
+        Variant="related-entity"
+        [Form]="this"
+        [FormContext]="formContext"
+        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingBallotDistributions')"
+        [DefaultExpanded]="false">
+        @if (record.IsSaved) {
+        <div>
+            <mj-explorer-entity-data-grid
+                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Ballot Distributions','ElectionID')"
+                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Ballot Distributions','ElectionID')"
+                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingBallotDistributions')"
+                [ShowToolbar]="true"
+                (Navigate)="OnFormNavigate($event)"
+                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingBallotDistributions', $event.totalRowCount)"
+                >
+            </mj-explorer-entity-data-grid>
+        </div>
+        }
+    </mj-collapsible-panel>
+
     <!-- Election Trustees Section -->
     <mj-collapsible-panel
         SectionKey="mJBizAppsVotingElectionTrustees"
@@ -451,50 +461,25 @@
         }
     </mj-collapsible-panel>
 
-    <!-- Cast Ballots Section -->
+    <!-- Election Certifications Section -->
     <mj-collapsible-panel
-        SectionKey="mJBizAppsVotingCastBallots"
-        SectionName="Cast Ballots"
-        Icon="fa fa-vote-yea"
+        SectionKey="mJBizAppsVotingElectionCertifications"
+        SectionName="Election Certifications"
+        Icon="fa fa-certificate"
         Variant="related-entity"
         [Form]="this"
         [FormContext]="formContext"
-        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingCastBallots')"
+        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingElectionCertifications')"
         [DefaultExpanded]="false">
         @if (record.IsSaved) {
         <div>
             <mj-explorer-entity-data-grid
-                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Cast Ballots','ElectionID')"
-                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Cast Ballots','ElectionID')"
-                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingCastBallots')"
+                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Election Certifications','ElectionID')"
+                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Election Certifications','ElectionID')"
+                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingElectionCertifications')"
                 [ShowToolbar]="true"
                 (Navigate)="OnFormNavigate($event)"
-                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingCastBallots', $event.totalRowCount)"
-                >
-            </mj-explorer-entity-data-grid>
-        </div>
-        }
-    </mj-collapsible-panel>
-
-    <!-- Election Audit Events Section -->
-    <mj-collapsible-panel
-        SectionKey="mJBizAppsVotingElectionAuditEvents"
-        SectionName="Election Audit Events"
-        Icon="fa fa-vote-yea"
-        Variant="related-entity"
-        [Form]="this"
-        [FormContext]="formContext"
-        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingElectionAuditEvents')"
-        [DefaultExpanded]="false">
-        @if (record.IsSaved) {
-        <div>
-            <mj-explorer-entity-data-grid
-                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Election Audit Events','ElectionID')"
-                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Election Audit Events','ElectionID')"
-                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingElectionAuditEvents')"
-                [ShowToolbar]="true"
-                (Navigate)="OnFormNavigate($event)"
-                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingElectionAuditEvents', $event.totalRowCount)"
+                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingElectionCertifications', $event.totalRowCount)"
                 >
             </mj-explorer-entity-data-grid>
         </div>
@@ -551,50 +536,75 @@
         }
     </mj-collapsible-panel>
 
-    <!-- Election Certifications Section -->
+    <!-- Cast Ballots Section -->
     <mj-collapsible-panel
-        SectionKey="mJBizAppsVotingElectionCertifications"
-        SectionName="Election Certifications"
-        Icon="fa fa-certificate"
+        SectionKey="mJBizAppsVotingCastBallots"
+        SectionName="Cast Ballots"
+        Icon="fa fa-vote-yea"
         Variant="related-entity"
         [Form]="this"
         [FormContext]="formContext"
-        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingElectionCertifications')"
+        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingCastBallots')"
         [DefaultExpanded]="false">
         @if (record.IsSaved) {
         <div>
             <mj-explorer-entity-data-grid
-                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Election Certifications','ElectionID')"
-                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Election Certifications','ElectionID')"
-                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingElectionCertifications')"
+                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Cast Ballots','ElectionID')"
+                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Cast Ballots','ElectionID')"
+                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingCastBallots')"
                 [ShowToolbar]="true"
                 (Navigate)="OnFormNavigate($event)"
-                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingElectionCertifications', $event.totalRowCount)"
+                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingCastBallots', $event.totalRowCount)"
                 >
             </mj-explorer-entity-data-grid>
         </div>
         }
     </mj-collapsible-panel>
 
-    <!-- Ballot Distributions Section -->
+    <!-- Election Audit Events Section -->
     <mj-collapsible-panel
-        SectionKey="mJBizAppsVotingBallotDistributions"
-        SectionName="Ballot Distributions"
-        Icon="fa fa-poll"
+        SectionKey="mJBizAppsVotingElectionAuditEvents"
+        SectionName="Election Audit Events"
+        Icon="fa fa-vote-yea"
         Variant="related-entity"
         [Form]="this"
         [FormContext]="formContext"
-        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingBallotDistributions')"
+        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingElectionAuditEvents')"
         [DefaultExpanded]="false">
         @if (record.IsSaved) {
         <div>
             <mj-explorer-entity-data-grid
-                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Ballot Distributions','ElectionID')"
-                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Ballot Distributions','ElectionID')"
-                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingBallotDistributions')"
+                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Election Audit Events','ElectionID')"
+                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Election Audit Events','ElectionID')"
+                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingElectionAuditEvents')"
                 [ShowToolbar]="true"
                 (Navigate)="OnFormNavigate($event)"
-                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingBallotDistributions', $event.totalRowCount)"
+                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingElectionAuditEvents', $event.totalRowCount)"
+                >
+            </mj-explorer-entity-data-grid>
+        </div>
+        }
+    </mj-collapsible-panel>
+
+    <!-- Contests Section -->
+    <mj-collapsible-panel
+        SectionKey="mJBizAppsVotingContests"
+        SectionName="Contests"
+        Icon="fa fa-vote-yea"
+        Variant="related-entity"
+        [Form]="this"
+        [FormContext]="formContext"
+        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingContests')"
+        [DefaultExpanded]="false">
+        @if (record.IsSaved) {
+        <div>
+            <mj-explorer-entity-data-grid
+                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Contests','ElectionID')"
+                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Contests','ElectionID')"
+                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingContests')"
+                [ShowToolbar]="true"
+                (Navigate)="OnFormNavigate($event)"
+                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingContests', $event.totalRowCount)"
                 >
             </mj-explorer-entity-data-grid>
         </div>

@@ -16,8 +16,8 @@ export class mjBizAppsVotingBallotDistributionFormComponent extends BaseFormComp
         await super.ngOnInit();
         this.initSections([
             { sectionKey: 'ballotInformation', sectionName: 'Ballot Information', isExpanded: true },
-            { sectionKey: 'accessAndSecurity', sectionName: 'Access and Security', isExpanded: true },
-            { sectionKey: 'widgetConfiguration', sectionName: 'Widget Configuration', isExpanded: true },
+            { sectionKey: 'securityAndEmbedding', sectionName: 'Security and Embedding', isExpanded: true },
+            { sectionKey: 'customization', sectionName: 'Customization', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false }
         ]);
     }

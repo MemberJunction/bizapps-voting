@@ -10,22 +10,32 @@
     <!-- ========================================
          FIELD PANELS
          ======================================== -->
-    <!-- Snapshot Details Section -->
+    <!-- Election Details Section -->
     <mj-collapsible-panel
-        SectionKey="snapshotDetails"
-        SectionName="Snapshot Details"
-        Icon="fa fa-camera"
+        SectionKey="electionDetails"
+        SectionName="Election Details"
+        Icon="fa fa-vote-yea"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
-            [ShowLabel]="true"
+            [ShowLabel]="false"
             FieldName="ElectionID"
             Type="textbox"
             [EditMode]="EditMode"
             [FormContext]="formContext"
             LinkType="Record"
         ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Snapshot Information Section -->
+    <mj-collapsible-panel
+        SectionKey="snapshotInformation"
+        SectionName="Snapshot Information"
+        Icon="fa fa-chart-bar"
+        [Form]="this"
+        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
@@ -42,19 +52,9 @@
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
-
-    </mj-collapsible-panel>
-
-    <!-- Results Data Section -->
-    <mj-collapsible-panel
-        SectionKey="resultsData"
-        SectionName="Results Data"
-        Icon="fa fa-chart-bar"
-        [Form]="this"
-        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
-            [ShowLabel]="false"
+            [ShowLabel]="true"
             FieldName="Results"
             Type="textarea"
             [EditMode]="EditMode"

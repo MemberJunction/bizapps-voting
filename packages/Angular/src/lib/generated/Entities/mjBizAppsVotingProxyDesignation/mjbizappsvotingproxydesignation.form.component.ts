@@ -16,8 +16,7 @@ export class mjBizAppsVotingProxyDesignationFormComponent extends BaseFormCompon
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'proxyInformation', sectionName: 'Proxy Information', isExpanded: true },
-            { sectionKey: 'votingInstructionsAndScope', sectionName: 'Voting Instructions and Scope', isExpanded: true },
+            { sectionKey: 'proxyDesignationDetails', sectionName: 'Proxy Designation Details', isExpanded: true },
             { sectionKey: 'statusAndTimeline', sectionName: 'Status and Timeline', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingParticipations', sectionName: 'Participations', isExpanded: false }

@@ -15,8 +15,8 @@ export class mjBizAppsVotingResultSnapshotFormComponent extends BaseFormComponen
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'snapshotDetails', sectionName: 'Snapshot Details', isExpanded: true },
-            { sectionKey: 'resultsData', sectionName: 'Results Data', isExpanded: true },
+            { sectionKey: 'electionDetails', sectionName: 'Election Details', isExpanded: true },
+            { sectionKey: 'snapshotInformation', sectionName: 'Snapshot Information', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false }
         ]);
     }

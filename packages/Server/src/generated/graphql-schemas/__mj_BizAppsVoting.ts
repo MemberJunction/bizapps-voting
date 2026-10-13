@@ -47,6 +47,47 @@ export class mjBizAppsVotingBallotAttribution_ {
     ReadableFields___?: string[];
         
 }
+
+//****************************************************************************
+// INPUT TYPE for MJ_BizApps_Voting: Ballot Attributions
+//****************************************************************************
+@InputType()
+export class CreatemjBizAppsVotingBallotAttributionInput {
+    @Field({ nullable: true })
+    ID?: string;
+
+    @Field({ nullable: true })
+    CastBallotID?: string;
+
+    @Field({ nullable: true })
+    ParticipationID?: string;
+
+    @Field(() => RestoreContextInput, { nullable: true })
+    RestoreContext___?: RestoreContextInput;
+}
+    
+
+//****************************************************************************
+// INPUT TYPE for MJ_BizApps_Voting: Ballot Attributions
+//****************************************************************************
+@InputType()
+export class UpdatemjBizAppsVotingBallotAttributionInput {
+    @Field()
+    ID: string;
+
+    @Field({ nullable: true })
+    CastBallotID?: string;
+
+    @Field({ nullable: true })
+    ParticipationID?: string;
+
+    @Field(() => [KeyValuePairInput], { nullable: true })
+    OldValues___?: KeyValuePairInput[];
+
+    @Field(() => RestoreContextInput, { nullable: true })
+    RestoreContext___?: RestoreContextInput;
+}
+    
 //****************************************************************************
 // RESOLVER for MJ_BizApps_Voting: Ballot Attributions
 //****************************************************************************
@@ -102,6 +143,26 @@ export class mjBizAppsVotingBallotAttributionResolver extends ResolverBase {
         const rows = await provider.ExecuteSQL(sSQL, [ID], undefined, this.GetUserFromPayload(userPayload));
         const result = await this.MapFieldNamesToCodeNames('MJ_BizApps_Voting: Ballot Attributions', rows && rows.length > 0 ? rows[0] : null, this.GetUserFromPayload(userPayload));
         return result;
+    }
+    
+    @Mutation(() => mjBizAppsVotingBallotAttribution_)
+    async CreatemjBizAppsVotingBallotAttribution(
+        @Arg('input', () => CreatemjBizAppsVotingBallotAttributionInput) input: CreatemjBizAppsVotingBallotAttributionInput,
+        @Ctx() { providers, userPayload }: AppContext,
+        @PubSub() pubSub: PubSubEngine
+    ) {
+        const provider = GetReadWriteProvider(providers);
+        return this.CreateRecord('MJ_BizApps_Voting: Ballot Attributions', input, provider, userPayload, pubSub)
+    }
+        
+    @Mutation(() => mjBizAppsVotingBallotAttribution_)
+    async UpdatemjBizAppsVotingBallotAttribution(
+        @Arg('input', () => UpdatemjBizAppsVotingBallotAttributionInput) input: UpdatemjBizAppsVotingBallotAttributionInput,
+        @Ctx() { providers, userPayload }: AppContext,
+        @PubSub() pubSub: PubSubEngine
+    ) {
+        const provider = GetReadWriteProvider(providers);
+        return this.UpdateRecord('MJ_BizApps_Voting: Ballot Attributions', input, provider, userPayload, pubSub);
     }
     
 }
@@ -583,6 +644,71 @@ export class mjBizAppsVotingBallotSelection_ {
     ReadableFields___?: string[];
         
 }
+
+//****************************************************************************
+// INPUT TYPE for MJ_BizApps_Voting: Ballot Selections
+//****************************************************************************
+@InputType()
+export class CreatemjBizAppsVotingBallotSelectionInput {
+    @Field({ nullable: true })
+    ID?: string;
+
+    @Field({ nullable: true })
+    CastBallotID?: string;
+
+    @Field({ nullable: true })
+    ContestID?: string;
+
+    @Field({ nullable: true })
+    ContestOptionID: string | null;
+
+    @Field(() => Int, { nullable: true })
+    Rank: number | null;
+
+    @Field({ nullable: true })
+    WriteInText: string | null;
+
+    @Field(() => Boolean, { nullable: true })
+    IsAbstain?: boolean;
+
+    @Field(() => RestoreContextInput, { nullable: true })
+    RestoreContext___?: RestoreContextInput;
+}
+    
+
+//****************************************************************************
+// INPUT TYPE for MJ_BizApps_Voting: Ballot Selections
+//****************************************************************************
+@InputType()
+export class UpdatemjBizAppsVotingBallotSelectionInput {
+    @Field()
+    ID: string;
+
+    @Field({ nullable: true })
+    CastBallotID?: string;
+
+    @Field({ nullable: true })
+    ContestID?: string;
+
+    @Field({ nullable: true })
+    ContestOptionID?: string | null;
+
+    @Field(() => Int, { nullable: true })
+    Rank?: number | null;
+
+    @Field({ nullable: true })
+    WriteInText?: string | null;
+
+    @Field(() => Boolean, { nullable: true })
+    IsAbstain?: boolean;
+
+    @Field(() => [KeyValuePairInput], { nullable: true })
+    OldValues___?: KeyValuePairInput[];
+
+    @Field(() => RestoreContextInput, { nullable: true })
+    RestoreContext___?: RestoreContextInput;
+}
+    
 //****************************************************************************
 // RESOLVER for MJ_BizApps_Voting: Ballot Selections
 //****************************************************************************
@@ -640,6 +766,26 @@ export class mjBizAppsVotingBallotSelectionResolver extends ResolverBase {
         return result;
     }
     
+    @Mutation(() => mjBizAppsVotingBallotSelection_)
+    async CreatemjBizAppsVotingBallotSelection(
+        @Arg('input', () => CreatemjBizAppsVotingBallotSelectionInput) input: CreatemjBizAppsVotingBallotSelectionInput,
+        @Ctx() { providers, userPayload }: AppContext,
+        @PubSub() pubSub: PubSubEngine
+    ) {
+        const provider = GetReadWriteProvider(providers);
+        return this.CreateRecord('MJ_BizApps_Voting: Ballot Selections', input, provider, userPayload, pubSub)
+    }
+        
+    @Mutation(() => mjBizAppsVotingBallotSelection_)
+    async UpdatemjBizAppsVotingBallotSelection(
+        @Arg('input', () => UpdatemjBizAppsVotingBallotSelectionInput) input: UpdatemjBizAppsVotingBallotSelectionInput,
+        @Ctx() { providers, userPayload }: AppContext,
+        @PubSub() pubSub: PubSubEngine
+    ) {
+        const provider = GetReadWriteProvider(providers);
+        return this.UpdateRecord('MJ_BizApps_Voting: Ballot Selections', input, provider, userPayload, pubSub);
+    }
+    
 }
 
 //****************************************************************************
@@ -686,6 +832,77 @@ export class mjBizAppsVotingCastBallot_ {
     ReadableFields___?: string[];
         
 }
+
+//****************************************************************************
+// INPUT TYPE for MJ_BizApps_Voting: Cast Ballots
+//****************************************************************************
+@InputType()
+export class CreatemjBizAppsVotingCastBallotInput {
+    @Field({ nullable: true })
+    ID?: string;
+
+    @Field({ nullable: true })
+    ElectionID?: string;
+
+    @Field({ nullable: true })
+    BallotStyleHash?: string;
+
+    @Field({ nullable: true })
+    ReceiptCode?: string;
+
+    @Field({ nullable: true })
+    Selections?: string;
+
+    @Field({ nullable: true })
+    VotingClass: string | null;
+
+    @Field({ nullable: true })
+    WeightClass: string | null;
+
+    @Field({ nullable: true })
+    Status?: string;
+
+    @Field(() => RestoreContextInput, { nullable: true })
+    RestoreContext___?: RestoreContextInput;
+}
+    
+
+//****************************************************************************
+// INPUT TYPE for MJ_BizApps_Voting: Cast Ballots
+//****************************************************************************
+@InputType()
+export class UpdatemjBizAppsVotingCastBallotInput {
+    @Field()
+    ID: string;
+
+    @Field({ nullable: true })
+    ElectionID?: string;
+
+    @Field({ nullable: true })
+    BallotStyleHash?: string;
+
+    @Field({ nullable: true })
+    ReceiptCode?: string;
+
+    @Field({ nullable: true })
+    Selections?: string;
+
+    @Field({ nullable: true })
+    VotingClass?: string | null;
+
+    @Field({ nullable: true })
+    WeightClass?: string | null;
+
+    @Field({ nullable: true })
+    Status?: string;
+
+    @Field(() => [KeyValuePairInput], { nullable: true })
+    OldValues___?: KeyValuePairInput[];
+
+    @Field(() => RestoreContextInput, { nullable: true })
+    RestoreContext___?: RestoreContextInput;
+}
+    
 //****************************************************************************
 // RESOLVER for MJ_BizApps_Voting: Cast Ballots
 //****************************************************************************
@@ -741,6 +958,26 @@ export class mjBizAppsVotingCastBallotResolver extends ResolverBase {
         const rows = await provider.ExecuteSQL(sSQL, [ID], undefined, this.GetUserFromPayload(userPayload));
         const result = await this.MapFieldNamesToCodeNames('MJ_BizApps_Voting: Cast Ballots', rows && rows.length > 0 ? rows[0] : null, this.GetUserFromPayload(userPayload));
         return result;
+    }
+    
+    @Mutation(() => mjBizAppsVotingCastBallot_)
+    async CreatemjBizAppsVotingCastBallot(
+        @Arg('input', () => CreatemjBizAppsVotingCastBallotInput) input: CreatemjBizAppsVotingCastBallotInput,
+        @Ctx() { providers, userPayload }: AppContext,
+        @PubSub() pubSub: PubSubEngine
+    ) {
+        const provider = GetReadWriteProvider(providers);
+        return this.CreateRecord('MJ_BizApps_Voting: Cast Ballots', input, provider, userPayload, pubSub)
+    }
+        
+    @Mutation(() => mjBizAppsVotingCastBallot_)
+    async UpdatemjBizAppsVotingCastBallot(
+        @Arg('input', () => UpdatemjBizAppsVotingCastBallotInput) input: UpdatemjBizAppsVotingCastBallotInput,
+        @Ctx() { providers, userPayload }: AppContext,
+        @PubSub() pubSub: PubSubEngine
+    ) {
+        const provider = GetReadWriteProvider(providers);
+        return this.UpdateRecord('MJ_BizApps_Voting: Cast Ballots', input, provider, userPayload, pubSub);
     }
     
 }
@@ -1628,6 +1865,53 @@ export class mjBizAppsVotingContestRunningTally_ {
     ReadableFields___?: string[];
         
 }
+
+//****************************************************************************
+// INPUT TYPE for MJ_BizApps_Voting: Contest Running Tallies
+//****************************************************************************
+@InputType()
+export class CreatemjBizAppsVotingContestRunningTallyInput {
+    @Field({ nullable: true })
+    ID?: string;
+
+    @Field({ nullable: true })
+    ContestID?: string;
+
+    @Field({ nullable: true })
+    ContestOptionID: string | null;
+
+    @Field(() => Float, { nullable: true })
+    VoteCount?: number;
+
+    @Field(() => RestoreContextInput, { nullable: true })
+    RestoreContext___?: RestoreContextInput;
+}
+    
+
+//****************************************************************************
+// INPUT TYPE for MJ_BizApps_Voting: Contest Running Tallies
+//****************************************************************************
+@InputType()
+export class UpdatemjBizAppsVotingContestRunningTallyInput {
+    @Field()
+    ID: string;
+
+    @Field({ nullable: true })
+    ContestID?: string;
+
+    @Field({ nullable: true })
+    ContestOptionID?: string | null;
+
+    @Field(() => Float, { nullable: true })
+    VoteCount?: number;
+
+    @Field(() => [KeyValuePairInput], { nullable: true })
+    OldValues___?: KeyValuePairInput[];
+
+    @Field(() => RestoreContextInput, { nullable: true })
+    RestoreContext___?: RestoreContextInput;
+}
+    
 //****************************************************************************
 // RESOLVER for MJ_BizApps_Voting: Contest Running Tallies
 //****************************************************************************
@@ -1683,6 +1967,26 @@ export class mjBizAppsVotingContestRunningTallyResolver extends ResolverBase {
         const rows = await provider.ExecuteSQL(sSQL, [ID], undefined, this.GetUserFromPayload(userPayload));
         const result = await this.MapFieldNamesToCodeNames('MJ_BizApps_Voting: Contest Running Tallies', rows && rows.length > 0 ? rows[0] : null, this.GetUserFromPayload(userPayload));
         return result;
+    }
+    
+    @Mutation(() => mjBizAppsVotingContestRunningTally_)
+    async CreatemjBizAppsVotingContestRunningTally(
+        @Arg('input', () => CreatemjBizAppsVotingContestRunningTallyInput) input: CreatemjBizAppsVotingContestRunningTallyInput,
+        @Ctx() { providers, userPayload }: AppContext,
+        @PubSub() pubSub: PubSubEngine
+    ) {
+        const provider = GetReadWriteProvider(providers);
+        return this.CreateRecord('MJ_BizApps_Voting: Contest Running Tallies', input, provider, userPayload, pubSub)
+    }
+        
+    @Mutation(() => mjBizAppsVotingContestRunningTally_)
+    async UpdatemjBizAppsVotingContestRunningTally(
+        @Arg('input', () => UpdatemjBizAppsVotingContestRunningTallyInput) input: UpdatemjBizAppsVotingContestRunningTallyInput,
+        @Ctx() { providers, userPayload }: AppContext,
+        @PubSub() pubSub: PubSubEngine
+    ) {
+        const provider = GetReadWriteProvider(providers);
+        return this.UpdateRecord('MJ_BizApps_Voting: Contest Running Tallies', input, provider, userPayload, pubSub);
     }
     
 }

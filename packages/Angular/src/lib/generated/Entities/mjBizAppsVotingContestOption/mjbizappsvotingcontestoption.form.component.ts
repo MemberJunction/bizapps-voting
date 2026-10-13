@@ -19,12 +19,12 @@ export class mjBizAppsVotingContestOptionFormComponent extends BaseFormComponent
             { sectionKey: 'contestAssociation', sectionName: 'Contest Association', isExpanded: true },
             { sectionKey: 'optionDetails', sectionName: 'Option Details', isExpanded: true },
             { sectionKey: 'candidateInformation', sectionName: 'Candidate Information', isExpanded: true },
-            { sectionKey: 'candidateDocumentsAndMedia', sectionName: 'Candidate Documents and Media', isExpanded: true },
+            { sectionKey: 'candidateMediaAndDocuments', sectionName: 'Candidate Media and Documents', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingContestOptionResults', sectionName: 'Contest Option Results', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingBallotSelections', sectionName: 'Ballot Selections', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingNominations', sectionName: 'Nominations', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingContestRunningTallies', sectionName: 'Contest Running Tallies', isExpanded: false }
+            { sectionKey: 'mJBizAppsVotingContestOptionResults', sectionName: 'Contest Option Results', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingContestRunningTallies', sectionName: 'Contest Running Tallies', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingNominations', sectionName: 'Nominations', isExpanded: false }
         ]);
     }
 }

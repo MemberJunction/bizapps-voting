@@ -16,10 +16,9 @@ export class mjBizAppsVotingContestResultFormComponent extends BaseFormComponent
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'contestAssociation', sectionName: 'Contest Association', isExpanded: true },
-            { sectionKey: 'tallyOutcomes', sectionName: 'Tally Outcomes', isExpanded: true },
-            { sectionKey: 'votingStatistics', sectionName: 'Voting Statistics', isExpanded: true },
-            { sectionKey: 'rankedMethodAndTieBreaks', sectionName: 'Ranked Method and Tie-Breaks', isExpanded: true },
+            { sectionKey: 'contestInformation', sectionName: 'Contest Information', isExpanded: true },
+            { sectionKey: 'tallyStatistics', sectionName: 'Tally Statistics', isExpanded: true },
+            { sectionKey: 'detailedRecords', sectionName: 'Detailed Records', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingContestOptionResults', sectionName: 'Contest Option Results', isExpanded: false }
         ]);

@@ -15,7 +15,7 @@ export class mjBizAppsVotingNominationEndorsementFormComponent extends BaseFormC
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'endorsementDetails', sectionName: 'Endorsement Details', isExpanded: true },
+            { sectionKey: 'endorsementInformation', sectionName: 'Endorsement Information', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false }
         ]);
     }

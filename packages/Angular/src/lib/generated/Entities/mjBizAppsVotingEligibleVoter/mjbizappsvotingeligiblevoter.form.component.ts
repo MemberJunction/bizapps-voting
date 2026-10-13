@@ -16,12 +16,13 @@ export class mjBizAppsVotingEligibleVoterFormComponent extends BaseFormComponent
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'electionAndVoterDetails', sectionName: 'Election and Voter Details', isExpanded: true },
-            { sectionKey: 'voterStatusAndAudit', sectionName: 'Voter Status and Audit', isExpanded: true },
+            { sectionKey: 'electionVoterContext', sectionName: 'Election & Voter Context', isExpanded: true },
+            { sectionKey: 'voterProfileWeight', sectionName: 'Voter Profile & Weight', isExpanded: true },
+            { sectionKey: 'rollStatusAudit', sectionName: 'Roll Status & Audit', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingParticipations', sectionName: 'Participations', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingProxyDesignations', sectionName: 'Proxy Designations', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingVoterCredentials', sectionName: 'Voter Credentials', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingParticipations', sectionName: 'Participations', isExpanded: false }
+            { sectionKey: 'mJBizAppsVotingVoterCredentials', sectionName: 'Voter Credentials', isExpanded: false }
         ]);
     }
 }

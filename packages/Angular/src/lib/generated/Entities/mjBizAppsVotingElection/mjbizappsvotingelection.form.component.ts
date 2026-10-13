@@ -17,22 +17,23 @@ export class mjBizAppsVotingElectionFormComponent extends BaseFormComponent {
         await super.ngOnInit();
         this.initSections([
             { sectionKey: 'electionDetails', sectionName: 'Election Details', isExpanded: true },
-            { sectionKey: 'securityAndVerification', sectionName: 'Security and Verification', isExpanded: true },
-            { sectionKey: 'voterEligibilityAndRoll', sectionName: 'Voter Eligibility and Roll', isExpanded: true },
+            { sectionKey: 'securityAndAssurance', sectionName: 'Security and Assurance', isExpanded: true },
+            { sectionKey: 'voterRollAndEligibility', sectionName: 'Voter Roll and Eligibility', isExpanded: true },
             { sectionKey: 'scheduleAndDeadlines', sectionName: 'Schedule and Deadlines', isExpanded: true },
-            { sectionKey: 'votingRulesAndResults', sectionName: 'Voting Rules and Results', isExpanded: true },
+            { sectionKey: 'resultsConfiguration', sectionName: 'Results Configuration', isExpanded: true },
+            { sectionKey: 'advancedConfiguration', sectionName: 'Advanced Configuration', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingProxyDesignations', sectionName: 'Proxy Designations', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingContests', sectionName: 'Contests', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingParticipations', sectionName: 'Participations', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingElectionAnchors', sectionName: 'Election Anchors', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingProxyDesignations', sectionName: 'Proxy Designations', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingBallotDistributions', sectionName: 'Ballot Distributions', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingElectionTrustees', sectionName: 'Election Trustees', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingCastBallots', sectionName: 'Cast Ballots', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingElectionAuditEvents', sectionName: 'Election Audit Events', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingElectionCertifications', sectionName: 'Election Certifications', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingResultSnapshots', sectionName: 'Result Snapshots', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingEligibleVoters', sectionName: 'Eligible Voters', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingElectionCertifications', sectionName: 'Election Certifications', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingBallotDistributions', sectionName: 'Ballot Distributions', isExpanded: false }
+            { sectionKey: 'mJBizAppsVotingCastBallots', sectionName: 'Cast Ballots', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingElectionAuditEvents', sectionName: 'Election Audit Events', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingContests', sectionName: 'Contests', isExpanded: false }
         ]);
     }
 }
