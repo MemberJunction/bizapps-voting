@@ -403,7 +403,7 @@ const FIELD_LABELS: Record<string, [string, PolicyField['Control'], string]> = {
                             }
                         }
                         @case ('anchors') {
-                            <p class="hint">Link the election to the records it is about (for example a committee or a motion). This is optional.</p>
+                            <p class="hint">Link the election to the records it is about (for example a meeting, a motion or a project). This is optional.</p>
                             @for (a of Draft.Anchors; track $index; let ai = $index) {
                                 <div class="anchor-row">
                                     <div class="field"><label [for]="'an-e-' + ai">Entity</label><input [id]="'an-e-' + ai" class="input" list="wiz-entities" [(ngModel)]="a.EntityName" /></div>

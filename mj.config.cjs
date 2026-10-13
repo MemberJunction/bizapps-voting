@@ -108,7 +108,7 @@ module.exports = {
     folderPath: './migrations/codegen/',
     appendToFile: false,
     convertCoreSchemaToFlywayMigrationFile: true,
-    omitRecurringScriptsFromLog: false,
+    omitRecurringScriptsFromLog: true, // live reconcilers (e.g. spDeleteUnneededEntityFields) must never land in a versioned migration
     schemaPlaceholders: [
       // Order matters: more-specific schema names must come first (greedy
       // sequential substitution).

@@ -2641,6 +2641,11 @@ GO
 --   MJ JSON-validates fields of that type on save, so every cast would be refused.
 --   That one ExtendedType assignment is removed from the UPDATE below.
 --
+--   Hand correction applied: the CodeGen log included an
+--   EXEC spDeleteUnneededEntityFields call. That procedure is a live reconciler that
+--   deletes fields on a clean replay, so it must never run from a versioned migration;
+--   the call is removed (mj.config.cjs now sets omitRecurringScriptsFromLog: true).
+--
 -- =============================================================================
 -- =============================================================================
 
@@ -36070,7 +36075,6 @@ GRANT EXECUTE ON [${flyway:defaultSchema}].[spDeleteStandardsBallotElection] TO 
 GRANT EXECUTE ON [${flyway:defaultSchema}].[spDeleteStandardsBallotElection] TO [cdp_Developer], [cdp_Integration];
 
 /* SQL text to delete unneeded entity fields (30 scoped entities) */
-EXEC [${mjSchema}].[spDeleteUnneededEntityFields] @ExcludedSchemaNames='sys,staging,dbo,${mjSchema}', @EntityIDs='8FC4FC5C-5A89-419F-A1B6-826FA7F23B90,EA275E3A-7B54-4BE4-8920-E06077014E61,CC6E74D9-CEDB-49C9-9B2C-468FF6BC3B27,55A2CACE-FC24-4FE4-BCFF-B139799AA203,ADAF24DB-FA5E-4D77-A0A8-BF63B0805A89,D8F3D719-F152-4DBA-98D3-9A6AB7235899,8F211C54-0F7B-44D9-A468-8C71ADB4E997,4CFFFA2D-ECB0-4A74-9E4A-3233A66C354C,FBE8A844-62DA-4FD8-B372-26907E6B4918,81BAB29F-5AF5-477C-81A8-754380F09BAF,4CD78959-D78F-4B2B-9B38-D30B12912C0F,E8FB35D6-3EEB-4B1C-8FFE-725CA43C6FC9,05B2DDF4-6C1D-4829-BEBE-0017CC19A150,F6F3C907-42B4-46FF-8FBC-4C27EF11DBC4,F1282B45-58FE-446A-8181-B8251904DF3D,F818CC64-75FD-4B08-B02C-F3989B55A698,19E0FC1F-1D50-4013-9044-F9512B40BF40,2AEAE15A-2E57-4C1D-BAE3-79C9756DD3C3,C6E872F2-DA14-415C-A3B0-8C80B87D4CFA,8647161A-8283-4424-9E12-67E460460762,916B5E0C-65B6-4B68-AF61-6CC78A3971E7,E0E8CFCE-F931-4340-B295-15DCC25CA479,FAE826A4-1471-4285-974D-E9F1CDE7CD66,877994D9-CFAC-4B6F-855B-78154B8F89DD,BDEA62E0-F1D6-4532-BEFB-72DB76B30DCE,BEEE5AEE-2803-42F2-ABB8-2D635D870A48,72CEA635-9CC3-4FEF-AA15-DD1BD344F87A,487E722C-1A10-46FD-BF98-9897F81C5631,67F9A66A-5B59-497A-B980-6C6A1159999B,27D8AB98-9EE6-4DA4-8C51-7B7A826C39B5', @IncludedSchemaNames='${flyway:defaultSchema}';
 
 /* SQL text to insert 70 new entity field(s) */
 
