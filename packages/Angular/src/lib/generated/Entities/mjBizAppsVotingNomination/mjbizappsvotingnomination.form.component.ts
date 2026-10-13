@@ -17,9 +17,8 @@ export class mjBizAppsVotingNominationFormComponent extends BaseFormComponent {
         await super.ngOnInit();
         this.initSections([
             { sectionKey: 'nominationDetails', sectionName: 'Nomination Details', isExpanded: true },
-            { sectionKey: 'statusAndWorkflow', sectionName: 'Status and Workflow', isExpanded: true },
-            { sectionKey: 'candidacyInformation', sectionName: 'Candidacy Information', isExpanded: true },
-            { sectionKey: 'datesAndDecisions', sectionName: 'Dates and Decisions', isExpanded: true },
+            { sectionKey: 'candidacyAndStatus', sectionName: 'Candidacy and Status', isExpanded: true },
+            { sectionKey: 'reviewAndDecision', sectionName: 'Review and Decision', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingNominationEndorsements', sectionName: 'Nomination Endorsements', isExpanded: false }
         ]);

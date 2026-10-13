@@ -14,7 +14,7 @@
     <mj-collapsible-panel
         SectionKey="electionVoterContext"
         SectionName="Election & Voter Context"
-        Icon="fa fa-id-card"
+        Icon="fa fa-users"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -47,11 +47,11 @@
 
     </mj-collapsible-panel>
 
-    <!-- Voter Profile & Weight Section -->
+    <!-- Voting Properties Section -->
     <mj-collapsible-panel
-        SectionKey="voterProfileWeight"
-        SectionName="Voter Profile & Weight"
-        Icon="fa fa-balance-scale"
+        SectionKey="votingProperties"
+        SectionName="Voting Properties"
+        Icon="fa fa-sliders-h"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -81,11 +81,11 @@
 
     </mj-collapsible-panel>
 
-    <!-- Roll Status & Audit Section -->
+    <!-- Voter Roll Status Section -->
     <mj-collapsible-panel
-        SectionKey="rollStatusAudit"
-        SectionName="Roll Status & Audit"
-        Icon="fa fa-clipboard-check"
+        SectionKey="voterRollStatus"
+        SectionName="Voter Roll Status"
+        Icon="fa fa-shield-alt"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -147,31 +147,6 @@
          RELATED ENTITY PANELS
          ======================================== -->
 
-    <!-- Participations Section -->
-    <mj-collapsible-panel
-        SectionKey="mJBizAppsVotingParticipations"
-        SectionName="Participations"
-        Icon="fa fa-vote-yea"
-        Variant="related-entity"
-        [Form]="this"
-        [FormContext]="formContext"
-        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingParticipations')"
-        [DefaultExpanded]="false">
-        @if (record.IsSaved) {
-        <div>
-            <mj-explorer-entity-data-grid
-                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Participations','EligibleVoterID')"
-                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Participations','EligibleVoterID')"
-                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingParticipations')"
-                [ShowToolbar]="true"
-                (Navigate)="OnFormNavigate($event)"
-                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingParticipations', $event.totalRowCount)"
-                >
-            </mj-explorer-entity-data-grid>
-        </div>
-        }
-    </mj-collapsible-panel>
-
     <!-- Proxy Designations Section -->
     <mj-collapsible-panel
         SectionKey="mJBizAppsVotingProxyDesignations"
@@ -216,6 +191,31 @@
                 [ShowToolbar]="true"
                 (Navigate)="OnFormNavigate($event)"
                 (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingVoterCredentials', $event.totalRowCount)"
+                >
+            </mj-explorer-entity-data-grid>
+        </div>
+        }
+    </mj-collapsible-panel>
+
+    <!-- Participations Section -->
+    <mj-collapsible-panel
+        SectionKey="mJBizAppsVotingParticipations"
+        SectionName="Participations"
+        Icon="fa fa-vote-yea"
+        Variant="related-entity"
+        [Form]="this"
+        [FormContext]="formContext"
+        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingParticipations')"
+        [DefaultExpanded]="false">
+        @if (record.IsSaved) {
+        <div>
+            <mj-explorer-entity-data-grid
+                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Participations','EligibleVoterID')"
+                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Participations','EligibleVoterID')"
+                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingParticipations')"
+                [ShowToolbar]="true"
+                (Navigate)="OnFormNavigate($event)"
+                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingParticipations', $event.totalRowCount)"
                 >
             </mj-explorer-entity-data-grid>
         </div>

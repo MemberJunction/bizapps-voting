@@ -10,11 +10,11 @@
     <!-- ========================================
          FIELD PANELS
          ======================================== -->
-    <!-- Method Configuration Section -->
+    <!-- Rule Configuration Section -->
     <mj-collapsible-panel
-        SectionKey="methodConfiguration"
-        SectionName="Method Configuration"
-        Icon="fa fa-list-alt"
+        SectionKey="ruleConfiguration"
+        SectionName="Rule Configuration"
+        Icon="fa fa-sliders-h"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -52,11 +52,11 @@
 
     </mj-collapsible-panel>
 
-    <!-- Technical Settings Section -->
+    <!-- Implementation Settings Section -->
     <mj-collapsible-panel
-        SectionKey="technicalSettings"
-        SectionName="Technical Settings"
-        Icon="fa fa-cogs"
+        SectionKey="implementationSettings"
+        SectionName="Implementation Settings"
+        Icon="fa fa-code"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -78,11 +78,11 @@
 
     </mj-collapsible-panel>
 
-    <!-- Voting Behavior Section -->
+    <!-- Counting Behavior Section -->
     <mj-collapsible-panel
-        SectionKey="votingBehavior"
-        SectionName="Voting Behavior"
-        Icon="fa fa-check-square"
+        SectionKey="countingBehavior"
+        SectionName="Counting Behavior"
+        Icon="fa fa-chart-bar"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -108,7 +108,7 @@
     <mj-collapsible-panel
         SectionKey="systemMetadata"
         SectionName="System Metadata"
-        Icon="fa fa-database"
+        Icon="fa fa-cog"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 

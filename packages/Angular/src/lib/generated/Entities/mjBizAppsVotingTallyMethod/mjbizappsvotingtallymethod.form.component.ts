@@ -16,9 +16,9 @@ export class mjBizAppsVotingTallyMethodFormComponent extends BaseFormComponent {
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'methodConfiguration', sectionName: 'Method Configuration', isExpanded: true },
-            { sectionKey: 'technicalSettings', sectionName: 'Technical Settings', isExpanded: true },
-            { sectionKey: 'votingBehavior', sectionName: 'Voting Behavior', isExpanded: true },
+            { sectionKey: 'ruleConfiguration', sectionName: 'Rule Configuration', isExpanded: true },
+            { sectionKey: 'implementationSettings', sectionName: 'Implementation Settings', isExpanded: true },
+            { sectionKey: 'countingBehavior', sectionName: 'Counting Behavior', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingContests', sectionName: 'Contests', isExpanded: false }
         ]);

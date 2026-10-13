@@ -14,7 +14,7 @@
     <mj-collapsible-panel
         SectionKey="ballotContext"
         SectionName="Ballot Context"
-        Icon="fa fa-vote-yea"
+        Icon="fa fa-link"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -35,16 +35,6 @@
             [FormContext]="formContext"
             LinkType="Record"
         ></mj-form-field>
-
-    </mj-collapsible-panel>
-
-    <!-- Comment Details Section -->
-    <mj-collapsible-panel
-        SectionKey="commentDetails"
-        SectionName="Comment Details"
-        Icon="fa fa-info-circle"
-        [Form]="this"
-        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
@@ -53,6 +43,16 @@
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Comment Details Section -->
+    <mj-collapsible-panel
+        SectionKey="commentDetails"
+        SectionName="Comment Details"
+        Icon="fa fa-align-left"
+        [Form]="this"
+        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
@@ -69,16 +69,6 @@
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
-
-    </mj-collapsible-panel>
-
-    <!-- Comment Content Section -->
-    <mj-collapsible-panel
-        SectionKey="commentContent"
-        SectionName="Comment Content"
-        Icon="fa fa-align-left"
-        [Form]="this"
-        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"

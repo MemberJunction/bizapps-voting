@@ -16,8 +16,8 @@ export class mjBizAppsVotingElectionTrusteeFormComponent extends BaseFormCompone
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'trusteeAndElection', sectionName: 'Trustee and Election', isExpanded: true },
-            { sectionKey: 'tallyAndSecurity', sectionName: 'Tally and Security', isExpanded: true },
+            { sectionKey: 'electionAndTrustee', sectionName: 'Election and Trustee', isExpanded: true },
+            { sectionKey: 'trusteeConfiguration', sectionName: 'Trustee Configuration', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingTrusteeKeyCommitments', sectionName: 'Trustee Key Commitments', isExpanded: false }
         ]);

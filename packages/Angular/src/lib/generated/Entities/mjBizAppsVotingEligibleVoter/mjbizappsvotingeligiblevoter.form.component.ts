@@ -17,12 +17,12 @@ export class mjBizAppsVotingEligibleVoterFormComponent extends BaseFormComponent
         await super.ngOnInit();
         this.initSections([
             { sectionKey: 'electionVoterContext', sectionName: 'Election & Voter Context', isExpanded: true },
-            { sectionKey: 'voterProfileWeight', sectionName: 'Voter Profile & Weight', isExpanded: true },
-            { sectionKey: 'rollStatusAudit', sectionName: 'Roll Status & Audit', isExpanded: true },
+            { sectionKey: 'votingProperties', sectionName: 'Voting Properties', isExpanded: true },
+            { sectionKey: 'voterRollStatus', sectionName: 'Voter Roll Status', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingParticipations', sectionName: 'Participations', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingProxyDesignations', sectionName: 'Proxy Designations', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingVoterCredentials', sectionName: 'Voter Credentials', isExpanded: false }
+            { sectionKey: 'mJBizAppsVotingVoterCredentials', sectionName: 'Voter Credentials', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingParticipations', sectionName: 'Participations', isExpanded: false }
         ]);
     }
 }

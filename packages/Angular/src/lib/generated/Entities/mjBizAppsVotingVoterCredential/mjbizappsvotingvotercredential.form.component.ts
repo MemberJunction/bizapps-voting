@@ -17,7 +17,7 @@ export class mjBizAppsVotingVoterCredentialFormComponent extends BaseFormCompone
         this.initSections([
             { sectionKey: 'credentialInformation', sectionName: 'Credential Information', isExpanded: true },
             { sectionKey: 'securityAndAuthentication', sectionName: 'Security and Authentication', isExpanded: true },
-            { sectionKey: 'lifecycleAndTimeline', sectionName: 'Lifecycle and Timeline', isExpanded: true },
+            { sectionKey: 'lifecycleAndValidity', sectionName: 'Lifecycle and Validity', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false }
         ]);
     }

@@ -10,22 +10,32 @@
     <!-- ========================================
          FIELD PANELS
          ======================================== -->
-    <!-- Contest Information Section -->
+    <!-- Contest Association Section -->
     <mj-collapsible-panel
-        SectionKey="contestInformation"
-        SectionName="Contest Information"
-        Icon="fa fa-poll-h"
+        SectionKey="contestAssociation"
+        SectionName="Contest Association"
+        Icon="fa fa-vote-yea"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
-            [ShowLabel]="true"
+            [ShowLabel]="false"
             FieldName="ContestID"
             Type="textbox"
             [EditMode]="EditMode"
             [FormContext]="formContext"
             LinkType="Record"
         ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Tally Results Section -->
+    <mj-collapsible-panel
+        SectionKey="tallyResults"
+        SectionName="Tally Results"
+        Icon="fa fa-chart-bar"
+        [Form]="this"
+        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
@@ -34,24 +44,6 @@
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="IsFinal"
-            Type="checkbox"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
-
-    </mj-collapsible-panel>
-
-    <!-- Tally Statistics Section -->
-    <mj-collapsible-panel
-        SectionKey="tallyStatistics"
-        SectionName="Tally Statistics"
-        Icon="fa fa-chart-bar"
-        [Form]="this"
-        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
@@ -87,11 +79,11 @@
 
     </mj-collapsible-panel>
 
-    <!-- Detailed Records Section -->
+    <!-- Method Records and Tie-Breaks Section -->
     <mj-collapsible-panel
-        SectionKey="detailedRecords"
-        SectionName="Detailed Records"
-        Icon="fa fa-list-alt"
+        SectionKey="methodRecordsAndTieBreaks"
+        SectionName="Method Records and Tie-Breaks"
+        Icon="fa fa-list-ol"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -121,11 +113,11 @@
 
     </mj-collapsible-panel>
 
-    <!-- System Metadata Section -->
+    <!-- Audit and Status Section -->
     <mj-collapsible-panel
-        SectionKey="systemMetadata"
-        SectionName="System Metadata"
-        Icon="fa fa-cog"
+        SectionKey="auditAndStatus"
+        SectionName="Audit and Status"
+        Icon="fa fa-shield-alt"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -136,6 +128,24 @@
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="true"
+            FieldName="IsFinal"
+            Type="checkbox"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- System Metadata Section -->
+    <mj-collapsible-panel
+        SectionKey="systemMetadata"
+        SectionName="System Metadata"
+        Icon="fa fa-cog"
+        [Form]="this"
+        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"

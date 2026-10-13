@@ -18,14 +18,14 @@ export class mjBizAppsVotingContestFormComponent extends BaseFormComponent {
         this.initSections([
             { sectionKey: 'contestDetails', sectionName: 'Contest Details', isExpanded: true },
             { sectionKey: 'votingRules', sectionName: 'Voting Rules', isExpanded: true },
-            { sectionKey: 'ballotConfiguration', sectionName: 'Ballot Configuration', isExpanded: true },
+            { sectionKey: 'countingAndThresholds', sectionName: 'Counting and Thresholds', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingBallotComments', sectionName: 'Ballot Comments', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingContestOptions', sectionName: 'Contest Options', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingContestResults', sectionName: 'Contest Results', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingBallotSelections', sectionName: 'Ballot Selections', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingNominations', sectionName: 'Nominations', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingBallotComments', sectionName: 'Ballot Comments', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingContestRunningTallies', sectionName: 'Contest Running Tallies', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingNominations', sectionName: 'Nominations', isExpanded: false }
+            { sectionKey: 'mJBizAppsVotingBallotSelections', sectionName: 'Ballot Selections', isExpanded: false }
         ]);
     }
 }

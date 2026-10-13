@@ -14,7 +14,7 @@
     <mj-collapsible-panel
         SectionKey="ballotInformation"
         SectionName="Ballot Information"
-        Icon="fa fa-vote-yea"
+        Icon="fa fa-file-alt"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -61,10 +61,10 @@
 
     </mj-collapsible-panel>
 
-    <!-- Security and Embedding Section -->
+    <!-- Security and Integration Section -->
     <mj-collapsible-panel
-        SectionKey="securityAndEmbedding"
-        SectionName="Security and Embedding"
+        SectionKey="securityAndIntegration"
+        SectionName="Security and Integration"
         Icon="fa fa-shield-alt"
         [Form]="this"
         [FormContext]="formContext">
@@ -96,18 +96,18 @@
             [Record]="record"
             [ShowLabel]="true"
             FieldName="HostPublicKey"
-            Type="textarea"
+            Type="code"
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
 
     </mj-collapsible-panel>
 
-    <!-- Customization Section -->
+    <!-- Appearance and Localization Section -->
     <mj-collapsible-panel
-        SectionKey="customization"
-        SectionName="Customization"
-        Icon="fa fa-palette"
+        SectionKey="appearanceAndLocalization"
+        SectionName="Appearance and Localization"
+        Icon="fa fa-paint-brush"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 

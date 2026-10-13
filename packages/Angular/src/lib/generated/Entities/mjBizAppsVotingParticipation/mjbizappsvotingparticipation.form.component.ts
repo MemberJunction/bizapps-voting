@@ -19,8 +19,8 @@ export class mjBizAppsVotingParticipationFormComponent extends BaseFormComponent
             { sectionKey: 'electionAndVotingDetails', sectionName: 'Election and Voting Details', isExpanded: true },
             { sectionKey: 'verificationAndStaffing', sectionName: 'Verification and Staffing', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingBallotComments', sectionName: 'Ballot Comments', isExpanded: false },
-            { sectionKey: 'mJBizAppsVotingBallotAttributions', sectionName: 'Ballot Attributions', isExpanded: false }
+            { sectionKey: 'mJBizAppsVotingBallotAttributions', sectionName: 'Ballot Attributions', isExpanded: false },
+            { sectionKey: 'mJBizAppsVotingBallotComments', sectionName: 'Ballot Comments', isExpanded: false }
         ]);
     }
 }

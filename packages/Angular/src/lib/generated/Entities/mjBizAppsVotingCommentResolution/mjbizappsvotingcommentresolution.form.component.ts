@@ -17,6 +17,7 @@ export class mjBizAppsVotingCommentResolutionFormComponent extends BaseFormCompo
         this.initSections([
             { sectionKey: 'commentResolutionDetails', sectionName: 'Comment Resolution Details', isExpanded: true },
             { sectionKey: 'resolutionTracking', sectionName: 'Resolution Tracking', isExpanded: true },
+            { sectionKey: 'commenterFeedback', sectionName: 'Commenter Feedback', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false }
         ]);
     }

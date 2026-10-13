@@ -24,7 +24,18 @@
     "All of this is applied when CodeGen first CREATES the entity (MJ CodeGenLib",
     "resolveCreationTimeEntityConfig / resolveCreationTimeAutoAddPermissions). Before that MJ fix,",
     "TrackRecordChanges=false arrived only after the timestamp columns had been added, and the default",
-    "permissions were always granted."
+    "permissions were always granted.",
+    "",
+    "PERMISSION MODEL (docs/voting/security.md): every table except the four catalogs (Election Types, Tally Methods,",
+    "Eligibility Source Types, Voter Credential Methods) is created with AutoAddPermissions=false. CodeGen's defaults would",
+    "otherwise give every signed-in Explorer user (UI role) READ on the poll book, the roll, credentials, the audit trail and",
+    "pre-publication results, and give Developer/Integration full CRUD including DELETE. Explicit grants live in",
+    "metadata/entity-permissions (Voting Administrator, Election Inspector, Voting Ballot Engine; UI read only on the election",
+    "configuration, behind row-level-security filters).",
+    "",
+    "AllowDeleteAPI=false additionally removes the delete procedure and the GraphQL delete mutation for the append-only and",
+    "voter-identifying tables (poll book, audit trail, roll, credentials, proxies, trustees, key commitments, result rows,",
+    "certification). Rows leave those tables only by a status change (Removed, Revoked, Superseded), never by DELETE."
   ],
   "Entities": [
     {
@@ -67,6 +78,128 @@
       "AllowDeleteAPI": false,
       "AllowUserSearchAPI": false,
       "AllowAllRowsAPI": false
+    },
+    {
+      "BaseTable": "Election",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "ElectionAnchor",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "Contest",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "ContestOption",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "Nomination",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "NominationEndorsement",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "EligibleVoter",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "VoterCredential",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "BallotDistribution",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "ProxyDesignation",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "Participation",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "ResultSnapshot",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "ContestResult",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "ContestOptionResult",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "ElectionCertification",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "ElectionCertifier",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "ElectionAuditEvent",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "ElectionTrustee",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "TrusteeKeyCommitment",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "StandardsBallotElection",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "BallotComment",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "CommentResolution",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
     }
   ],
   "_comment_ISARelationships": [

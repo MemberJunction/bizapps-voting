@@ -10,11 +10,11 @@
     <!-- ========================================
          FIELD PANELS
          ======================================== -->
-    <!-- Contest Tally Details Section -->
+    <!-- Contest Information Section -->
     <mj-collapsible-panel
-        SectionKey="contestTallyDetails"
-        SectionName="Contest Tally Details"
-        Icon="fa fa-poll"
+        SectionKey="contestInformation"
+        SectionName="Contest Information"
+        Icon="fa fa-vote-yea"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -35,9 +35,19 @@
             [FormContext]="formContext"
             LinkType="Record"
         ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Tally Metrics Section -->
+    <mj-collapsible-panel
+        SectionKey="tallyMetrics"
+        SectionName="Tally Metrics"
+        Icon="fa fa-sort-numeric-up"
+        [Form]="this"
+        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
-            [ShowLabel]="true"
+            [ShowLabel]="false"
             FieldName="VoteCount"
             Type="number"
             [EditMode]="EditMode"

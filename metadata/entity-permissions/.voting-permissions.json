@@ -1,0 +1,1078 @@
+[
+  {
+    "_comments": [
+      "THE VOTING PERMISSION MODEL (docs/voting/security.md). Every voting table except the four catalogs is created with no role",
+      "permissions (codegen/additional-schema-info.json, AutoAddPermissions=false). This file is the whole grant list for them.",
+      "",
+      "UI (every signed-in Explorer user): read only the election CONFIGURATION members need to find and render an election, behind",
+      "row-level-security filters (metadata/row-level-security-filters): an election is visible once its roll is frozen, because the",
+      "draft may carry an inline CSV roll; comments only on Open ballots; certification records only once certified.",
+      "Voting Administrator: runs the administrative operations as themselves, so it holds what those engines touch. No DELETE anywhere.",
+      "Election Inspector: reads the audit-relevant tables and co-signs the certification (certification + certifiers + its audit row).",
+      "Voting Ballot Engine: held only by the MJ system user. It acts as the system principal for the voter-facing operations, the public",
+      "edge, scheduled jobs and any administrative operation run as the system user, so per table it holds AT LEAST what the Voting",
+      "Administrator holds, plus the writes only the engines make (poll book create, ballot box). The poll book and audit trail are",
+      "create-and-read only; the ballot-box rows are in .entity-permissions.json. Only Ballot Comments can be deleted (a revote replaces",
+      "its comments). No role holds DELETE on the poll book, audit trail, roll, credentials, proxies, trustees, results or the ballot box.",
+      "Developer and Integration hold nothing here: administering elections is a Voting Administrator grant, not a platform perk.",
+      "The four catalogs keep CodeGen's default grants (UI read; Developer and Integration full CRUD, they are seeded metadata); the engine",
+      "role also reads them so the system principal never depends on the UI role."
+    ],
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Elections",
+      "RoleID": "@lookup:MJ: Roles.Name=UI",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0,
+      "ReadRLSFilterID": "@lookup:MJ: Row Level Security Filters.Name=Voting: Elections with a frozen roll"
+    },
+    "primaryKey": {
+      "ID": "A3B8A49C-093C-4026-A760-91F907FEAC9F"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Elections",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "173CC7BC-39DE-45BF-B7BE-C1FEB07CFC61"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Elections",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "5427608A-BEAD-48F3-B296-C4B0A40158A1"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Elections",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "9C3FD703-9CEB-4A8C-B198-4446D494242B"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contests",
+      "RoleID": "@lookup:MJ: Roles.Name=UI",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0,
+      "ReadRLSFilterID": "@lookup:MJ: Row Level Security Filters.Name=Voting: Contests of elections with a frozen roll"
+    },
+    "primaryKey": {
+      "ID": "BC9B6D5E-B2E1-41EE-B446-587BD16661AD"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contests",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "54F45DDE-713F-4D0B-9068-38495B2A86EF"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contests",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "B36F046C-B623-49E5-A0D9-A4524539732C"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contests",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "CA40BECE-FA58-4C83-BA2A-2B6E60D6FC3F"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contest Options",
+      "RoleID": "@lookup:MJ: Roles.Name=UI",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0,
+      "ReadRLSFilterID": "@lookup:MJ: Row Level Security Filters.Name=Voting: Options of elections with a frozen roll"
+    },
+    "primaryKey": {
+      "ID": "8399A9F0-A9A6-40BF-A860-3FC303FC4C4C"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contest Options",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "CCC184F4-6236-40EE-8394-E263ED6187A2"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contest Options",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "6B0B6F32-1E7A-45A6-ADD8-F4E3905E870B"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contest Options",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "4889DA73-60F9-4C86-8CB0-064605250D58"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Standards Ballot Elections",
+      "RoleID": "@lookup:MJ: Roles.Name=UI",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0,
+      "ReadRLSFilterID": "@lookup:MJ: Row Level Security Filters.Name=Voting: Standards ballot extensions of elections with a frozen roll"
+    },
+    "primaryKey": {
+      "ID": "F8ACDD27-E6F8-41A1-BE98-58B14404A7D8"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Standards Ballot Elections",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "AC05E4F4-BD57-4B8B-8855-33499242E990"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Standards Ballot Elections",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "759F3732-3103-47A2-AF59-D36F2422D3D1"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Standards Ballot Elections",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "36E78351-337C-4666-8CBA-0BF283193714"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Anchors",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "062351F7-70A8-4D6F-83EF-276B71B38EB8"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Anchors",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "0890965A-DDD5-4221-9025-D9A1D9CF3C6D"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Anchors",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "712A8183-5E6B-4BD2-B7F0-58FBCCBFED91"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Nominations",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "10B8751E-6ADA-485E-9ADC-36A40FAF5D2E"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Nominations",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "B23659D3-BAA0-4BC7-8BD7-BC4538B28AD8"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Nominations",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "3FA763FE-9D1A-4AC6-A260-1B76D29E5185"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Nomination Endorsements",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "B13FF762-9E67-470A-85C0-768B67A9E421"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Nomination Endorsements",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "48E4DC6A-7C75-4E6F-AA73-AB31396EBF64"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Nomination Endorsements",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "8FE11CCA-39B5-4B75-802D-D007F536DE86"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Eligible Voters",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "C04D2FC8-B28D-4B89-8368-9E0F258E679B"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Eligible Voters",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "A72DE1BE-84A3-45E7-8280-E07E1AF376B8"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Eligible Voters",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "EB5EAB7D-97AA-4F15-8C9C-AADA200D45F1"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Voter Credentials",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "7A96EC5F-AF8B-4A4F-B381-71B46F95ACC1"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Voter Credentials",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "6F77F320-45B0-4162-AF99-798C205ABBA8"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Ballot Distributions",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "0FCA1230-AEA6-4F32-B38D-9704FAD5134F"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Ballot Distributions",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "60BAB9F6-2048-4AAE-91FB-323E2FE60CD0"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Ballot Distributions",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "3906DEB7-3777-41E0-97FB-1604E6F6B750"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Proxy Designations",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "7C7ADDC0-8F5A-4434-9701-78B641B60BDC"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Proxy Designations",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "6FC22A4F-4C13-4487-950C-E2846F1D3F59"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Proxy Designations",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "8DA8886D-2272-4491-886D-F80890A899CE"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Participations",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "0A1E6A62-B128-4045-83A7-EFB523761813"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Participations",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "5E177CC0-735F-40A5-9F96-B6ECF8D9E120"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Participations",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "EF5E23C0-D416-427C-A991-043AF1D72605"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Audit Events",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "BE0FBC4C-B7C8-47FE-9822-C9AF51522ED6"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Audit Events",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "4E6655F6-10D9-4C8B-8076-463DC7E08743"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Audit Events",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "FEE170BF-0837-47E4-A8C2-B9A7A7F6C743"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Result Snapshots",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "7DD81DB4-077A-44AA-9ABB-20972D87ED20"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Result Snapshots",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "AC9AFFF3-1651-46EE-9C3A-80C2C910C122"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Result Snapshots",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "69145D42-F9CB-45E6-97AB-AE109D936935"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contest Results",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "68161EC2-3532-4461-B54B-9EDD7C7B4501"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contest Results",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "83E3111A-D7BE-4E3E-B512-7D83F3EBE7F4"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contest Results",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "DE9632F0-25ED-4CF7-B331-AE500BD02724"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contest Option Results",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "75E1D016-3241-4CBE-A453-8B20B803CFBE"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contest Option Results",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "FDD71792-F57B-4957-89C0-001B0EF5927C"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contest Option Results",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "6FD856A3-126C-422A-A809-1F040F99C11B"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Certifications",
+      "RoleID": "@lookup:MJ: Roles.Name=UI",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0,
+      "ReadRLSFilterID": "@lookup:MJ: Row Level Security Filters.Name=Voting: Certified certifications"
+    },
+    "primaryKey": {
+      "ID": "98F84877-F2C5-47A2-835C-F059FF54DFF7"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Certifications",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "4C30AFB9-A2D4-46B7-9854-7CADE7421F20"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Certifications",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "48E8E64E-14F4-46FE-815C-98A08E3343D4"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Certifications",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "7226E69D-D72B-4C69-B772-CB7271285428"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Certifiers",
+      "RoleID": "@lookup:MJ: Roles.Name=UI",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0,
+      "ReadRLSFilterID": "@lookup:MJ: Row Level Security Filters.Name=Voting: Certifiers of certified elections"
+    },
+    "primaryKey": {
+      "ID": "5D8464BF-EACC-4F8C-9659-FCF0A9F91835"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Certifiers",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "3AC11BC5-F77D-4C3F-A4E7-CA38EDE17D81"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Certifiers",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "C4DD28F8-D047-4FC0-943D-5E84424745C6"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Certifiers",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "93796140-A170-469E-A476-6B88BAFF74F1"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Trustees",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "C280F277-D19E-4EA1-B45A-A24FCB89669C"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Trustees",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "AC8FFD45-A968-43A6-B3A6-D7B0CC8D5EE9"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Trustee Key Commitments",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "3244856A-3CF3-48FE-B3C8-C9370E687CF2"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Trustee Key Commitments",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "1F87D9AB-E81F-4FEA-8236-41168845A513"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Ballot Comments",
+      "RoleID": "@lookup:MJ: Roles.Name=UI",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0,
+      "ReadRLSFilterID": "@lookup:MJ: Row Level Security Filters.Name=Voting: Open-ballot comments"
+    },
+    "primaryKey": {
+      "ID": "6900F576-DDA9-4C95-AF1E-C2477592FDE1"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Ballot Comments",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "DFA612BD-CAC4-4344-84B7-25524C08CC55"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Ballot Comments",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "64BBF89E-D741-4C5E-AB0A-863D5F80C2A9"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Ballot Comments",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 1
+    },
+    "primaryKey": {
+      "ID": "61E57723-EB95-46D3-B973-C3A28D004F04"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Comment Resolutions",
+      "RoleID": "@lookup:MJ: Roles.Name=UI",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0,
+      "ReadRLSFilterID": "@lookup:MJ: Row Level Security Filters.Name=Voting: Resolutions of open-ballot comments"
+    },
+    "primaryKey": {
+      "ID": "11CFC0B7-2FEE-4B4C-AF67-A78B99C54E9A"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Comment Resolutions",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Administrator",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "D2510DA6-5D84-4A5F-8775-CB3660FA679F"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Comment Resolutions",
+      "RoleID": "@lookup:MJ: Roles.Name=Election Inspector",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "774E1344-C9AE-421C-B985-95A8B79A9F2D"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Comment Resolutions",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "7C79665C-DA04-4F6C-8B4F-39A292399D17"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Election Types",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "4CF31C23-EC8E-48D6-B72C-88A4C01C8960"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Tally Methods",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "06D98D64-1AF2-4FCC-AD59-02EDA7F286B7"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Eligibility Source Types",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "CBDC1E1A-99FE-453E-814B-F6D008B24F37"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Voter Credential Methods",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 0,
+      "CanRead": 1,
+      "CanUpdate": 0,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "087213BB-9520-486B-BD07-338584C04D94"
+    }
+  }
+]

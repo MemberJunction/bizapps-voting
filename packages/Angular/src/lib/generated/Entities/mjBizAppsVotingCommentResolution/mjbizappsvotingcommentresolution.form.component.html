@@ -42,14 +42,6 @@
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="CommenterResponse"
-            Type="select"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
 
     </mj-collapsible-panel>
 
@@ -57,7 +49,7 @@
     <mj-collapsible-panel
         SectionKey="resolutionTracking"
         SectionName="Resolution Tracking"
-        Icon="fa fa-user-clock"
+        Icon="fa fa-history"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -74,6 +66,24 @@
             [ShowLabel]="true"
             FieldName="ResolvedAt"
             Type="datepicker"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Commenter Feedback Section -->
+    <mj-collapsible-panel
+        SectionKey="commenterFeedback"
+        SectionName="Commenter Feedback"
+        Icon="fa fa-user-check"
+        [Form]="this"
+        [FormContext]="formContext">
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="false"
+            FieldName="CommenterResponse"
+            Type="select"
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>

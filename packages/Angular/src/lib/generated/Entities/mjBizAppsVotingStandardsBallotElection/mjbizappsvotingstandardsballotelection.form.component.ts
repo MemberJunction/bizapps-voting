@@ -15,13 +15,13 @@ export class mjBizAppsVotingStandardsBallotElectionFormComponent extends BaseFor
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'standardDocumentDetails', sectionName: 'Standard Document Details', isExpanded: true },
-            { sectionKey: 'ballotProgression', sectionName: 'Ballot Progression', isExpanded: true },
+            { sectionKey: 'documentDetails', sectionName: 'Document Details', isExpanded: true },
+            { sectionKey: 'ballotRecirculationSettings', sectionName: 'Ballot & Recirculation Settings', isExpanded: true },
             { sectionKey: 'electionDetails', sectionName: 'Election Details', isExpanded: true },
-            { sectionKey: 'electionSecurityAndSettings', sectionName: 'Election Security and Settings', isExpanded: true },
-            { sectionKey: 'voterEligibilityAndRules', sectionName: 'Voter Eligibility and Rules', isExpanded: true },
+            { sectionKey: 'electionConfiguration', sectionName: 'Election Configuration', isExpanded: true },
             { sectionKey: 'electionTimeline', sectionName: 'Election Timeline', isExpanded: true },
-            { sectionKey: 'resultsAndAudienceRules', sectionName: 'Results and Audience Rules', isExpanded: true },
+            { sectionKey: 'resultsAndRules', sectionName: 'Results and Rules', isExpanded: true },
+            { sectionKey: 'securityAndVerification', sectionName: 'Security and Verification', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false }
         ]);
     }

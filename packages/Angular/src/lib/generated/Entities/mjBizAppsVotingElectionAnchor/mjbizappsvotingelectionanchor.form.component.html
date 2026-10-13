@@ -14,18 +14,28 @@
     <mj-collapsible-panel
         SectionKey="electionAnchorDetails"
         SectionName="Election Anchor Details"
-        Icon="fa fa-anchor"
+        Icon="fa fa-vote-yea"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
-            [ShowLabel]="true"
+            [ShowLabel]="false"
             FieldName="ElectionID"
             Type="textbox"
             [EditMode]="EditMode"
             [FormContext]="formContext"
             LinkType="Record"
         ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Anchored Record Section -->
+    <mj-collapsible-panel
+        SectionKey="anchoredRecord"
+        SectionName="Anchored Record"
+        Icon="fa fa-link"
+        [Form]="this"
+        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
@@ -43,6 +53,16 @@
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Anchor Configuration Section -->
+    <mj-collapsible-panel
+        SectionKey="anchorConfiguration"
+        SectionName="Anchor Configuration"
+        Icon="fa fa-sliders-h"
+        [Form]="this"
+        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"

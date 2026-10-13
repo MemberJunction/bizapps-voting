@@ -17,8 +17,8 @@ export class mjBizAppsVotingElectionCertificationFormComponent extends BaseFormC
         await super.ngOnInit();
         this.initSections([
             { sectionKey: 'certificationDetails', sectionName: 'Certification Details', isExpanded: true },
-            { sectionKey: 'documentationAndDisclosures', sectionName: 'Documentation and Disclosures', isExpanded: true },
-            { sectionKey: 'securityAndVerification', sectionName: 'Security and Verification', isExpanded: true },
+            { sectionKey: 'documentationAndHashes', sectionName: 'Documentation and Hashes', isExpanded: true },
+            { sectionKey: 'auditAndDisclosures', sectionName: 'Audit and Disclosures', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingElectionCertifiers', sectionName: 'Election Certifiers', isExpanded: false }
         ]);

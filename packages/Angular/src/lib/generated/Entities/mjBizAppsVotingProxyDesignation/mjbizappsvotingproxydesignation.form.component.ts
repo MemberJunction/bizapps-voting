@@ -17,7 +17,7 @@ export class mjBizAppsVotingProxyDesignationFormComponent extends BaseFormCompon
         await super.ngOnInit();
         this.initSections([
             { sectionKey: 'proxyDesignationDetails', sectionName: 'Proxy Designation Details', isExpanded: true },
-            { sectionKey: 'statusAndTimeline', sectionName: 'Status and Timeline', isExpanded: true },
+            { sectionKey: 'timelineAndStatus', sectionName: 'Timeline and Status', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingParticipations', sectionName: 'Participations', isExpanded: false }
         ]);

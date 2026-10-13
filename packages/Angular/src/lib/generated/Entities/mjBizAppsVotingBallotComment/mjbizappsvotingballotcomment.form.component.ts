@@ -18,7 +18,6 @@ export class mjBizAppsVotingBallotCommentFormComponent extends BaseFormComponent
         this.initSections([
             { sectionKey: 'ballotContext', sectionName: 'Ballot Context', isExpanded: true },
             { sectionKey: 'commentDetails', sectionName: 'Comment Details', isExpanded: true },
-            { sectionKey: 'commentContent', sectionName: 'Comment Content', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingCommentResolutions', sectionName: 'Comment Resolutions', isExpanded: false }
         ]);

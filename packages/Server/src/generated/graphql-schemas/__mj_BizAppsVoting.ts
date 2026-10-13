@@ -1351,13 +1351,6 @@ export class mjBizAppsVotingContestOptionResultResolver extends ResolverBase {
         return this.UpdateRecord('MJ_BizApps_Voting: Contest Option Results', input, provider, userPayload, pubSub);
     }
     
-    @Mutation(() => mjBizAppsVotingContestOptionResult_)
-    async DeletemjBizAppsVotingContestOptionResult(@Arg('ID', () => String) ID: string, @Arg('options___', () => DeleteOptionsInput) options: DeleteOptionsInput, @Ctx() { providers, userPayload }: AppContext, @PubSub() pubSub: PubSubEngine) {
-        const provider = GetReadWriteProvider(providers);
-        const key = new CompositeKey([{FieldName: 'ID', Value: ID}]);
-        return this.DeleteRecord('MJ_BizApps_Voting: Contest Option Results', key, options, provider, userPayload, pubSub);
-    }
-    
 }
 
 //****************************************************************************
@@ -1826,13 +1819,6 @@ export class mjBizAppsVotingContestResultResolver extends ResolverBase {
     ) {
         const provider = GetReadWriteProvider(providers);
         return this.UpdateRecord('MJ_BizApps_Voting: Contest Results', input, provider, userPayload, pubSub);
-    }
-    
-    @Mutation(() => mjBizAppsVotingContestResult_)
-    async DeletemjBizAppsVotingContestResult(@Arg('ID', () => String) ID: string, @Arg('options___', () => DeleteOptionsInput) options: DeleteOptionsInput, @Ctx() { providers, userPayload }: AppContext, @PubSub() pubSub: PubSubEngine) {
-        const provider = GetReadWriteProvider(providers);
-        const key = new CompositeKey([{FieldName: 'ID', Value: ID}]);
-        return this.DeleteRecord('MJ_BizApps_Voting: Contest Results', key, options, provider, userPayload, pubSub);
     }
     
 }
@@ -2666,13 +2652,6 @@ export class mjBizAppsVotingElectionAuditEventResolver extends ResolverBase {
         return this.UpdateRecord('MJ_BizApps_Voting: Election Audit Events', input, provider, userPayload, pubSub);
     }
     
-    @Mutation(() => mjBizAppsVotingElectionAuditEvent_)
-    async DeletemjBizAppsVotingElectionAuditEvent(@Arg('ID', () => String) ID: string, @Arg('options___', () => DeleteOptionsInput) options: DeleteOptionsInput, @Ctx() { providers, userPayload }: AppContext, @PubSub() pubSub: PubSubEngine) {
-        const provider = GetReadWriteProvider(providers);
-        const key = new CompositeKey([{FieldName: 'ID', Value: ID}]);
-        return this.DeleteRecord('MJ_BizApps_Voting: Election Audit Events', key, options, provider, userPayload, pubSub);
-    }
-    
 }
 
 //****************************************************************************
@@ -2885,13 +2864,6 @@ export class mjBizAppsVotingElectionCertificationResolver extends ResolverBase {
         return this.UpdateRecord('MJ_BizApps_Voting: Election Certifications', input, provider, userPayload, pubSub);
     }
     
-    @Mutation(() => mjBizAppsVotingElectionCertification_)
-    async DeletemjBizAppsVotingElectionCertification(@Arg('ID', () => String) ID: string, @Arg('options___', () => DeleteOptionsInput) options: DeleteOptionsInput, @Ctx() { providers, userPayload }: AppContext, @PubSub() pubSub: PubSubEngine) {
-        const provider = GetReadWriteProvider(providers);
-        const key = new CompositeKey([{FieldName: 'ID', Value: ID}]);
-        return this.DeleteRecord('MJ_BizApps_Voting: Election Certifications', key, options, provider, userPayload, pubSub);
-    }
-    
 }
 
 //****************************************************************************
@@ -3060,13 +3032,6 @@ export class mjBizAppsVotingElectionCertifierResolver extends ResolverBase {
     ) {
         const provider = GetReadWriteProvider(providers);
         return this.UpdateRecord('MJ_BizApps_Voting: Election Certifiers', input, provider, userPayload, pubSub);
-    }
-    
-    @Mutation(() => mjBizAppsVotingElectionCertifier_)
-    async DeletemjBizAppsVotingElectionCertifier(@Arg('ID', () => String) ID: string, @Arg('options___', () => DeleteOptionsInput) options: DeleteOptionsInput, @Ctx() { providers, userPayload }: AppContext, @PubSub() pubSub: PubSubEngine) {
-        const provider = GetReadWriteProvider(providers);
-        const key = new CompositeKey([{FieldName: 'ID', Value: ID}]);
-        return this.DeleteRecord('MJ_BizApps_Voting: Election Certifiers', key, options, provider, userPayload, pubSub);
     }
     
 }
@@ -3241,13 +3206,6 @@ export class mjBizAppsVotingElectionTrusteeResolver extends ResolverBase {
     ) {
         const provider = GetReadWriteProvider(providers);
         return this.UpdateRecord('MJ_BizApps_Voting: Election Trustees', input, provider, userPayload, pubSub);
-    }
-    
-    @Mutation(() => mjBizAppsVotingElectionTrustee_)
-    async DeletemjBizAppsVotingElectionTrustee(@Arg('ID', () => String) ID: string, @Arg('options___', () => DeleteOptionsInput) options: DeleteOptionsInput, @Ctx() { providers, userPayload }: AppContext, @PubSub() pubSub: PubSubEngine) {
-        const provider = GetReadWriteProvider(providers);
-        const key = new CompositeKey([{FieldName: 'ID', Value: ID}]);
-        return this.DeleteRecord('MJ_BizApps_Voting: Election Trustees', key, options, provider, userPayload, pubSub);
     }
     
 }
@@ -3553,7 +3511,7 @@ export class mjBizAppsVotingElection_ {
     @MaxLength(20)
     ResultsAudience?: string;
         
-    @Field(() => Int, {nullable: true, description: "Minimum number of ballots before any result is shown (k-anonymity threshold for running and small-electorate results)."}) 
+    @Field(() => Int, {nullable: true, description: "Minimum number of ballots cast before running (in-progress) results are shown to non-administrators. Final results, once tallied, are published to their audience regardless."}) 
     ResultsMinCast?: number;
         
     @Field(() => Int, {nullable: true, description: "Minimum number of voters in a weight class before its tally is reported, so a unique weight cannot re-identify its voter."}) 
@@ -4307,13 +4265,6 @@ export class mjBizAppsVotingEligibleVoterResolver extends ResolverBase {
         return this.UpdateRecord('MJ_BizApps_Voting: Eligible Voters', input, provider, userPayload, pubSub);
     }
     
-    @Mutation(() => mjBizAppsVotingEligibleVoter_)
-    async DeletemjBizAppsVotingEligibleVoter(@Arg('ID', () => String) ID: string, @Arg('options___', () => DeleteOptionsInput) options: DeleteOptionsInput, @Ctx() { providers, userPayload }: AppContext, @PubSub() pubSub: PubSubEngine) {
-        const provider = GetReadWriteProvider(providers);
-        const key = new CompositeKey([{FieldName: 'ID', Value: ID}]);
-        return this.DeleteRecord('MJ_BizApps_Voting: Eligible Voters', key, options, provider, userPayload, pubSub);
-    }
-    
 }
 
 //****************************************************************************
@@ -4931,13 +4882,6 @@ export class mjBizAppsVotingParticipationResolver extends ResolverBase {
         return this.UpdateRecord('MJ_BizApps_Voting: Participations', input, provider, userPayload, pubSub);
     }
     
-    @Mutation(() => mjBizAppsVotingParticipation_)
-    async DeletemjBizAppsVotingParticipation(@Arg('ID', () => String) ID: string, @Arg('options___', () => DeleteOptionsInput) options: DeleteOptionsInput, @Ctx() { providers, userPayload }: AppContext, @PubSub() pubSub: PubSubEngine) {
-        const provider = GetReadWriteProvider(providers);
-        const key = new CompositeKey([{FieldName: 'ID', Value: ID}]);
-        return this.DeleteRecord('MJ_BizApps_Voting: Participations', key, options, provider, userPayload, pubSub);
-    }
-    
 }
 
 //****************************************************************************
@@ -5141,13 +5085,6 @@ export class mjBizAppsVotingProxyDesignationResolver extends ResolverBase {
         return this.UpdateRecord('MJ_BizApps_Voting: Proxy Designations', input, provider, userPayload, pubSub);
     }
     
-    @Mutation(() => mjBizAppsVotingProxyDesignation_)
-    async DeletemjBizAppsVotingProxyDesignation(@Arg('ID', () => String) ID: string, @Arg('options___', () => DeleteOptionsInput) options: DeleteOptionsInput, @Ctx() { providers, userPayload }: AppContext, @PubSub() pubSub: PubSubEngine) {
-        const provider = GetReadWriteProvider(providers);
-        const key = new CompositeKey([{FieldName: 'ID', Value: ID}]);
-        return this.DeleteRecord('MJ_BizApps_Voting: Proxy Designations', key, options, provider, userPayload, pubSub);
-    }
-    
 }
 
 //****************************************************************************
@@ -5314,13 +5251,6 @@ export class mjBizAppsVotingResultSnapshotResolver extends ResolverBase {
     ) {
         const provider = GetReadWriteProvider(providers);
         return this.UpdateRecord('MJ_BizApps_Voting: Result Snapshots', input, provider, userPayload, pubSub);
-    }
-    
-    @Mutation(() => mjBizAppsVotingResultSnapshot_)
-    async DeletemjBizAppsVotingResultSnapshot(@Arg('ID', () => String) ID: string, @Arg('options___', () => DeleteOptionsInput) options: DeleteOptionsInput, @Ctx() { providers, userPayload }: AppContext, @PubSub() pubSub: PubSubEngine) {
-        const provider = GetReadWriteProvider(providers);
-        const key = new CompositeKey([{FieldName: 'ID', Value: ID}]);
-        return this.DeleteRecord('MJ_BizApps_Voting: Result Snapshots', key, options, provider, userPayload, pubSub);
     }
     
 }
@@ -6159,13 +6089,6 @@ export class mjBizAppsVotingTrusteeKeyCommitmentResolver extends ResolverBase {
         return this.UpdateRecord('MJ_BizApps_Voting: Trustee Key Commitments', input, provider, userPayload, pubSub);
     }
     
-    @Mutation(() => mjBizAppsVotingTrusteeKeyCommitment_)
-    async DeletemjBizAppsVotingTrusteeKeyCommitment(@Arg('ID', () => String) ID: string, @Arg('options___', () => DeleteOptionsInput) options: DeleteOptionsInput, @Ctx() { providers, userPayload }: AppContext, @PubSub() pubSub: PubSubEngine) {
-        const provider = GetReadWriteProvider(providers);
-        const key = new CompositeKey([{FieldName: 'ID', Value: ID}]);
-        return this.DeleteRecord('MJ_BizApps_Voting: Trustee Key Commitments', key, options, provider, userPayload, pubSub);
-    }
-    
 }
 
 //****************************************************************************
@@ -6609,13 +6532,6 @@ export class mjBizAppsVotingVoterCredentialResolver extends ResolverBase {
     ) {
         const provider = GetReadWriteProvider(providers);
         return this.UpdateRecord('MJ_BizApps_Voting: Voter Credentials', input, provider, userPayload, pubSub);
-    }
-    
-    @Mutation(() => mjBizAppsVotingVoterCredential_)
-    async DeletemjBizAppsVotingVoterCredential(@Arg('ID', () => String) ID: string, @Arg('options___', () => DeleteOptionsInput) options: DeleteOptionsInput, @Ctx() { providers, userPayload }: AppContext, @PubSub() pubSub: PubSubEngine) {
-        const provider = GetReadWriteProvider(providers);
-        const key = new CompositeKey([{FieldName: 'ID', Value: ID}]);
-        return this.DeleteRecord('MJ_BizApps_Voting: Voter Credentials', key, options, provider, userPayload, pubSub);
     }
     
 }

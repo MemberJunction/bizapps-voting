@@ -16,6 +16,8 @@ export class mjBizAppsVotingElectionAnchorFormComponent extends BaseFormComponen
         await super.ngOnInit();
         this.initSections([
             { sectionKey: 'electionAnchorDetails', sectionName: 'Election Anchor Details', isExpanded: true },
+            { sectionKey: 'anchoredRecord', sectionName: 'Anchored Record', isExpanded: true },
+            { sectionKey: 'anchorConfiguration', sectionName: 'Anchor Configuration', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false }
         ]);
     }

@@ -50,13 +50,13 @@ export const mjBizAppsVotingBallotCommentSchema = z.object({
         * * Default Value: newsequentialid()`),
     ContestID: z.string().describe(`
         * * Field Name: ContestID
-        * * Display Name: Contest
+        * * Display Name: Contest ID
         * * SQL Data Type: uniqueidentifier
         * * Related Entity/Foreign Key: MJ_BizApps_Voting: Contests (vwContests.ID)
         * * Description: The standards item commented on.`),
     ParticipationID: z.string().describe(`
         * * Field Name: ParticipationID
-        * * Display Name: Participation
+        * * Display Name: Participation ID
         * * SQL Data Type: uniqueidentifier
         * * Related Entity/Foreign Key: MJ_BizApps_Voting: Participations (vwParticipations.ID)
         * * Description: The voter's poll-book entry (standards ballots are Open mode).`),
@@ -104,7 +104,7 @@ export const mjBizAppsVotingBallotCommentSchema = z.object({
         * * Default Value: getutcdate()`),
     Contest: z.string().describe(`
         * * Field Name: Contest
-        * * Display Name: Contest Details
+        * * Display Name: Contest
         * * SQL Data Type: nvarchar(500)`),
 });
 
@@ -190,7 +190,7 @@ export const mjBizAppsVotingBallotDistributionSchema = z.object({
         * * Default Value: getutcdate()`),
     Election: z.string().describe(`
         * * Field Name: Election
-        * * Display Name: Election Name
+        * * Display Name: Election
         * * SQL Data Type: nvarchar(255)`),
 });
 
@@ -258,7 +258,7 @@ export const mjBizAppsVotingCastBallotSchema = z.object({
         * * Default Value: newid()`),
     ElectionID: z.string().describe(`
         * * Field Name: ElectionID
-        * * Display Name: Election ID
+        * * Display Name: Election
         * * SQL Data Type: uniqueidentifier
         * * Related Entity/Foreign Key: MJ_BizApps_Voting: Elections (vwElections.ID)
         * * Description: The election. The only reference on a ballot.`),
@@ -300,7 +300,7 @@ export const mjBizAppsVotingCastBallotSchema = z.object({
         * * Description: Counted, Superseded (replaced by a revote, Open and Confidential elections only) or Spoiled (voided by an audited decision).`),
     Election: z.string().describe(`
         * * Field Name: Election
-        * * Display Name: Election
+        * * Display Name: Election Description
         * * SQL Data Type: nvarchar(255)`),
 });
 
@@ -335,7 +335,7 @@ export const mjBizAppsVotingCommentResolutionSchema = z.object({
         * * Description: Accepted, AcceptedInPrinciple, Rejected, Withdrawn or Deferred.`),
     Response: z.string().nullable().describe(`
         * * Field Name: Response
-        * * Display Name: Response
+        * * Display Name: Committee Response
         * * SQL Data Type: nvarchar(MAX)
         * * Description: The committee's response and the change made, if any.`),
     ResolvedByUserID: z.string().nullable().describe(`
@@ -511,19 +511,19 @@ export const mjBizAppsVotingContestOptionSchema = z.object({
         * * Default Value: getutcdate()`),
     Contest: z.string().describe(`
         * * Field Name: Contest
-        * * Display Name: Contest Name
+        * * Display Name: Contest
         * * SQL Data Type: nvarchar(500)`),
     CandidatePerson: z.string().nullable().describe(`
         * * Field Name: CandidatePerson
-        * * Display Name: Candidate Name
+        * * Display Name: Candidate Person
         * * SQL Data Type: nvarchar(201)`),
     StatementFile: z.string().nullable().describe(`
         * * Field Name: StatementFile
-        * * Display Name: Statement File Name
+        * * Display Name: Statement File
         * * SQL Data Type: nvarchar(500)`),
     PhotoFile: z.string().nullable().describe(`
         * * Field Name: PhotoFile
-        * * Display Name: Photo File Name
+        * * Display Name: Photo File
         * * SQL Data Type: nvarchar(500)`),
 });
 
@@ -585,12 +585,12 @@ export const mjBizAppsVotingContestResultSchema = z.object({
         * * Description: JSON round-by-round record for ranked methods (IRV/STV transfers and exclusions).`),
     TieBreakSeed: z.string().nullable().describe(`
         * * Field Name: TieBreakSeed
-        * * Display Name: Tie Break Seed
+        * * Display Name: Tie-Break Seed
         * * SQL Data Type: nvarchar(128)
         * * Description: The recorded seed used for a tie broken by lot, so the result can be reproduced.`),
     TieBreakNotes: z.string().nullable().describe(`
         * * Field Name: TieBreakNotes
-        * * Display Name: Tie Break Notes
+        * * Display Name: Tie-Break Notes
         * * SQL Data Type: nvarchar(MAX)
         * * Description: How a tie was broken when decided by an administrator.`),
     ComputedAt: z.date().describe(`
@@ -891,7 +891,7 @@ export const mjBizAppsVotingElectionAuditEventSchema = z.object({
         * * Description: What happened (for example StatusChanged, RollFrozen, RollAmended, VoterChallenged, CredentialsIssued, ResultsViewed, Tallied, Certified).`),
     ActorUserID: z.string().nullable().describe(`
         * * Field Name: ActorUserID
-        * * Display Name: Actor User ID
+        * * Display Name: Actor User
         * * SQL Data Type: uniqueidentifier
         * * Related Entity/Foreign Key: MJ: Users (vwUsers.ID)
         * * Description: The user who acted; NULL for scheduled and system actions.`),
@@ -903,7 +903,7 @@ export const mjBizAppsVotingElectionAuditEventSchema = z.object({
         * * Description: When it happened.`),
     Details: z.string().nullable().describe(`
         * * Field Name: Details
-        * * Display Name: Details
+        * * Display Name: Event Details
         * * SQL Data Type: nvarchar(MAX)
         * * Description: JSON detail of the event. Never ballot content, never a voter's choice.`),
     __mj_CreatedAt: z.date().describe(`
@@ -922,7 +922,7 @@ export const mjBizAppsVotingElectionAuditEventSchema = z.object({
         * * SQL Data Type: nvarchar(255)`),
     ActorUser: z.string().nullable().describe(`
         * * Field Name: ActorUser
-        * * Display Name: Actor User
+        * * Display Name: Actor User Name
         * * SQL Data Type: nvarchar(100)`),
 });
 
@@ -961,7 +961,7 @@ export const mjBizAppsVotingElectionCertificationSchema = z.object({
         * * Description: When the final required signature was recorded.`),
     ReportFileID: z.string().nullable().describe(`
         * * Field Name: ReportFileID
-        * * Display Name: Report File
+        * * Display Name: Report File ID
         * * SQL Data Type: uniqueidentifier
         * * Related Entity/Foreign Key: MJ: Files (vwFiles.ID)
         * * Description: The certification report document.`),
@@ -1050,7 +1050,7 @@ export const mjBizAppsVotingElectionCertifierSchema = z.object({
         * * Default Value: getutcdate()`),
     Person: z.string().describe(`
         * * Field Name: Person
-        * * Display Name: Person Name
+        * * Display Name: Person
         * * SQL Data Type: nvarchar(201)`),
 });
 
@@ -1345,7 +1345,7 @@ export const mjBizAppsVotingElectionSchema = z.object({
         * * Display Name: Results Min Cast
         * * SQL Data Type: int
         * * Default Value: 5
-        * * Description: Minimum number of ballots before any result is shown (k-anonymity threshold for running and small-electorate results).`),
+        * * Description: Minimum number of ballots cast before running (in-progress) results are shown to non-administrators. Final results, once tallied, are published to their audience regardless.`),
     WeightClassMinSize: z.number().describe(`
         * * Field Name: WeightClassMinSize
         * * Display Name: Weight Class Min Size
@@ -1405,11 +1405,11 @@ export const mjBizAppsVotingElectionSchema = z.object({
         * * Default Value: getutcdate()`),
     ElectionType: z.string().describe(`
         * * Field Name: ElectionType
-        * * Display Name: Election Type
+        * * Display Name: Election Type Name
         * * SQL Data Type: nvarchar(100)`),
     EligibilitySourceType: z.string().nullable().describe(`
         * * Field Name: EligibilitySourceType
-        * * Display Name: Eligibility Source Type
+        * * Display Name: Eligibility Source Type Name
         * * SQL Data Type: nvarchar(100)`),
 });
 
@@ -1507,7 +1507,7 @@ export const mjBizAppsVotingEligibleVoterSchema = z.object({
         * * Description: The voter's class, for contests limited to one class and for per-class reporting.`),
     Weight: z.number().describe(`
         * * Field Name: Weight
-        * * Display Name: Vote Weight
+        * * Display Name: Weight
         * * SQL Data Type: decimal(18, 6)
         * * Default Value: 1
         * * Description: Vote weight (1 for one-person-one-vote). Never copied onto the ballot; tallies use weight classes.`),
@@ -1700,15 +1700,15 @@ export const mjBizAppsVotingNominationSchema = z.object({
         * * Default Value: getutcdate()`),
     Contest: z.string().describe(`
         * * Field Name: Contest
-        * * Display Name: Contest Name
+        * * Display Name: Contest
         * * SQL Data Type: nvarchar(500)`),
     NomineePerson: z.string().describe(`
         * * Field Name: NomineePerson
-        * * Display Name: Nominee Name
+        * * Display Name: Nominee Person
         * * SQL Data Type: nvarchar(201)`),
     NominatedByPerson: z.string().nullable().describe(`
         * * Field Name: NominatedByPerson
-        * * Display Name: Nominated By Name
+        * * Display Name: Nominated By Person
         * * SQL Data Type: nvarchar(201)`),
 });
 
@@ -1807,19 +1807,19 @@ export const mjBizAppsVotingProxyDesignationSchema = z.object({
         * * Default Value: newsequentialid()`),
     ElectionID: z.string().describe(`
         * * Field Name: ElectionID
-        * * Display Name: Election
+        * * Display Name: Election ID
         * * SQL Data Type: uniqueidentifier
         * * Related Entity/Foreign Key: MJ_BizApps_Voting: Elections (vwElections.ID)
         * * Description: The election.`),
     GrantorEligibleVoterID: z.string().describe(`
         * * Field Name: GrantorEligibleVoterID
-        * * Display Name: Grantor Eligible Voter
+        * * Display Name: Grantor Eligible Voter ID
         * * SQL Data Type: uniqueidentifier
         * * Related Entity/Foreign Key: MJ_BizApps_Voting: Eligible Voters (vwEligibleVoters.ID)
         * * Description: The roll entry granting the proxy.`),
     ProxyPersonID: z.string().describe(`
         * * Field Name: ProxyPersonID
-        * * Display Name: Proxy Person
+        * * Display Name: Proxy Person ID
         * * SQL Data Type: uniqueidentifier
         * * Related Entity/Foreign Key: MJ_BizApps_Common: People (vwPeople.ID)
         * * Description: The person who will vote on the grantor's behalf.`),
@@ -1869,11 +1869,11 @@ export const mjBizAppsVotingProxyDesignationSchema = z.object({
         * * Default Value: getutcdate()`),
     Election: z.string().describe(`
         * * Field Name: Election
-        * * Display Name: Election Name
+        * * Display Name: Election
         * * SQL Data Type: nvarchar(255)`),
     ProxyPerson: z.string().describe(`
         * * Field Name: ProxyPerson
-        * * Display Name: Proxy Person Name
+        * * Display Name: Proxy Person
         * * SQL Data Type: nvarchar(201)`),
 });
 
@@ -1985,7 +1985,7 @@ export const mjBizAppsVotingStandardsBallotElectionSchema = z.object({
         * * SQL Data Type: nvarchar(MAX)`),
     ElectionTypeID: z.string().describe(`
         * * Field Name: ElectionTypeID
-        * * Display Name: Election Type
+        * * Display Name: Election Type ID
         * * SQL Data Type: uniqueidentifier`),
     Status: z.string().describe(`
         * * Field Name: Status
@@ -2001,7 +2001,7 @@ export const mjBizAppsVotingStandardsBallotElectionSchema = z.object({
         * * SQL Data Type: nvarchar(20)`),
     EligibilitySourceTypeID: z.string().nullable().describe(`
         * * Field Name: EligibilitySourceTypeID
-        * * Display Name: Eligibility Source Type
+        * * Display Name: Eligibility Source Type ID
         * * SQL Data Type: uniqueidentifier`),
     EligibilitySourceSettings: z.string().nullable().describe(`
         * * Field Name: EligibilitySourceSettings
@@ -2369,7 +2369,7 @@ export const mjBizAppsVotingVoterCredentialSchema = z.object({
         * * Default Value: getutcdate()`),
     VoterCredentialMethod: z.string().describe(`
         * * Field Name: VoterCredentialMethod
-        * * Display Name: Credential Method
+        * * Display Name: Voter Credential Method
         * * SQL Data Type: nvarchar(100)`),
 });
 
@@ -2527,7 +2527,7 @@ export class mjBizAppsVotingBallotCommentEntity extends BaseEntity<mjBizAppsVoti
 
     /**
     * * Field Name: ContestID
-    * * Display Name: Contest
+    * * Display Name: Contest ID
     * * SQL Data Type: uniqueidentifier
     * * Related Entity/Foreign Key: MJ_BizApps_Voting: Contests (vwContests.ID)
     * * Description: The standards item commented on.
@@ -2541,7 +2541,7 @@ export class mjBizAppsVotingBallotCommentEntity extends BaseEntity<mjBizAppsVoti
 
     /**
     * * Field Name: ParticipationID
-    * * Display Name: Participation
+    * * Display Name: Participation ID
     * * SQL Data Type: uniqueidentifier
     * * Related Entity/Foreign Key: MJ_BizApps_Voting: Participations (vwParticipations.ID)
     * * Description: The voter's poll-book entry (standards ballots are Open mode).
@@ -2647,7 +2647,7 @@ export class mjBizAppsVotingBallotCommentEntity extends BaseEntity<mjBizAppsVoti
 
     /**
     * * Field Name: Contest
-    * * Display Name: Contest Details
+    * * Display Name: Contest
     * * SQL Data Type: nvarchar(500)
     */
     get Contest(): string {
@@ -2860,7 +2860,7 @@ export class mjBizAppsVotingBallotDistributionEntity extends BaseEntity<mjBizApp
 
     /**
     * * Field Name: Election
-    * * Display Name: Election Name
+    * * Display Name: Election
     * * SQL Data Type: nvarchar(255)
     */
     get Election(): string {
@@ -2913,8 +2913,8 @@ export class mjBizAppsVotingBallotSelectionEntity extends BaseEntity<mjBizAppsVo
 
     /**
     * Validate() method override for MJ_BizApps_Voting: Ballot Selections entity. This is an auto-generated method that invokes the generated validators for this entity for the following fields:
-    * * Rank: Rank must be at least 1 when specified.
-    * * Table-Level: An abstaining vote cannot have a contest option or write-in text specified, while a non-abstaining vote must have a contest option selected.
+    * * Rank: Rank must be greater than or equal to 1 when specified.
+    * * Table-Level: An abstained vote cannot have a selected contest option or write-in text, while a non-abstained vote must have a selected contest option.
     * @public
     * @method
     * @override
@@ -2922,14 +2922,14 @@ export class mjBizAppsVotingBallotSelectionEntity extends BaseEntity<mjBizAppsVo
     public override Validate(): ValidationResult {
         const result = super.Validate();
         this.ValidateRankMinimumValue(result);
-        this.ValidateIsAbstainContestOptionConsistency(result);
+        this.ValidateIsAbstainWithContestOption(result);
         result.Success = result.Success && (result.Errors.length === 0);
 
         return result;
     }
 
     /**
-    * Rank must be at least 1 when specified.
+    * Rank must be greater than or equal to 1 when specified.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
@@ -2946,30 +2946,28 @@ export class mjBizAppsVotingBallotSelectionEntity extends BaseEntity<mjBizAppsVo
     }
 
     /**
-    * An abstaining vote cannot have a contest option or write-in text specified, while a non-abstaining vote must have a contest option selected.
+    * An abstained vote cannot have a selected contest option or write-in text, while a non-abstained vote must have a selected contest option.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
     */
-    public ValidateIsAbstainContestOptionConsistency(result: ValidationResult): void {
+    public ValidateIsAbstainWithContestOption(result: ValidationResult) {
     	if (this.IsAbstain) {
     		if (this.ContestOptionID != null || this.WriteInText != null) {
     			result.Errors.push(new ValidationErrorInfo(
     				"IsAbstain",
-    				"An abstaining vote cannot specify a contest option or write-in text.",
+    				"Abstaining votes cannot specify a contest option or write-in text.",
     				this.IsAbstain,
     				ValidationErrorType.Failure
     			));
     		}
-    	} else {
-    		if (this.ContestOptionID == null) {
-    			result.Errors.push(new ValidationErrorInfo(
-    				"ContestOptionID",
-    				"A contest option must be selected when not abstaining.",
-    				this.ContestOptionID,
-    				ValidationErrorType.Failure
-    			));
-    		}
+    	} else if (this.ContestOptionID == null) {
+    		result.Errors.push(new ValidationErrorInfo(
+    			"ContestOptionID",
+    			"A contest option is required when not abstaining.",
+    			this.ContestOptionID,
+    			ValidationErrorType.Failure
+    		));
     	}
     }
 
@@ -3136,7 +3134,7 @@ export class mjBizAppsVotingCastBallotEntity extends BaseEntity<mjBizAppsVotingC
 
     /**
     * * Field Name: ElectionID
-    * * Display Name: Election ID
+    * * Display Name: Election
     * * SQL Data Type: uniqueidentifier
     * * Related Entity/Foreign Key: MJ_BizApps_Voting: Elections (vwElections.ID)
     * * Description: The election. The only reference on a ballot.
@@ -3234,7 +3232,7 @@ export class mjBizAppsVotingCastBallotEntity extends BaseEntity<mjBizAppsVotingC
 
     /**
     * * Field Name: Election
-    * * Display Name: Election
+    * * Display Name: Election Description
     * * SQL Data Type: nvarchar(255)
     */
     get Election(): string {
@@ -3322,7 +3320,7 @@ export class mjBizAppsVotingCommentResolutionEntity extends BaseEntity<mjBizApps
 
     /**
     * * Field Name: Response
-    * * Display Name: Response
+    * * Display Name: Committee Response
     * * SQL Data Type: nvarchar(MAX)
     * * Description: The committee's response and the change made, if any.
     */
@@ -3437,6 +3435,18 @@ export class mjBizAppsVotingContestOptionResultEntity extends BaseEntity<mjBizAp
         const compositeKey: CompositeKey = new CompositeKey();
         compositeKey.KeyValuePairs.push({ FieldName: 'ID', Value: ID });
         return await super.InnerLoad(compositeKey, EntityRelationshipsToLoad);
+    }
+
+    /**
+    * MJ_BizApps_Voting: Contest Option Results - AllowDeleteAPI is set to 0 in the database.  Delete is not allowed, so this method is generated to override the base class method and throw an error. To enable delete for this entity, set AllowDeleteAPI to 1 in the database.
+    * @public
+    * @method
+    * @override
+    * @memberof mjBizAppsVotingContestOptionResultEntity
+    * @throws {Error} - Delete is not allowed for MJ_BizApps_Voting: Contest Option Results, to enable it set AllowDeleteAPI to 1 in the database.
+    */
+    public override async Delete(): Promise<boolean> {
+        throw new Error('Delete is not allowed for MJ_BizApps_Voting: Contest Option Results, to enable it set AllowDeleteAPI to 1 in the database.');
     }
 
     /**
@@ -3741,7 +3751,7 @@ export class mjBizAppsVotingContestOptionEntity extends BaseEntity<mjBizAppsVoti
 
     /**
     * * Field Name: Contest
-    * * Display Name: Contest Name
+    * * Display Name: Contest
     * * SQL Data Type: nvarchar(500)
     */
     get Contest(): string {
@@ -3750,7 +3760,7 @@ export class mjBizAppsVotingContestOptionEntity extends BaseEntity<mjBizAppsVoti
 
     /**
     * * Field Name: CandidatePerson
-    * * Display Name: Candidate Name
+    * * Display Name: Candidate Person
     * * SQL Data Type: nvarchar(201)
     */
     get CandidatePerson(): string | null {
@@ -3759,7 +3769,7 @@ export class mjBizAppsVotingContestOptionEntity extends BaseEntity<mjBizAppsVoti
 
     /**
     * * Field Name: StatementFile
-    * * Display Name: Statement File Name
+    * * Display Name: Statement File
     * * SQL Data Type: nvarchar(500)
     */
     get StatementFile(): string | null {
@@ -3768,7 +3778,7 @@ export class mjBizAppsVotingContestOptionEntity extends BaseEntity<mjBizAppsVoti
 
     /**
     * * Field Name: PhotoFile
-    * * Display Name: Photo File Name
+    * * Display Name: Photo File
     * * SQL Data Type: nvarchar(500)
     */
     get PhotoFile(): string | null {
@@ -3805,6 +3815,18 @@ export class mjBizAppsVotingContestResultEntity extends BaseEntity<mjBizAppsVoti
         const compositeKey: CompositeKey = new CompositeKey();
         compositeKey.KeyValuePairs.push({ FieldName: 'ID', Value: ID });
         return await super.InnerLoad(compositeKey, EntityRelationshipsToLoad);
+    }
+
+    /**
+    * MJ_BizApps_Voting: Contest Results - AllowDeleteAPI is set to 0 in the database.  Delete is not allowed, so this method is generated to override the base class method and throw an error. To enable delete for this entity, set AllowDeleteAPI to 1 in the database.
+    * @public
+    * @method
+    * @override
+    * @memberof mjBizAppsVotingContestResultEntity
+    * @throws {Error} - Delete is not allowed for MJ_BizApps_Voting: Contest Results, to enable it set AllowDeleteAPI to 1 in the database.
+    */
+    public override async Delete(): Promise<boolean> {
+        throw new Error('Delete is not allowed for MJ_BizApps_Voting: Contest Results, to enable it set AllowDeleteAPI to 1 in the database.');
     }
 
     /**
@@ -3923,7 +3945,7 @@ export class mjBizAppsVotingContestResultEntity extends BaseEntity<mjBizAppsVoti
 
     /**
     * * Field Name: TieBreakSeed
-    * * Display Name: Tie Break Seed
+    * * Display Name: Tie-Break Seed
     * * SQL Data Type: nvarchar(128)
     * * Description: The recorded seed used for a tie broken by lot, so the result can be reproduced.
     */
@@ -3936,7 +3958,7 @@ export class mjBizAppsVotingContestResultEntity extends BaseEntity<mjBizAppsVoti
 
     /**
     * * Field Name: TieBreakNotes
-    * * Display Name: Tie Break Notes
+    * * Display Name: Tie-Break Notes
     * * SQL Data Type: nvarchar(MAX)
     * * Description: How a tie was broken when decided by an administrator.
     */
@@ -4146,9 +4168,9 @@ export class mjBizAppsVotingContestEntity extends BaseEntity<mjBizAppsVotingCont
 
     /**
     * Validate() method override for MJ_BizApps_Voting: Contests entity. This is an auto-generated method that invokes the generated validators for this entity for the following fields:
-    * * Seats: The number of seats must be at least 1.
-    * * Table-Level: When the threshold is set to 'Custom', a custom threshold value between 0 (exclusive) and 1 (inclusive) must be specified. For all other threshold types, the custom threshold must be empty.
-    * * Table-Level: Minimum selections must be zero or greater, and maximum selections (if set) must be greater than or equal to minimum selections.
+    * * Seats: The number of seats must be at least 1
+    * * Table-Level: When threshold is set to Custom, a custom threshold value between 0 (exclusive) and 1 (inclusive) must be provided. For any other threshold type, the custom threshold must be empty.
+    * * Table-Level: Minimum selections must be zero or greater, and if maximum selections is specified, it must be greater than or equal to minimum selections.
     * @public
     * @method
     * @override
@@ -4156,15 +4178,15 @@ export class mjBizAppsVotingContestEntity extends BaseEntity<mjBizAppsVotingCont
     public override Validate(): ValidationResult {
         const result = super.Validate();
         this.ValidateSeatsAtLeastOne(result);
-        this.ValidateCustomThreshold(result);
-        this.ValidateMinSelectionsAndMaxSelections(result);
+        this.ValidateCustomThresholdByThreshold(result);
+        this.ValidateMinAndMaxSelections(result);
         result.Success = result.Success && (result.Errors.length === 0);
 
         return result;
     }
 
     /**
-    * The number of seats must be at least 1.
+    * The number of seats must be at least 1
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
@@ -4181,47 +4203,50 @@ export class mjBizAppsVotingContestEntity extends BaseEntity<mjBizAppsVotingCont
     }
 
     /**
-    * When the threshold is set to 'Custom', a custom threshold value between 0 (exclusive) and 1 (inclusive) must be specified. For all other threshold types, the custom threshold must be empty.
+    * When threshold is set to Custom, a custom threshold value between 0 (exclusive) and 1 (inclusive) must be provided. For any other threshold type, the custom threshold must be empty.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
     */
-    public ValidateCustomThreshold(result: ValidationResult): void {
-    	if (this.Threshold === 'Custom') {
+    public ValidateCustomThresholdByThreshold(result: ValidationResult) {
+    	if (this.Threshold === "Custom") {
     		if (this.CustomThreshold == null || this.CustomThreshold <= 0 || this.CustomThreshold > 1) {
     			result.Errors.push(new ValidationErrorInfo(
     				"CustomThreshold",
-    				"Custom threshold must be a decimal value greater than 0 and less than or equal to 1 when threshold is set to Custom.",
+    				"Custom threshold must be greater than 0 and less than or equal to 1 when threshold is set to Custom.",
     				this.CustomThreshold,
     				ValidationErrorType.Failure
     			));
     		}
-    	} else if (this.CustomThreshold != null) {
-    		result.Errors.push(new ValidationErrorInfo(
-    			"CustomThreshold",
-    			"Custom threshold must be empty when threshold is not set to Custom.",
-    			this.CustomThreshold,
-    			ValidationErrorType.Failure
-    		));
+    	} else {
+    		if (this.CustomThreshold != null) {
+    			result.Errors.push(new ValidationErrorInfo(
+    				"CustomThreshold",
+    				"Custom threshold must be empty when threshold is not set to Custom.",
+    				this.CustomThreshold,
+    				ValidationErrorType.Failure
+    			));
+    		}
     	}
     }
 
     /**
-    * Minimum selections must be zero or greater, and maximum selections (if set) must be greater than or equal to minimum selections.
+    * Minimum selections must be zero or greater, and if maximum selections is specified, it must be greater than or equal to minimum selections.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
     */
-    public ValidateMinSelectionsAndMaxSelections(result: ValidationResult) {
-    	if (this.MinSelections != null && this.MinSelections < 0) {
+    public ValidateMinAndMaxSelections(result: ValidationResult) {
+    	if (this.MinSelections < 0) {
     		result.Errors.push(new ValidationErrorInfo(
     			"MinSelections",
-    			"Minimum selections must be 0 or greater.",
+    			"Minimum selections must be greater than or equal to 0.",
     			this.MinSelections,
     			ValidationErrorType.Failure
     		));
     	}
-    	if (this.MaxSelections != null && this.MinSelections != null && this.MaxSelections < this.MinSelections) {
+    
+    	if (this.MaxSelections != null && this.MaxSelections < this.MinSelections) {
     		result.Errors.push(new ValidationErrorInfo(
     			"MaxSelections",
     			"Maximum selections must be greater than or equal to minimum selections.",
@@ -4723,6 +4748,18 @@ export class mjBizAppsVotingElectionAuditEventEntity extends BaseEntity<mjBizApp
     }
 
     /**
+    * MJ_BizApps_Voting: Election Audit Events - AllowDeleteAPI is set to 0 in the database.  Delete is not allowed, so this method is generated to override the base class method and throw an error. To enable delete for this entity, set AllowDeleteAPI to 1 in the database.
+    * @public
+    * @method
+    * @override
+    * @memberof mjBizAppsVotingElectionAuditEventEntity
+    * @throws {Error} - Delete is not allowed for MJ_BizApps_Voting: Election Audit Events, to enable it set AllowDeleteAPI to 1 in the database.
+    */
+    public override async Delete(): Promise<boolean> {
+        throw new Error('Delete is not allowed for MJ_BizApps_Voting: Election Audit Events, to enable it set AllowDeleteAPI to 1 in the database.');
+    }
+
+    /**
     * * Field Name: ID
     * * Display Name: ID
     * * SQL Data Type: uniqueidentifier
@@ -4764,7 +4801,7 @@ export class mjBizAppsVotingElectionAuditEventEntity extends BaseEntity<mjBizApp
 
     /**
     * * Field Name: ActorUserID
-    * * Display Name: Actor User ID
+    * * Display Name: Actor User
     * * SQL Data Type: uniqueidentifier
     * * Related Entity/Foreign Key: MJ: Users (vwUsers.ID)
     * * Description: The user who acted; NULL for scheduled and system actions.
@@ -4792,7 +4829,7 @@ export class mjBizAppsVotingElectionAuditEventEntity extends BaseEntity<mjBizApp
 
     /**
     * * Field Name: Details
-    * * Display Name: Details
+    * * Display Name: Event Details
     * * SQL Data Type: nvarchar(MAX)
     * * Description: JSON detail of the event. Never ballot content, never a voter's choice.
     */
@@ -4834,7 +4871,7 @@ export class mjBizAppsVotingElectionAuditEventEntity extends BaseEntity<mjBizApp
 
     /**
     * * Field Name: ActorUser
-    * * Display Name: Actor User
+    * * Display Name: Actor User Name
     * * SQL Data Type: nvarchar(100)
     */
     get ActorUser(): string | null {
@@ -4871,6 +4908,18 @@ export class mjBizAppsVotingElectionCertificationEntity extends BaseEntity<mjBiz
         const compositeKey: CompositeKey = new CompositeKey();
         compositeKey.KeyValuePairs.push({ FieldName: 'ID', Value: ID });
         return await super.InnerLoad(compositeKey, EntityRelationshipsToLoad);
+    }
+
+    /**
+    * MJ_BizApps_Voting: Election Certifications - AllowDeleteAPI is set to 0 in the database.  Delete is not allowed, so this method is generated to override the base class method and throw an error. To enable delete for this entity, set AllowDeleteAPI to 1 in the database.
+    * @public
+    * @method
+    * @override
+    * @memberof mjBizAppsVotingElectionCertificationEntity
+    * @throws {Error} - Delete is not allowed for MJ_BizApps_Voting: Election Certifications, to enable it set AllowDeleteAPI to 1 in the database.
+    */
+    public override async Delete(): Promise<boolean> {
+        throw new Error('Delete is not allowed for MJ_BizApps_Voting: Election Certifications, to enable it set AllowDeleteAPI to 1 in the database.');
     }
 
     /**
@@ -4934,7 +4983,7 @@ export class mjBizAppsVotingElectionCertificationEntity extends BaseEntity<mjBiz
 
     /**
     * * Field Name: ReportFileID
-    * * Display Name: Report File
+    * * Display Name: Report File ID
     * * SQL Data Type: uniqueidentifier
     * * Related Entity/Foreign Key: MJ: Files (vwFiles.ID)
     * * Description: The certification report document.
@@ -5069,6 +5118,18 @@ export class mjBizAppsVotingElectionCertifierEntity extends BaseEntity<mjBizApps
     }
 
     /**
+    * MJ_BizApps_Voting: Election Certifiers - AllowDeleteAPI is set to 0 in the database.  Delete is not allowed, so this method is generated to override the base class method and throw an error. To enable delete for this entity, set AllowDeleteAPI to 1 in the database.
+    * @public
+    * @method
+    * @override
+    * @memberof mjBizAppsVotingElectionCertifierEntity
+    * @throws {Error} - Delete is not allowed for MJ_BizApps_Voting: Election Certifiers, to enable it set AllowDeleteAPI to 1 in the database.
+    */
+    public override async Delete(): Promise<boolean> {
+        throw new Error('Delete is not allowed for MJ_BizApps_Voting: Election Certifiers, to enable it set AllowDeleteAPI to 1 in the database.');
+    }
+
+    /**
     * * Field Name: ID
     * * Display Name: ID
     * * SQL Data Type: uniqueidentifier
@@ -5157,7 +5218,7 @@ export class mjBizAppsVotingElectionCertifierEntity extends BaseEntity<mjBizApps
 
     /**
     * * Field Name: Person
-    * * Display Name: Person Name
+    * * Display Name: Person
     * * SQL Data Type: nvarchar(201)
     */
     get Person(): string {
@@ -5197,31 +5258,43 @@ export class mjBizAppsVotingElectionTrusteeEntity extends BaseEntity<mjBizAppsVo
     }
 
     /**
+    * MJ_BizApps_Voting: Election Trustees - AllowDeleteAPI is set to 0 in the database.  Delete is not allowed, so this method is generated to override the base class method and throw an error. To enable delete for this entity, set AllowDeleteAPI to 1 in the database.
+    * @public
+    * @method
+    * @override
+    * @memberof mjBizAppsVotingElectionTrusteeEntity
+    * @throws {Error} - Delete is not allowed for MJ_BizApps_Voting: Election Trustees, to enable it set AllowDeleteAPI to 1 in the database.
+    */
+    public override async Delete(): Promise<boolean> {
+        throw new Error('Delete is not allowed for MJ_BizApps_Voting: Election Trustees, to enable it set AllowDeleteAPI to 1 in the database.');
+    }
+
+    /**
     * Validate() method override for MJ_BizApps_Voting: Election Trustees entity. This is an auto-generated method that invokes the generated validators for this entity for the following fields:
-    * * ShareIndex: Share index must be greater than or equal to 1.
+    * * ShareIndex: Share index must be at least 1.
     * @public
     * @method
     * @override
     */
     public override Validate(): ValidationResult {
         const result = super.Validate();
-        this.ValidateShareIndexGreaterThanOrEqualToOne(result);
+        this.ValidateShareIndexMinimum(result);
         result.Success = result.Success && (result.Errors.length === 0);
 
         return result;
     }
 
     /**
-    * Share index must be greater than or equal to 1.
+    * Share index must be at least 1.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
     */
-    public ValidateShareIndexGreaterThanOrEqualToOne(result: ValidationResult) {
+    public ValidateShareIndexMinimum(result: ValidationResult) {
     	if (this.ShareIndex != null && this.ShareIndex < 1) {
     		result.Errors.push(new ValidationErrorInfo(
     			"ShareIndex",
-    			"Share index must be at least 1.",
+    			"Share index must be 1 or greater.",
     			this.ShareIndex,
     			ValidationErrorType.Failure
     		));
@@ -5571,44 +5644,44 @@ export class mjBizAppsVotingElectionEntity extends BaseEntity<mjBizAppsVotingEle
 
     /**
     * Validate() method override for MJ_BizApps_Voting: Elections entity. This is an auto-generated method that invokes the generated validators for this entity for the following fields:
-    * * ResultsMinCast: The minimum number of cast ballots required to display results must be zero or greater.
+    * * ResultsMinCast: The minimum number of cast ballots required to view or publish results must be zero or greater.
     * * TrusteeThreshold: Trustee threshold must be at least 1 when specified.
-    * * WeightClassMinSize: Weight class minimum size must be at least 1.
-    * * Table-Level: Secret elections cannot allow revoting to maintain ballot secrecy and integrity.
-    * * Table-Level: The election close date and time must be later than the open date and time when both dates are specified.
-    * * Table-Level: Live refresh ballot intervals and minimum refresh minutes must each be at least 1 when specified.
-    * * Table-Level: Nominations closing time must be after the nominations opening time when both dates are provided.
-    * * Table-Level: Elections with an assurance tier other than Standard must have results timing set to release after the election closes.
+    * * WeightClassMinSize: Weight class minimum size must be at least 1 to ensure each class contains at least one voter or ballot.
+    * * Table-Level: Elections with a Secret secrecy mode cannot allow revoting to preserve ballot secrecy and integrity.
+    * * Table-Level: Elections using an assurance tier other than Standard must release results only after the election has closed.
+    * * Table-Level: If both election opening and closing times are specified, the closing time must be later than the opening time.
+    * * Table-Level: If specified, the live refresh ballot interval and minimum refresh minutes must each be at least 1.
+    * * Table-Level: Nominations close date and time must be after the nominations open date and time when both dates are provided.
     * @public
     * @method
     * @override
     */
     public override Validate(): ValidationResult {
         const result = super.Validate();
-        this.ValidateResultsMinCastNonNegative(result);
+        this.ValidateResultsMinCastGreaterThanOrEqualToZero(result);
         this.ValidateTrusteeThresholdMinimum(result);
-        this.ValidateWeightClassMinSizeAtLeastOne(result);
-        this.ValidateAllowRevoteWhenSecrecyModeIsSecret(result);
+        this.ValidateWeightClassMinSizeMinimum(result);
+        this.ValidateAllowRevoteForSecretMode(result);
+        this.ValidateAssuranceTierResultsTiming(result);
         this.ValidateClosesAtAfterOpensAt(result);
         this.ValidateLiveRefreshThresholds(result);
         this.ValidateNominationsCloseAtAfterNominationsOpenAt(result);
-        this.ValidateResultsTimingForAssuranceTier(result);
         result.Success = result.Success && (result.Errors.length === 0);
 
         return result;
     }
 
     /**
-    * The minimum number of cast ballots required to display results must be zero or greater.
+    * The minimum number of cast ballots required to view or publish results must be zero or greater.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
     */
-    public ValidateResultsMinCastNonNegative(result: ValidationResult) {
+    public ValidateResultsMinCastGreaterThanOrEqualToZero(result: ValidationResult) {
     	if (this.ResultsMinCast != null && this.ResultsMinCast < 0) {
     		result.Errors.push(new ValidationErrorInfo(
     			"ResultsMinCast",
-    			"The minimum cast ballots required for results must be zero or greater.",
+    			"Results minimum cast must be greater than or equal to 0.",
     			this.ResultsMinCast,
     			ValidationErrorType.Failure
     		));
@@ -5633,12 +5706,12 @@ export class mjBizAppsVotingElectionEntity extends BaseEntity<mjBizAppsVotingEle
     }
 
     /**
-    * Weight class minimum size must be at least 1.
+    * Weight class minimum size must be at least 1 to ensure each class contains at least one voter or ballot.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
     */
-    public ValidateWeightClassMinSizeAtLeastOne(result: ValidationResult) {
+    public ValidateWeightClassMinSizeMinimum(result: ValidationResult) {
     	if (this.WeightClassMinSize != null && this.WeightClassMinSize < 1) {
     		result.Errors.push(new ValidationErrorInfo(
     			"WeightClassMinSize",
@@ -5650,24 +5723,41 @@ export class mjBizAppsVotingElectionEntity extends BaseEntity<mjBizAppsVotingEle
     }
 
     /**
-    * Secret elections cannot allow revoting to maintain ballot secrecy and integrity.
+    * Elections with a Secret secrecy mode cannot allow revoting to preserve ballot secrecy and integrity.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
     */
-    	public ValidateAllowRevoteWhenSecrecyModeIsSecret(result: ValidationResult) {
-    		if (this.SecrecyMode === "Secret" && this.AllowRevote) {
-    			result.Errors.push(new ValidationErrorInfo(
-    				"AllowRevote",
-    				"Revoting cannot be allowed when the secrecy mode is set to Secret.",
-    				this.AllowRevote,
-    				ValidationErrorType.Failure
-    			));
-    		}
+    public ValidateAllowRevoteForSecretMode(result: ValidationResult) {
+    	if (this.SecrecyMode === "Secret" && this.AllowRevote) {
+    		result.Errors.push(new ValidationErrorInfo(
+    			"AllowRevote",
+    			"Revoting cannot be enabled when secrecy mode is set to Secret.",
+    			this.AllowRevote,
+    			ValidationErrorType.Failure
+    		));
     	}
+    }
 
     /**
-    * The election close date and time must be later than the open date and time when both dates are specified.
+    * Elections using an assurance tier other than Standard must release results only after the election has closed.
+    * @param result - the ValidationResult object to add any errors or warnings to
+    * @public
+    * @method
+    */
+    public ValidateAssuranceTierResultsTiming(result: ValidationResult): void {
+    	if (this.AssuranceTier !== "Standard" && this.ResultsTiming !== "AfterClose") {
+    		result.Errors.push(new ValidationErrorInfo(
+    			"ResultsTiming",
+    			"Elections with an assurance tier other than Standard must have results timing set to AfterClose.",
+    			this.ResultsTiming,
+    			ValidationErrorType.Failure
+    		));
+    	}
+    }
+
+    /**
+    * If both election opening and closing times are specified, the closing time must be later than the opening time.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
@@ -5676,7 +5766,7 @@ export class mjBizAppsVotingElectionEntity extends BaseEntity<mjBizAppsVotingEle
     	if (this.OpensAt != null && this.ClosesAt != null && this.ClosesAt <= this.OpensAt) {
     		result.Errors.push(new ValidationErrorInfo(
     			"ClosesAt",
-    			"Closes at date must be after opens at date.",
+    			"Election closing time must be after the opening time.",
     			this.ClosesAt,
     			ValidationErrorType.Failure
     		));
@@ -5684,7 +5774,7 @@ export class mjBizAppsVotingElectionEntity extends BaseEntity<mjBizAppsVotingEle
     }
 
     /**
-    * Live refresh ballot intervals and minimum refresh minutes must each be at least 1 when specified.
+    * If specified, the live refresh ballot interval and minimum refresh minutes must each be at least 1.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
@@ -5693,7 +5783,7 @@ export class mjBizAppsVotingElectionEntity extends BaseEntity<mjBizAppsVotingEle
     	if (this.LiveRefreshEveryBallots != null && this.LiveRefreshEveryBallots < 1) {
     		result.Errors.push(new ValidationErrorInfo(
     			"LiveRefreshEveryBallots",
-    			"Live refresh ballot count must be at least 1.",
+    			"Live refresh ballot interval must be at least 1.",
     			this.LiveRefreshEveryBallots,
     			ValidationErrorType.Failure
     		));
@@ -5709,7 +5799,7 @@ export class mjBizAppsVotingElectionEntity extends BaseEntity<mjBizAppsVotingEle
     }
 
     /**
-    * Nominations closing time must be after the nominations opening time when both dates are provided.
+    * Nominations close date and time must be after the nominations open date and time when both dates are provided.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
@@ -5718,25 +5808,8 @@ export class mjBizAppsVotingElectionEntity extends BaseEntity<mjBizAppsVotingEle
     	if (this.NominationsOpenAt != null && this.NominationsCloseAt != null && this.NominationsCloseAt <= this.NominationsOpenAt) {
     		result.Errors.push(new ValidationErrorInfo(
     			"NominationsCloseAt",
-    			"The nominations close date and time must be after the nominations open date and time.",
+    			"Nominations close date and time must be after the nominations open date and time.",
     			this.NominationsCloseAt,
-    			ValidationErrorType.Failure
-    		));
-    	}
-    }
-
-    /**
-    * Elections with an assurance tier other than Standard must have results timing set to release after the election closes.
-    * @param result - the ValidationResult object to add any errors or warnings to
-    * @public
-    * @method
-    */
-    public ValidateResultsTimingForAssuranceTier(result: ValidationResult) {
-    	if (this.AssuranceTier !== "Standard" && this.ResultsTiming !== "AfterClose") {
-    		result.Errors.push(new ValidationErrorInfo(
-    			"ResultsTiming",
-    			"Elections with an assurance tier other than 'Standard' must have Results Timing set to 'AfterClose'.",
-    			this.ResultsTiming,
     			ValidationErrorType.Failure
     		));
     	}
@@ -6049,7 +6122,7 @@ export class mjBizAppsVotingElectionEntity extends BaseEntity<mjBizAppsVotingEle
     * * Display Name: Results Min Cast
     * * SQL Data Type: int
     * * Default Value: 5
-    * * Description: Minimum number of ballots before any result is shown (k-anonymity threshold for running and small-electorate results).
+    * * Description: Minimum number of ballots cast before running (in-progress) results are shown to non-administrators. Final results, once tallied, are published to their audience regardless.
     */
     get ResultsMinCast(): number {
         return this.Get('ResultsMinCast');
@@ -6199,7 +6272,7 @@ export class mjBizAppsVotingElectionEntity extends BaseEntity<mjBizAppsVotingEle
 
     /**
     * * Field Name: ElectionType
-    * * Display Name: Election Type
+    * * Display Name: Election Type Name
     * * SQL Data Type: nvarchar(100)
     */
     get ElectionType(): string {
@@ -6208,7 +6281,7 @@ export class mjBizAppsVotingElectionEntity extends BaseEntity<mjBizAppsVotingEle
 
     /**
     * * Field Name: EligibilitySourceType
-    * * Display Name: Eligibility Source Type
+    * * Display Name: Eligibility Source Type Name
     * * SQL Data Type: nvarchar(100)
     */
     get EligibilitySourceType(): string | null {
@@ -6396,8 +6469,20 @@ export class mjBizAppsVotingEligibleVoterEntity extends BaseEntity<mjBizAppsVoti
     }
 
     /**
+    * MJ_BizApps_Voting: Eligible Voters - AllowDeleteAPI is set to 0 in the database.  Delete is not allowed, so this method is generated to override the base class method and throw an error. To enable delete for this entity, set AllowDeleteAPI to 1 in the database.
+    * @public
+    * @method
+    * @override
+    * @memberof mjBizAppsVotingEligibleVoterEntity
+    * @throws {Error} - Delete is not allowed for MJ_BizApps_Voting: Eligible Voters, to enable it set AllowDeleteAPI to 1 in the database.
+    */
+    public override async Delete(): Promise<boolean> {
+        throw new Error('Delete is not allowed for MJ_BizApps_Voting: Eligible Voters, to enable it set AllowDeleteAPI to 1 in the database.');
+    }
+
+    /**
     * Validate() method override for MJ_BizApps_Voting: Eligible Voters entity. This is an auto-generated method that invokes the generated validators for this entity for the following fields:
-    * * Weight: Voting weight must be greater than zero.
+    * * Weight: Weight must be greater than zero to ensure that voter or representation allocations have a positive voting value.
     * @public
     * @method
     * @override
@@ -6411,7 +6496,7 @@ export class mjBizAppsVotingEligibleVoterEntity extends BaseEntity<mjBizAppsVoti
     }
 
     /**
-    * Voting weight must be greater than zero.
+    * Weight must be greater than zero to ensure that voter or representation allocations have a positive voting value.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
@@ -6420,7 +6505,7 @@ export class mjBizAppsVotingEligibleVoterEntity extends BaseEntity<mjBizAppsVoti
     	if (this.Weight != null && this.Weight <= 0) {
     		result.Errors.push(new ValidationErrorInfo(
     			"Weight",
-    			"Weight must be greater than 0.",
+    			"Weight must be greater than zero.",
     			this.Weight,
     			ValidationErrorType.Failure
     		));
@@ -6497,7 +6582,7 @@ export class mjBizAppsVotingEligibleVoterEntity extends BaseEntity<mjBizAppsVoti
 
     /**
     * * Field Name: Weight
-    * * Display Name: Vote Weight
+    * * Display Name: Weight
     * * SQL Data Type: decimal(18, 6)
     * * Default Value: 1
     * * Description: Vote weight (1 for one-person-one-vote). Never copied onto the ballot; tallies use weight classes.
@@ -6948,7 +7033,7 @@ export class mjBizAppsVotingNominationEntity extends BaseEntity<mjBizAppsVotingN
 
     /**
     * * Field Name: Contest
-    * * Display Name: Contest Name
+    * * Display Name: Contest
     * * SQL Data Type: nvarchar(500)
     */
     get Contest(): string {
@@ -6957,7 +7042,7 @@ export class mjBizAppsVotingNominationEntity extends BaseEntity<mjBizAppsVotingN
 
     /**
     * * Field Name: NomineePerson
-    * * Display Name: Nominee Name
+    * * Display Name: Nominee Person
     * * SQL Data Type: nvarchar(201)
     */
     get NomineePerson(): string {
@@ -6966,7 +7051,7 @@ export class mjBizAppsVotingNominationEntity extends BaseEntity<mjBizAppsVotingN
 
     /**
     * * Field Name: NominatedByPerson
-    * * Display Name: Nominated By Name
+    * * Display Name: Nominated By Person
     * * SQL Data Type: nvarchar(201)
     */
     get NominatedByPerson(): string | null {
@@ -7006,31 +7091,43 @@ export class mjBizAppsVotingParticipationEntity extends BaseEntity<mjBizAppsVoti
     }
 
     /**
+    * MJ_BizApps_Voting: Participations - AllowDeleteAPI is set to 0 in the database.  Delete is not allowed, so this method is generated to override the base class method and throw an error. To enable delete for this entity, set AllowDeleteAPI to 1 in the database.
+    * @public
+    * @method
+    * @override
+    * @memberof mjBizAppsVotingParticipationEntity
+    * @throws {Error} - Delete is not allowed for MJ_BizApps_Voting: Participations, to enable it set AllowDeleteAPI to 1 in the database.
+    */
+    public override async Delete(): Promise<boolean> {
+        throw new Error('Delete is not allowed for MJ_BizApps_Voting: Participations, to enable it set AllowDeleteAPI to 1 in the database.');
+    }
+
+    /**
     * Validate() method override for MJ_BizApps_Voting: Participations entity. This is an auto-generated method that invokes the generated validators for this entity for the following fields:
-    * * Table-Level: Votes cast through any channel other than Online must specify the user who entered them to maintain an audit trail.
+    * * Table-Level: Votes submitted through channels other than 'Online' must record the user who entered the vote.
     * @public
     * @method
     * @override
     */
     public override Validate(): ValidationResult {
         const result = super.Validate();
-        this.ValidateEnteredByUserIDRequiredWhenNotOnline(result);
+        this.ValidateEnteredByUserWhenChannelNotOnline(result);
         result.Success = result.Success && (result.Errors.length === 0);
 
         return result;
     }
 
     /**
-    * Votes cast through any channel other than Online must specify the user who entered them to maintain an audit trail.
+    * Votes submitted through channels other than 'Online' must record the user who entered the vote.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
     */
-    public ValidateEnteredByUserIDRequiredWhenNotOnline(result: ValidationResult) {
+    public ValidateEnteredByUserWhenChannelNotOnline(result: ValidationResult) {
     	if (this.Channel !== "Online" && this.EnteredByUserID == null) {
     		result.Errors.push(new ValidationErrorInfo(
     			"EnteredByUserID",
-    			"An entering user must be recorded when the vote channel is not Online.",
+    			"Entered by user must be specified when the submission channel is not Online.",
     			this.EnteredByUserID,
     			ValidationErrorType.Failure
     		));
@@ -7233,6 +7330,18 @@ export class mjBizAppsVotingProxyDesignationEntity extends BaseEntity<mjBizAppsV
     }
 
     /**
+    * MJ_BizApps_Voting: Proxy Designations - AllowDeleteAPI is set to 0 in the database.  Delete is not allowed, so this method is generated to override the base class method and throw an error. To enable delete for this entity, set AllowDeleteAPI to 1 in the database.
+    * @public
+    * @method
+    * @override
+    * @memberof mjBizAppsVotingProxyDesignationEntity
+    * @throws {Error} - Delete is not allowed for MJ_BizApps_Voting: Proxy Designations, to enable it set AllowDeleteAPI to 1 in the database.
+    */
+    public override async Delete(): Promise<boolean> {
+        throw new Error('Delete is not allowed for MJ_BizApps_Voting: Proxy Designations, to enable it set AllowDeleteAPI to 1 in the database.');
+    }
+
+    /**
     * * Field Name: ID
     * * Display Name: ID
     * * SQL Data Type: uniqueidentifier
@@ -7247,7 +7356,7 @@ export class mjBizAppsVotingProxyDesignationEntity extends BaseEntity<mjBizAppsV
 
     /**
     * * Field Name: ElectionID
-    * * Display Name: Election
+    * * Display Name: Election ID
     * * SQL Data Type: uniqueidentifier
     * * Related Entity/Foreign Key: MJ_BizApps_Voting: Elections (vwElections.ID)
     * * Description: The election.
@@ -7261,7 +7370,7 @@ export class mjBizAppsVotingProxyDesignationEntity extends BaseEntity<mjBizAppsV
 
     /**
     * * Field Name: GrantorEligibleVoterID
-    * * Display Name: Grantor Eligible Voter
+    * * Display Name: Grantor Eligible Voter ID
     * * SQL Data Type: uniqueidentifier
     * * Related Entity/Foreign Key: MJ_BizApps_Voting: Eligible Voters (vwEligibleVoters.ID)
     * * Description: The roll entry granting the proxy.
@@ -7275,7 +7384,7 @@ export class mjBizAppsVotingProxyDesignationEntity extends BaseEntity<mjBizAppsV
 
     /**
     * * Field Name: ProxyPersonID
-    * * Display Name: Proxy Person
+    * * Display Name: Proxy Person ID
     * * SQL Data Type: uniqueidentifier
     * * Related Entity/Foreign Key: MJ_BizApps_Common: People (vwPeople.ID)
     * * Description: The person who will vote on the grantor's behalf.
@@ -7375,7 +7484,7 @@ export class mjBizAppsVotingProxyDesignationEntity extends BaseEntity<mjBizAppsV
 
     /**
     * * Field Name: Election
-    * * Display Name: Election Name
+    * * Display Name: Election
     * * SQL Data Type: nvarchar(255)
     */
     get Election(): string {
@@ -7384,7 +7493,7 @@ export class mjBizAppsVotingProxyDesignationEntity extends BaseEntity<mjBizAppsV
 
     /**
     * * Field Name: ProxyPerson
-    * * Display Name: Proxy Person Name
+    * * Display Name: Proxy Person
     * * SQL Data Type: nvarchar(201)
     */
     get ProxyPerson(): string {
@@ -7424,8 +7533,20 @@ export class mjBizAppsVotingResultSnapshotEntity extends BaseEntity<mjBizAppsVot
     }
 
     /**
+    * MJ_BizApps_Voting: Result Snapshots - AllowDeleteAPI is set to 0 in the database.  Delete is not allowed, so this method is generated to override the base class method and throw an error. To enable delete for this entity, set AllowDeleteAPI to 1 in the database.
+    * @public
+    * @method
+    * @override
+    * @memberof mjBizAppsVotingResultSnapshotEntity
+    * @throws {Error} - Delete is not allowed for MJ_BizApps_Voting: Result Snapshots, to enable it set AllowDeleteAPI to 1 in the database.
+    */
+    public override async Delete(): Promise<boolean> {
+        throw new Error('Delete is not allowed for MJ_BizApps_Voting: Result Snapshots, to enable it set AllowDeleteAPI to 1 in the database.');
+    }
+
+    /**
     * Validate() method override for MJ_BizApps_Voting: Result Snapshots entity. This is an auto-generated method that invokes the generated validators for this entity for the following fields:
-    * * BallotCount: Ballot count cannot be negative.
+    * * BallotCount: Ballot count cannot be negative to ensure accurate election snapshot records.
     * @public
     * @method
     * @override
@@ -7439,7 +7560,7 @@ export class mjBizAppsVotingResultSnapshotEntity extends BaseEntity<mjBizAppsVot
     }
 
     /**
-    * Ballot count cannot be negative.
+    * Ballot count cannot be negative to ensure accurate election snapshot records.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
@@ -7448,7 +7569,7 @@ export class mjBizAppsVotingResultSnapshotEntity extends BaseEntity<mjBizAppsVot
     	if (this.BallotCount != null && this.BallotCount < 0) {
     		result.Errors.push(new ValidationErrorInfo(
     			"BallotCount",
-    			"Ballot count cannot be negative.",
+    			"Ballot count must be greater than or equal to 0.",
     			this.BallotCount,
     			ValidationErrorType.Failure
     		));
@@ -7604,7 +7725,7 @@ export class mjBizAppsVotingStandardsBallotElectionEntity extends BaseEntity<mjB
     * @public
     * @method
     */
-    public ValidateRecirculationRoundNonNegative(result: ValidationResult) {
+    public ValidateRecirculationRoundNonNegative(result: ValidationResult): void {
     	if (this.RecirculationRound != null && this.RecirculationRound < 0) {
     		result.Errors.push(new ValidationErrorInfo(
     			"RecirculationRound",
@@ -7744,7 +7865,7 @@ export class mjBizAppsVotingStandardsBallotElectionEntity extends BaseEntity<mjB
 
     /**
     * * Field Name: ElectionTypeID
-    * * Display Name: Election Type
+    * * Display Name: Election Type ID
     * * SQL Data Type: uniqueidentifier
     * * IS-A Source: Inherited from MJ_BizApps_Voting: Elections
     */
@@ -7796,7 +7917,7 @@ export class mjBizAppsVotingStandardsBallotElectionEntity extends BaseEntity<mjB
 
     /**
     * * Field Name: EligibilitySourceTypeID
-    * * Display Name: Eligibility Source Type
+    * * Display Name: Eligibility Source Type ID
     * * SQL Data Type: uniqueidentifier
     * * IS-A Source: Inherited from MJ_BizApps_Voting: Elections
     */
@@ -8320,6 +8441,18 @@ export class mjBizAppsVotingTrusteeKeyCommitmentEntity extends BaseEntity<mjBizA
     }
 
     /**
+    * MJ_BizApps_Voting: Trustee Key Commitments - AllowDeleteAPI is set to 0 in the database.  Delete is not allowed, so this method is generated to override the base class method and throw an error. To enable delete for this entity, set AllowDeleteAPI to 1 in the database.
+    * @public
+    * @method
+    * @override
+    * @memberof mjBizAppsVotingTrusteeKeyCommitmentEntity
+    * @throws {Error} - Delete is not allowed for MJ_BizApps_Voting: Trustee Key Commitments, to enable it set AllowDeleteAPI to 1 in the database.
+    */
+    public override async Delete(): Promise<boolean> {
+        throw new Error('Delete is not allowed for MJ_BizApps_Voting: Trustee Key Commitments, to enable it set AllowDeleteAPI to 1 in the database.');
+    }
+
+    /**
     * * Field Name: ID
     * * Display Name: ID
     * * SQL Data Type: uniqueidentifier
@@ -8615,8 +8748,20 @@ export class mjBizAppsVotingVoterCredentialEntity extends BaseEntity<mjBizAppsVo
     }
 
     /**
+    * MJ_BizApps_Voting: Voter Credentials - AllowDeleteAPI is set to 0 in the database.  Delete is not allowed, so this method is generated to override the base class method and throw an error. To enable delete for this entity, set AllowDeleteAPI to 1 in the database.
+    * @public
+    * @method
+    * @override
+    * @memberof mjBizAppsVotingVoterCredentialEntity
+    * @throws {Error} - Delete is not allowed for MJ_BizApps_Voting: Voter Credentials, to enable it set AllowDeleteAPI to 1 in the database.
+    */
+    public override async Delete(): Promise<boolean> {
+        throw new Error('Delete is not allowed for MJ_BizApps_Voting: Voter Credentials, to enable it set AllowDeleteAPI to 1 in the database.');
+    }
+
+    /**
     * Validate() method override for MJ_BizApps_Voting: Voter Credentials entity. This is an auto-generated method that invokes the generated validators for this entity for the following fields:
-    * * FailedAttempts: Failed attempts cannot be negative.
+    * * FailedAttempts: The number of failed attempts cannot be negative.
     * @public
     * @method
     * @override
@@ -8630,7 +8775,7 @@ export class mjBizAppsVotingVoterCredentialEntity extends BaseEntity<mjBizAppsVo
     }
 
     /**
-    * Failed attempts cannot be negative.
+    * The number of failed attempts cannot be negative.
     * @param result - the ValidationResult object to add any errors or warnings to
     * @public
     * @method
@@ -8829,7 +8974,7 @@ export class mjBizAppsVotingVoterCredentialEntity extends BaseEntity<mjBizAppsVo
 
     /**
     * * Field Name: VoterCredentialMethod
-    * * Display Name: Credential Method
+    * * Display Name: Voter Credential Method
     * * SQL Data Type: nvarchar(100)
     */
     get VoterCredentialMethod(): string {

@@ -15,8 +15,9 @@ export class mjBizAppsVotingBallotSelectionFormComponent extends BaseFormCompone
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'ballotAndContestContext', sectionName: 'Ballot and Contest Context', isExpanded: true },
-            { sectionKey: 'selectionDetails', sectionName: 'Selection Details', isExpanded: true }
+            { sectionKey: 'ballotContext', sectionName: 'Ballot Context', isExpanded: true },
+            { sectionKey: 'contestDetails', sectionName: 'Contest Details', isExpanded: true },
+            { sectionKey: 'selectionInformation', sectionName: 'Selection Information', isExpanded: true }
         ]);
     }
 }

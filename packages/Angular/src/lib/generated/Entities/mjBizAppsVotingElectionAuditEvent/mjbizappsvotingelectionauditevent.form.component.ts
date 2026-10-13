@@ -15,9 +15,9 @@ export class mjBizAppsVotingElectionAuditEventFormComponent extends BaseFormComp
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'electionDetails', sectionName: 'Election Details', isExpanded: true },
+            { sectionKey: 'auditInformation', sectionName: 'Audit Information', isExpanded: true },
+            { sectionKey: 'actorAndTiming', sectionName: 'Actor and Timing', isExpanded: true },
             { sectionKey: 'eventDetails', sectionName: 'Event Details', isExpanded: true },
-            { sectionKey: 'actorAndActivity', sectionName: 'Actor and Activity', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false }
         ]);
     }

@@ -58,7 +58,7 @@
     <mj-collapsible-panel
         SectionKey="verificationAndStaffing"
         SectionName="Verification and Staffing"
-        Icon="fa fa-user-check"
+        Icon="fa fa-user-shield"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -123,31 +123,6 @@
          RELATED ENTITY PANELS
          ======================================== -->
 
-    <!-- Ballot Comments Section -->
-    <mj-collapsible-panel
-        SectionKey="mJBizAppsVotingBallotComments"
-        SectionName="Ballot Comments"
-        Icon="fa fa-comment-dots"
-        Variant="related-entity"
-        [Form]="this"
-        [FormContext]="formContext"
-        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingBallotComments')"
-        [DefaultExpanded]="false">
-        @if (record.IsSaved) {
-        <div>
-            <mj-explorer-entity-data-grid
-                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Ballot Comments','ParticipationID')"
-                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Ballot Comments','ParticipationID')"
-                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingBallotComments')"
-                [ShowToolbar]="true"
-                (Navigate)="OnFormNavigate($event)"
-                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingBallotComments', $event.totalRowCount)"
-                >
-            </mj-explorer-entity-data-grid>
-        </div>
-        }
-    </mj-collapsible-panel>
-
     <!-- Ballot Attributions Section -->
     <mj-collapsible-panel
         SectionKey="mJBizAppsVotingBallotAttributions"
@@ -167,6 +142,31 @@
                 [ShowToolbar]="true"
                 (Navigate)="OnFormNavigate($event)"
                 (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingBallotAttributions', $event.totalRowCount)"
+                >
+            </mj-explorer-entity-data-grid>
+        </div>
+        }
+    </mj-collapsible-panel>
+
+    <!-- Ballot Comments Section -->
+    <mj-collapsible-panel
+        SectionKey="mJBizAppsVotingBallotComments"
+        SectionName="Ballot Comments"
+        Icon="fa fa-comment-dots"
+        Variant="related-entity"
+        [Form]="this"
+        [FormContext]="formContext"
+        [BadgeCount]="GetSectionRowCount('mJBizAppsVotingBallotComments')"
+        [DefaultExpanded]="false">
+        @if (record.IsSaved) {
+        <div>
+            <mj-explorer-entity-data-grid
+                [Params]="BuildRelationshipViewParamsByEntityName('MJ_BizApps_Voting: Ballot Comments','ParticipationID')"
+                [NewRecordValues]="NewRecordValues('MJ_BizApps_Voting: Ballot Comments','ParticipationID')"
+                [AllowLoad]="IsSectionExpanded('mJBizAppsVotingBallotComments')"
+                [ShowToolbar]="true"
+                (Navigate)="OnFormNavigate($event)"
+                (AfterDataLoad)="SetSectionRowCount('mJBizAppsVotingBallotComments', $event.totalRowCount)"
                 >
             </mj-explorer-entity-data-grid>
         </div>

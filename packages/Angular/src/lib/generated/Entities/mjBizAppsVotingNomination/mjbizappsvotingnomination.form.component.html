@@ -47,49 +47,29 @@
 
     </mj-collapsible-panel>
 
-    <!-- Status and Workflow Section -->
+    <!-- Candidacy and Status Section -->
     <mj-collapsible-panel
-        SectionKey="statusAndWorkflow"
-        SectionName="Status and Workflow"
-        Icon="fa fa-tasks"
+        SectionKey="candidacyAndStatus"
+        SectionName="Candidacy and Status"
+        Icon="fa fa-flag"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
-            [ShowLabel]="false"
+            [ShowLabel]="true"
             FieldName="Status"
             Type="select"
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
-
-    </mj-collapsible-panel>
-
-    <!-- Candidacy Information Section -->
-    <mj-collapsible-panel
-        SectionKey="candidacyInformation"
-        SectionName="Candidacy Information"
-        Icon="fa fa-file-alt"
-        [Form]="this"
-        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
-            [ShowLabel]="false"
+            [ShowLabel]="true"
             FieldName="Statement"
             Type="textarea"
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
-
-    </mj-collapsible-panel>
-
-    <!-- Dates and Decisions Section -->
-    <mj-collapsible-panel
-        SectionKey="datesAndDecisions"
-        SectionName="Dates and Decisions"
-        Icon="fa fa-calendar-check"
-        [Form]="this"
-        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
@@ -98,6 +78,16 @@
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Review and Decision Section -->
+    <mj-collapsible-panel
+        SectionKey="reviewAndDecision"
+        SectionName="Review and Decision"
+        Icon="fa fa-clipboard-check"
+        [Form]="this"
+        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"

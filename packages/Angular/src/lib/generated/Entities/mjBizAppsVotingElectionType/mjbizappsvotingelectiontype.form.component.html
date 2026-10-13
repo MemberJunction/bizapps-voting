@@ -29,7 +29,7 @@
             [Record]="record"
             [ShowLabel]="true"
             FieldName="Code"
-            Type="textbox"
+            Type="code"
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
@@ -52,11 +52,11 @@
 
     </mj-collapsible-panel>
 
-    <!-- Drivers and Integration Section -->
+    <!-- Drivers and Configuration Section -->
     <mj-collapsible-panel
-        SectionKey="driversAndIntegration"
-        SectionName="Drivers and Integration"
-        Icon="fa fa-plug"
+        SectionKey="driversAndConfiguration"
+        SectionName="Drivers and Configuration"
+        Icon="fa fa-cogs"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -84,29 +84,29 @@
             [FormContext]="formContext"
             LinkType="Record"
         ></mj-form-field>
-
-    </mj-collapsible-panel>
-
-    <!-- Presentation and Configuration Section -->
-    <mj-collapsible-panel
-        SectionKey="presentationAndConfiguration"
-        SectionName="Presentation and Configuration"
-        Icon="fa fa-sliders-h"
-        [Form]="this"
-        [FormContext]="formContext">
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="IconClass"
-            Type="textbox"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
             FieldName="Configuration"
             Type="textarea"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- UI and Appearance Section -->
+    <mj-collapsible-panel
+        SectionKey="uIAndAppearance"
+        SectionName="UI and Appearance"
+        Icon="fa fa-paint-brush"
+        [Form]="this"
+        [FormContext]="formContext">
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="false"
+            FieldName="IconClass"
+            Type="textbox"
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>

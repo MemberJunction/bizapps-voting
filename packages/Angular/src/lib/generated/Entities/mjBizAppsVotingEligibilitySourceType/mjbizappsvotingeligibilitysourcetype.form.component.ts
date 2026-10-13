@@ -16,8 +16,8 @@ export class mjBizAppsVotingEligibilitySourceTypeFormComponent extends BaseFormC
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'sourceInformation', sectionName: 'Source Information', isExpanded: true },
-            { sectionKey: 'implementationAndConfiguration', sectionName: 'Implementation and Configuration', isExpanded: true },
+            { sectionKey: 'sourceConfiguration', sectionName: 'Source Configuration', isExpanded: true },
+            { sectionKey: 'implementationDetails', sectionName: 'Implementation Details', isExpanded: true },
             { sectionKey: 'systemMetadata', sectionName: 'System Metadata', isExpanded: false },
             { sectionKey: 'mJBizAppsVotingElections', sectionName: 'Elections', isExpanded: false }
         ]);

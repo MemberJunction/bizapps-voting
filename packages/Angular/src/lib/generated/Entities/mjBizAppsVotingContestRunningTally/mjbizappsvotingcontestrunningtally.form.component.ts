@@ -15,7 +15,8 @@ export class mjBizAppsVotingContestRunningTallyFormComponent extends BaseFormCom
     override async ngOnInit() {
         await super.ngOnInit();
         this.initSections([
-            { sectionKey: 'contestTallyDetails', sectionName: 'Contest Tally Details', isExpanded: true }
+            { sectionKey: 'contestInformation', sectionName: 'Contest Information', isExpanded: true },
+            { sectionKey: 'tallyMetrics', sectionName: 'Tally Metrics', isExpanded: true }
         ]);
     }
 }

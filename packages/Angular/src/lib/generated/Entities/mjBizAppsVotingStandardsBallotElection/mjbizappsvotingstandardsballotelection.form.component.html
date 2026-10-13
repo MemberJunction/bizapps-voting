@@ -10,10 +10,10 @@
     <!-- ========================================
          FIELD PANELS
          ======================================== -->
-    <!-- Standard Document Details Section -->
+    <!-- Document Details Section -->
     <mj-collapsible-panel
-        SectionKey="standardDocumentDetails"
-        SectionName="Standard Document Details"
+        SectionKey="documentDetails"
+        SectionName="Document Details"
         Icon="fa fa-file-alt"
         [Form]="this"
         [FormContext]="formContext">
@@ -45,11 +45,11 @@
 
     </mj-collapsible-panel>
 
-    <!-- Ballot Progression Section -->
+    <!-- Ballot & Recirculation Settings Section -->
     <mj-collapsible-panel
-        SectionKey="ballotProgression"
-        SectionName="Ballot Progression"
-        Icon="fa fa-sync"
+        SectionKey="ballotRecirculationSettings"
+        SectionName="Ballot & Recirculation Settings"
+        Icon="fa fa-sync-alt"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
@@ -76,7 +76,7 @@
     <mj-collapsible-panel
         SectionKey="electionDetails"
         SectionName="Election Details"
-        Icon="fa fa-vote-yea"
+        Icon="fa fa-info-circle"
         Variant="inherited"
         InheritedFromEntity="MJ_BizApps_Voting: Elections"
         [Form]="this"
@@ -116,11 +116,11 @@
 
     </mj-collapsible-panel>
 
-    <!-- Election Security and Settings Section -->
+    <!-- Election Configuration Section -->
     <mj-collapsible-panel
-        SectionKey="electionSecurityAndSettings"
-        SectionName="Election Security and Settings"
-        Icon="fa fa-shield-alt"
+        SectionKey="electionConfiguration"
+        SectionName="Election Configuration"
+        Icon="fa fa-sliders-h"
         Variant="inherited"
         InheritedFromEntity="MJ_BizApps_Voting: Elections"
         [Form]="this"
@@ -144,82 +144,6 @@
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
-            FieldName="LiveRefreshEveryBallots"
-            Type="number"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="LiveRefreshMinMinutes"
-            Type="number"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="PublishPollBook"
-            Type="checkbox"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="RollFrozenAt"
-            Type="datepicker"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="RollHash"
-            Type="textbox"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="TrusteeThreshold"
-            Type="number"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="ElectionPublicKey"
-            Type="textarea"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="Configuration"
-            Type="textarea"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
-
-    </mj-collapsible-panel>
-
-    <!-- Voter Eligibility and Rules Section -->
-    <mj-collapsible-panel
-        SectionKey="voterEligibilityAndRules"
-        SectionName="Voter Eligibility and Rules"
-        Icon="fa fa-users"
-        Variant="inherited"
-        InheritedFromEntity="MJ_BizApps_Voting: Elections"
-        [Form]="this"
-        [FormContext]="formContext">
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
             FieldName="EligibilitySourceTypeID"
             Type="textbox"
             [EditMode]="EditMode"
@@ -238,6 +162,14 @@
             [ShowLabel]="true"
             FieldName="AllowRevote"
             Type="checkbox"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="true"
+            FieldName="Configuration"
+            Type="textarea"
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
@@ -317,14 +249,22 @@
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="true"
+            FieldName="RollFrozenAt"
+            Type="datepicker"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
 
     </mj-collapsible-panel>
 
-    <!-- Results and Audience Rules Section -->
+    <!-- Results and Rules Section -->
     <mj-collapsible-panel
-        SectionKey="resultsAndAudienceRules"
-        SectionName="Results and Audience Rules"
-        Icon="fa fa-chart-bar"
+        SectionKey="resultsAndRules"
+        SectionName="Results and Rules"
+        Icon="fa fa-poll"
         Variant="inherited"
         InheritedFromEntity="MJ_BizApps_Voting: Elections"
         [Form]="this"
@@ -358,6 +298,66 @@
             [ShowLabel]="true"
             FieldName="WeightClassMinSize"
             Type="number"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="true"
+            FieldName="LiveRefreshEveryBallots"
+            Type="number"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="true"
+            FieldName="LiveRefreshMinMinutes"
+            Type="number"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="true"
+            FieldName="PublishPollBook"
+            Type="checkbox"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Security and Verification Section -->
+    <mj-collapsible-panel
+        SectionKey="securityAndVerification"
+        SectionName="Security and Verification"
+        Icon="fa fa-shield-alt"
+        Variant="inherited"
+        InheritedFromEntity="MJ_BizApps_Voting: Elections"
+        [Form]="this"
+        [FormContext]="formContext">
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="true"
+            FieldName="RollHash"
+            Type="textbox"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="true"
+            FieldName="TrusteeThreshold"
+            Type="number"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+        ></mj-form-field>
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="true"
+            FieldName="ElectionPublicKey"
+            Type="textarea"
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>

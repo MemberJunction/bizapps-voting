@@ -10,32 +10,22 @@
     <!-- ========================================
          FIELD PANELS
          ======================================== -->
-    <!-- Election Details Section -->
+    <!-- Audit Information Section -->
     <mj-collapsible-panel
-        SectionKey="electionDetails"
-        SectionName="Election Details"
-        Icon="fa fa-landmark"
+        SectionKey="auditInformation"
+        SectionName="Audit Information"
+        Icon="fa fa-shield-alt"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
-            [ShowLabel]="false"
+            [ShowLabel]="true"
             FieldName="ElectionID"
             Type="textbox"
             [EditMode]="EditMode"
             [FormContext]="formContext"
             LinkType="Record"
         ></mj-form-field>
-
-    </mj-collapsible-panel>
-
-    <!-- Event Details Section -->
-    <mj-collapsible-panel
-        SectionKey="eventDetails"
-        SectionName="Event Details"
-        Icon="fa fa-history"
-        [Form]="this"
-        [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="true"
@@ -43,6 +33,25 @@
             Type="textbox"
             [EditMode]="EditMode"
             [FormContext]="formContext"
+        ></mj-form-field>
+
+    </mj-collapsible-panel>
+
+    <!-- Actor and Timing Section -->
+    <mj-collapsible-panel
+        SectionKey="actorAndTiming"
+        SectionName="Actor and Timing"
+        Icon="fa fa-clock"
+        [Form]="this"
+        [FormContext]="formContext">
+        <mj-form-field 
+            [Record]="record"
+            [ShowLabel]="true"
+            FieldName="ActorUserID"
+            Type="textbox"
+            [EditMode]="EditMode"
+            [FormContext]="formContext"
+            LinkType="Record"
         ></mj-form-field>
         <mj-form-field 
             [Record]="record"
@@ -52,32 +61,23 @@
             [EditMode]="EditMode"
             [FormContext]="formContext"
         ></mj-form-field>
-        <mj-form-field 
-            [Record]="record"
-            [ShowLabel]="true"
-            FieldName="Details"
-            Type="textarea"
-            [EditMode]="EditMode"
-            [FormContext]="formContext"
-        ></mj-form-field>
 
     </mj-collapsible-panel>
 
-    <!-- Actor and Activity Section -->
+    <!-- Event Details Section -->
     <mj-collapsible-panel
-        SectionKey="actorAndActivity"
-        SectionName="Actor and Activity"
-        Icon="fa fa-user-shield"
+        SectionKey="eventDetails"
+        SectionName="Event Details"
+        Icon="fa fa-file-alt"
         [Form]="this"
         [FormContext]="formContext">
         <mj-form-field 
             [Record]="record"
             [ShowLabel]="false"
-            FieldName="ActorUserID"
-            Type="textbox"
+            FieldName="Details"
+            Type="textarea"
             [EditMode]="EditMode"
             [FormContext]="formContext"
-            LinkType="Record"
         ></mj-form-field>
 
     </mj-collapsible-panel>
