@@ -3,7 +3,7 @@
  * roll and ballot-set hashes, results-timing disclosure) and lets an administrator or inspector
  * certify a tallied election via Voting.Certify.
  */
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IMetadataProvider, LogError, Metadata, RunView } from '@memberjunction/core';
@@ -155,6 +155,7 @@ interface CertifierRow {
     ],
 })
 export class CertificationPanelComponent implements OnChanges {
+    private readonly cdr = inject(ChangeDetectorRef);
     @Input({ required: true }) ElectionID!: string;
     @Input() ElectionStatus = '';
     /** Plain-language results timing for the election, used when no disclosure was recorded. */
@@ -182,6 +183,7 @@ export class CertificationPanelComponent implements OnChanges {
             this.ConfirmingCertify = false;
             await this.Load();
         }
+        this.cdr.detectChanges();
     }
 
     public get StatusClass(): string {
@@ -248,6 +250,7 @@ export class CertificationPanelComponent implements OnChanges {
         } finally {
             this.IsLoading = false;
             this.CertificationLoaded.emit(this.Certification);
+            this.cdr.detectChanges();
         }
     }
 
@@ -275,6 +278,7 @@ export class CertificationPanelComponent implements OnChanges {
             this.ActionError = error instanceof Error ? error.message : 'The election could not be certified.';
         } finally {
             this.IsCertifying = false;
+            this.cdr.detectChanges();
         }
     }
 }

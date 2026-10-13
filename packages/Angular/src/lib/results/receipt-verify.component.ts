@@ -3,7 +3,7 @@
  * counted ballot in an election, via Voting.VerifyReceipt. The receipt reveals nothing about
  * the choices made.
  */
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LogError } from '@memberjunction/core';
@@ -76,6 +76,7 @@ import { IsReceiptCode, VotingVerifyReceiptOperation, type VotingVerifyReceiptOu
     ],
 })
 export class ReceiptVerifyComponent {
+    private readonly cdr = inject(ChangeDetectorRef);
     @Input({ required: true }) ElectionID!: string;
 
     public Code = '';
@@ -110,6 +111,7 @@ export class ReceiptVerifyComponent {
             this.ErrorMessage = error instanceof Error ? error.message : 'The receipt could not be verified.';
         } finally {
             this.IsBusy = false;
+            this.cdr.detectChanges();
         }
     }
 }

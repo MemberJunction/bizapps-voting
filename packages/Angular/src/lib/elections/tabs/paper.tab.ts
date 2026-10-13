@@ -4,7 +4,7 @@
  * form the voter sees, review, and record the ballot with Voting.EnterPaperBallot. The server rebuilds the voter's
  * real ballot style and validates the submission against it.
  */
-import { Component, EventEmitter, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, EventEmitter, OnChanges, OnDestroy, Output, SimpleChanges, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LogError, RunView } from '@memberjunction/core';
@@ -206,6 +206,7 @@ interface ContestRowRaw {
     ],
 })
 export class PaperTabComponent extends BaseElectionAdminTab implements OnChanges, OnDestroy {
+    private readonly cdr = inject(ChangeDetectorRef);
     private readonly api = inject(VotingApiService);
 
     @Output() Changed = new EventEmitter<void>();
@@ -326,6 +327,7 @@ export class PaperTabComponent extends BaseElectionAdminTab implements OnChanges
             this.LoadError = error instanceof Error ? error.message : 'The ballot definition could not be loaded.';
         } finally {
             this.IsLoading = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -420,6 +422,7 @@ export class PaperTabComponent extends BaseElectionAdminTab implements OnChanges
             this.Changed.emit();
         } finally {
             this.IsBusy = false;
+            this.cdr.detectChanges();
         }
     }
 

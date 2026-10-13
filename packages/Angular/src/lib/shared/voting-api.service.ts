@@ -16,6 +16,7 @@ import {
     VotingCreateElectionOperation,
     VotingFreezeRollOperation,
     VotingGetTurnoutOperation,
+    VotingGetMyParticipationOperation,
     VotingIssueCredentialsOperation,
     VotingOpenElectionOperation,
     VotingTallyOperation,
@@ -46,6 +47,8 @@ import {
     type VotingFreezeRollOutput,
     type VotingGetTurnoutInput,
     type VotingGetTurnoutOutput,
+    type VotingGetMyParticipationInput,
+    type VotingGetMyParticipationOutput,
     type VotingIssueCredentialsInput,
     type VotingIssueCredentialsOutput,
     type VotingOpenElectionInput,
@@ -172,6 +175,11 @@ export class VotingApiService {
 
     public ResolveComment(input: VotingResolveCommentInput): Promise<OperationResult<VotingResolveCommentOutput>> {
         return this.Run(new VotingResolveCommentOperation(), input, 'The comment could not be resolved.');
+    }
+
+    /** Whether the signed-in user is on the election's roll and has voted. Declines with a message when not on the roll. */
+    public GetMyParticipation(input: VotingGetMyParticipationInput): Promise<OperationResult<VotingGetMyParticipationOutput>> {
+        return this.Run(new VotingGetMyParticipationOperation(), input, 'Your participation could not be checked.');
     }
 
     private async Run<TInput, TOutput extends { Success: boolean; Message?: string }>(

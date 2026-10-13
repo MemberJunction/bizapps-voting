@@ -4,7 +4,7 @@
  * sources and sign-in (voter credential) methods. All data comes from VotingEngineBase's
  * cached lookups; a row opens in the standard entity form through NavigationService.
  */
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ResourceData } from '@memberjunction/core-entities';
 import { RegisterClass } from '@memberjunction/global';
@@ -389,6 +389,7 @@ const ENTITY_NAMES: Record<CatalogSection, string> = {
     ],
 })
 export class VotingElectionTypesResourceComponent extends BaseResourceComponent implements OnInit {
+    private readonly cdr = inject(ChangeDetectorRef);
     private readonly navService = inject(NavigationService, { optional: true });
 
     public IsLoading = true;
@@ -411,6 +412,7 @@ export class VotingElectionTypesResourceComponent extends BaseResourceComponent 
         super.ngOnInit();
         await this.LoadCatalog();
         this.NotifyLoadComplete();
+        this.cdr.detectChanges();
     }
 
     public get ActiveTab(): { Key: CatalogSection; Label: string; Icon: string } {
@@ -449,6 +451,7 @@ export class VotingElectionTypesResourceComponent extends BaseResourceComponent 
 
     public async Refresh(): Promise<void> {
         await this.LoadCatalog(true);
+        this.cdr.detectChanges();
     }
 
     public OpenRecord(section: CatalogSection, id: string): void {
@@ -475,6 +478,7 @@ export class VotingElectionTypesResourceComponent extends BaseResourceComponent 
             this.ErrorMessage = error instanceof Error ? error.message : 'The election catalog could not be loaded.';
         } finally {
             this.IsLoading = false;
+            this.cdr.detectChanges();
         }
     }
 

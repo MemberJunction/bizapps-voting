@@ -2,7 +2,7 @@
  * RollTab — the voter roll: a paged, searchable list of eligible voters, the freeze action,
  * amendment through a People search, removal, and challenge decisions.
  */
-import { Component, EventEmitter, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, EventEmitter, OnChanges, Output, SimpleChanges, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EscapeSQLString } from '@memberjunction/global';
@@ -340,6 +340,7 @@ const PEOPLE_ENTITY = 'MJ_BizApps_Common: People';
     ],
 })
 export class RollTabComponent extends BaseElectionAdminTab implements OnChanges {
+    private readonly cdr = inject(ChangeDetectorRef);
     private readonly api = inject(VotingApiService);
 
     @Output() Changed = new EventEmitter<void>();
@@ -386,6 +387,7 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
 
     public async LoadAll(): Promise<void> {
         await Promise.all([this.LoadRollState(), this.LoadPage(), this.LoadProxies()]);
+        this.cdr.detectChanges();
     }
 
     private async LoadProxies(): Promise<void> {
@@ -404,10 +406,12 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
         if (!res.Success) {
             this.ProxyError = res.ErrorMessage || 'Proxy designations could not be loaded.';
             this.Proxies = [];
+            this.cdr.detectChanges();
             return;
         }
         const names = await this.LoadGrantorNames(res.Results.map((r) => r.GrantorEligibleVoterID));
         this.Proxies = res.Results.map((r) => ({ ...r, Grantor: names.get(r.GrantorEligibleVoterID.toLowerCase()) ?? 'Unknown voter' }));
+        this.cdr.detectChanges();
     }
 
     private async LoadGrantorNames(ids: string[]): Promise<Map<string, string>> {
@@ -439,6 +443,7 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
             }
             return r;
         });
+        this.cdr.detectChanges();
     }
 
     /** Proxies exist only once designations are possible, so the panel appears after the roll is set up or any were received. */
@@ -498,6 +503,7 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
             this.LoadError = error instanceof Error ? error.message : 'The roll could not be loaded.';
         } finally {
             this.IsLoading = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -510,6 +516,7 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
             Fields: ['RollFrozenAt', 'RollHash'],
         });
         this.Roll = res.Success ? (res.Results[0] ?? null) : null;
+        this.cdr.detectChanges();
     }
 
     public async Freeze(): Promise<void> {
@@ -521,6 +528,7 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
             }
             return r;
         });
+        this.cdr.detectChanges();
     }
 
     public async SearchPeople(): Promise<void> {
@@ -551,6 +559,7 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
             this.PeopleError = error instanceof Error ? error.message : 'The search failed.';
         } finally {
             this.IsSearching = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -578,6 +587,7 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
             }
             return r;
         });
+        this.cdr.detectChanges();
     }
 
     public BeginAction(v: VoterRow, kind: 'remove' | 'challenge' | 'decide'): void {
@@ -610,6 +620,7 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
             }
             return r;
         });
+        this.cdr.detectChanges();
     }
 
     /** Runs a mutation, surfaces its failure, and on success refreshes the roll and tells the host. */
@@ -628,6 +639,7 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
             this.Changed.emit();
         } finally {
             this.IsBusy = false;
+            this.cdr.detectChanges();
         }
     }
 }

@@ -3,7 +3,7 @@
  * time (Voting.IssueCredentials). Control-number display lives in the Elections dashboard's
  * credentials tab; this panel only issues and reports counts, and links there.
  */
-import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LogError } from '@memberjunction/core';
@@ -98,6 +98,7 @@ import type { SignInMethodOption } from './distribution-editor.component';
     ],
 })
 export class CredentialIssuerComponent implements OnChanges {
+    private readonly cdr = inject(ChangeDetectorRef);
     @Input({ required: true }) ElectionID!: string;
     @Input() Methods: SignInMethodOption[] = [];
     @Input() set DefaultBaseUrl(value: string) {
@@ -146,6 +147,7 @@ export class CredentialIssuerComponent implements OnChanges {
             this.ErrorMessage = error instanceof Error ? error.message : 'Credentials could not be issued.';
         } finally {
             this.IsBusy = false;
+            this.cdr.detectChanges();
         }
     }
 }

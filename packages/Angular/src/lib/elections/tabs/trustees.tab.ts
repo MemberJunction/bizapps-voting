@@ -3,7 +3,7 @@
  * create the trustee keys behind a confirm step, and show each trustee's share exactly once.
  * The shares exist only in this component's memory; they are cleared on dismiss, election change and destroy.
  */
-import { Component, EventEmitter, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, EventEmitter, OnChanges, OnDestroy, Output, SimpleChanges, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EscapeSQLString } from '@memberjunction/global';
@@ -191,6 +191,7 @@ const PEOPLE_ENTITY = 'MJ_BizApps_Common: People';
     ],
 })
 export class TrusteesTabComponent extends BaseElectionAdminTab implements OnChanges, OnDestroy {
+    private readonly cdr = inject(ChangeDetectorRef);
     private readonly api = inject(VotingApiService);
 
     @Output() Changed = new EventEmitter<void>();
@@ -284,6 +285,7 @@ export class TrusteesTabComponent extends BaseElectionAdminTab implements OnChan
             this.LoadError = error instanceof Error ? error.message : 'Trustees could not be loaded.';
         } finally {
             this.IsLoading = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -311,6 +313,7 @@ export class TrusteesTabComponent extends BaseElectionAdminTab implements OnChan
             this.PeopleError = error instanceof Error ? error.message : 'The search failed.';
         } finally {
             this.IsSearching = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -354,15 +357,18 @@ export class TrusteesTabComponent extends BaseElectionAdminTab implements OnChan
             this.Changed.emit();
         } finally {
             this.IsBusy = false;
+            this.cdr.detectChanges();
         }
     }
 
     public async CopyShares(): Promise<void> {
         await this.WriteClipboard(this.Shares ? TrusteeSharesCsv(this.Shares) : '');
+        this.cdr.detectChanges();
     }
 
     public async CopyOne(s: TrusteeShareRow): Promise<void> {
         await this.WriteClipboard(`Share index ${s.ShareIndex}\n${s.Share}`);
+        this.cdr.detectChanges();
     }
 
     private async WriteClipboard(text: string): Promise<void> {
@@ -372,6 +378,7 @@ export class TrusteesTabComponent extends BaseElectionAdminTab implements OnChan
         } catch {
             this.CopyNote = 'Copying was blocked by the browser. Use Download CSV instead.';
         }
+        this.cdr.detectChanges();
     }
 
     /** Hands the CSV to the browser as a file. The text is built here and never leaves the page. */

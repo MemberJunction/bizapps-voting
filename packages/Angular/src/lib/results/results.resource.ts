@@ -5,7 +5,7 @@
  *
  * Deep-links with ?electionId=... (restored through OnQueryParamsChanged).
  */
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ResourceData } from '@memberjunction/core-entities';
@@ -226,6 +226,7 @@ const REFRESH_MS = 60000;
     ],
 })
 export class VotingResultsResourceComponent extends BaseResourceComponent implements OnInit, OnDestroy {
+    private readonly cdr = inject(ChangeDetectorRef);
     public Elections: ElectionPick[] = [];
     public SelectedElectionID: string | null = null;
     public IsLoadingElections = true;
@@ -255,6 +256,7 @@ export class VotingResultsResourceComponent extends BaseResourceComponent implem
             await this.SelectElection(initial, false);
         }
         this.NotifyLoadComplete();
+        this.cdr.detectChanges();
     }
 
     override ngOnDestroy(): void {
@@ -291,8 +293,9 @@ export class VotingResultsResourceComponent extends BaseResourceComponent implem
         return !!this.Results && this.Results.Visible !== false && this.ContestViews.length > 0;
     }
 
-    public async LoadElections(): Promise<void> {
-        this.IsLoadingElections = true;
+    /** `quiet` refreshes the list in place (no full-page loading state that would tear down the open election). */
+    public async LoadElections(quiet = false): Promise<void> {
+        this.IsLoadingElections = !quiet;
         this.ElectionsError = null;
         try {
             const rv = RunView.FromMetadataProvider(this.ProviderToUse);
@@ -312,6 +315,7 @@ export class VotingResultsResourceComponent extends BaseResourceComponent implem
             this.ElectionsError = error instanceof Error ? error.message : 'Elections could not be loaded.';
         } finally {
             this.IsLoadingElections = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -328,15 +332,18 @@ export class VotingResultsResourceComponent extends BaseResourceComponent implem
         if (res.Success) {
             this.StandardsElectionIDs = new Set(res.Results.map((c) => c.ElectionID.toLowerCase()));
         }
+        this.cdr.detectChanges();
     }
 
     public async OnElectionChosen(id: string | null): Promise<void> {
         await this.SelectElection(id, true);
+        this.cdr.detectChanges();
     }
 
     public async Reload(): Promise<void> {
         await this.LoadElections();
         await this.LoadResults();
+        this.cdr.detectChanges();
     }
 
     public async LoadResults(): Promise<void> {
@@ -347,6 +354,8 @@ export class VotingResultsResourceComponent extends BaseResourceComponent implem
         const token = ++this.loadToken;
         this.IsLoadingResults = true;
         this.ResultsError = null;
+        // Callers reach here after an await too (certify, the refresh timer): render the loading state now.
+        this.cdr.detectChanges();
         try {
             const [res, meta] = await Promise.all([
                 new VotingGetResultsOperation().Execute({ ElectionID: election.ID }),
@@ -378,6 +387,7 @@ export class VotingResultsResourceComponent extends BaseResourceComponent implem
             if (token === this.loadToken) {
                 this.IsLoadingResults = false;
             }
+            this.cdr.detectChanges();
         }
     }
 
@@ -386,7 +396,11 @@ export class VotingResultsResourceComponent extends BaseResourceComponent implem
     }
 
     public async OnCertified(): Promise<void> {
-        await this.LoadElections();
+        // Refresh the status chip and the (now final) results without unmounting the certification panel, so its
+        // "certified" confirmation stays on screen.
+        await this.LoadElections(true);
+        await this.LoadResults();
+        this.cdr.detectChanges();
     }
 
     public Print(): void {
@@ -422,6 +436,7 @@ export class VotingResultsResourceComponent extends BaseResourceComponent implem
         if (id) {
             await this.LoadResults();
         }
+        this.cdr.detectChanges();
     }
 
     private OrderByContestSequence(views: ReportContest[], meta: Map<string, ContestMetaWithSequence>): ReportContest[] {

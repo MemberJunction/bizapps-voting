@@ -3,7 +3,7 @@
  * type, reference, comment and proposed change, shows any existing resolution, and lets an administrator resolve a
  * comment with Voting.ResolveComment.
  */
-import { Component, Input, OnChanges, SimpleChanges, inject } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IMetadataProvider, LogError, RunView } from '@memberjunction/core';
@@ -158,6 +158,7 @@ export function DispositionLabel(value: string): string {
     ],
 })
 export class CommentsPanelComponent implements OnChanges {
+    private readonly cdr = inject(ChangeDetectorRef);
     private readonly api = inject(VotingApiService);
 
     @Input({ required: true }) ElectionID!: string;
@@ -245,6 +246,7 @@ export class CommentsPanelComponent implements OnChanges {
             this.LoadError = error instanceof Error ? error.message : 'Comments could not be loaded.';
         } finally {
             this.IsLoading = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -309,6 +311,7 @@ export class CommentsPanelComponent implements OnChanges {
             await this.Load();
         } finally {
             this.IsBusy = false;
+            this.cdr.detectChanges();
         }
     }
 }

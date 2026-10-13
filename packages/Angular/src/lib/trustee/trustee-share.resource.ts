@@ -2,7 +2,7 @@
  * VotingTrusteeShareResource — the trustee-facing page for submitting a key share.
  * Deep-links with ?electionId=...; the share is held only in the form and cleared after each attempt.
  */
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ResourceData } from '@memberjunction/core-entities';
@@ -41,6 +41,9 @@ interface ShareReceipt {
                     } @else {
                         @if (LoadError) {
                             <div class="banner banner-error" role="alert"><i class="fa-solid fa-circle-exclamation"></i><span>{{ LoadError }}</span></div>
+                        }
+                        @if (Elections.length === 0 && !LoadError) {
+                            <p class="hint empty">No high-assurance election is waiting for key shares.</p>
                         }
                         <form class="card" (ngSubmit)="Submit()">
                             <div class="field">
@@ -97,6 +100,7 @@ interface ShareReceipt {
             .input { padding: 0.45rem 0.65rem; border: 1px solid var(--mj-border-default); border-radius: 6px; background: var(--mj-bg-surface); color: var(--mj-text-primary); font: inherit; width: 100%; box-sizing: border-box; }
             .input.mono { font-family: monospace; font-size: 0.85rem; }
             .input:focus-visible { outline: 2px solid var(--mj-border-focus); outline-offset: 1px; }
+            .hint.empty { margin: 0 0 0.75rem; }
             .hint { margin: 0; font-size: 0.85rem; color: var(--mj-text-secondary); }
             .banner { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 1rem; border-radius: 8px; margin: 0 0 0.75rem; border: 1px solid transparent; }
             .banner span { flex: 1; }
@@ -107,6 +111,7 @@ interface ShareReceipt {
     ],
 })
 export class VotingTrusteeShareResourceComponent extends BaseResourceComponent implements OnInit {
+    private readonly cdr = inject(ChangeDetectorRef);
     public Elections: ElectionPick[] = [];
     public ElectionId: string | null = null;
     public ShareIndex: number | null = null;
@@ -124,6 +129,7 @@ export class VotingTrusteeShareResourceComponent extends BaseResourceComponent i
         this.ElectionId = this.GetQueryParams()['electionId'] || null;
         await this.LoadElections();
         this.NotifyLoadComplete();
+        this.cdr.detectChanges();
     }
 
     public get CanSubmit(): boolean {
@@ -135,6 +141,8 @@ export class VotingTrusteeShareResourceComponent extends BaseResourceComponent i
             const rv = RunView.FromMetadataProvider(this.ProviderToUse);
             const res = await rv.RunView<ElectionPick>({
                 EntityName: 'MJ_BizApps_Voting: Elections',
+                // Only high-assurance elections have trustees and key shares.
+                ExtraFilter: `AssuranceTier='HighAssurance' AND Status NOT IN ('Draft','Cancelled')`,
                 ResultType: 'simple',
                 Fields: ['ID', 'Name', 'Status'],
                 OrderBy: '__mj_CreatedAt DESC',
@@ -146,6 +154,7 @@ export class VotingTrusteeShareResourceComponent extends BaseResourceComponent i
             this.LoadError = error instanceof Error ? error.message : 'Elections could not be loaded.';
         } finally {
             this.IsLoading = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -171,6 +180,7 @@ export class VotingTrusteeShareResourceComponent extends BaseResourceComponent i
             // The share is never kept after an attempt.
             this.Share = '';
             this.IsBusy = false;
+            this.cdr.detectChanges();
         }
     }
 

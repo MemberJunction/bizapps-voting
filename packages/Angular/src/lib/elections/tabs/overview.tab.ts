@@ -2,7 +2,7 @@
  * OverviewTab — an election's configuration and lifecycle: details, contests, anchors, and the
  * Open / Close / Cancel actions (plus editing of the basics while the election is still being set up).
  */
-import { Component, EventEmitter, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, EventEmitter, OnChanges, Output, SimpleChanges, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LogError, RunView } from '@memberjunction/core';
@@ -81,6 +81,9 @@ const LIFECYCLE_DONE: Record<LifecycleAction, string> = {
     openNominations: 'Nominations are now open.',
     closeNominations: 'Nominations are closed; the election is Ready.',
 };
+
+const ANCHOR_ENTITY = 'MJ_BizApps_Voting: Election Anchors';
+const NOMINATION_ENTITY = 'MJ_BizApps_Voting: Nominations';
 
 const EDITABLE_STATUSES: ElectionStatus[] = ['Draft', 'Nominations', 'Ready'];
 /** Nominations can be decided until voting opens (matches the server rule). */
@@ -343,6 +346,7 @@ const UNDECIDED_NOMINATION_STATUSES = ['Submitted', 'Accepted'];
     ],
 })
 export class OverviewTabComponent extends BaseElectionAdminTab implements OnChanges {
+    private readonly cdr = inject(ChangeDetectorRef);
     private readonly api = inject(VotingApiService);
 
     /** Emits after the election's status or details changed, so the host can refresh. */
@@ -423,7 +427,15 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
 
     /** Whether the state machine allows moving to the target; 'Open' is the voting-open status. */
     public Can(target: 'Nominations' | 'Ready' | 'Open' | 'Closed' | 'Cancelled'): boolean {
-        return !!this.Election && CanTransition(this.Election.Status, target);
+        if (!this.Election) {
+            return false;
+        }
+        const status = this.Election.Status;
+        if (target === 'Open') {
+            // Mirrors Voting.OpenElection: a Draft (or Nominations) election passes through Ready on its way to Open.
+            return CanTransition(status, 'Open') || (CanTransition(status, 'Ready') && CanTransition('Ready', 'Open'));
+        }
+        return CanTransition(status, target);
     }
 
     public Ask(action: LifecycleAction): void {
@@ -441,7 +453,7 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
         this.LoadError = null;
         try {
             const rv = RunView.FromMetadataProvider(this.ProviderToUse);
-            const [e, c, a] = await rv.RunViews([
+            const [e, c] = await rv.RunViews([
                 {
                     EntityName: 'MJ_BizApps_Voting: Elections',
                     ExtraFilter: `ID='${this.ElectionID}'`,
@@ -459,16 +471,9 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
                     ResultType: 'simple',
                     Fields: ['ID', 'Name', 'Kind', 'Seats', 'TallyMethod', 'Threshold'],
                 },
-                {
-                    EntityName: 'MJ_BizApps_Voting: Election Anchors',
-                    ExtraFilter: `ElectionID='${this.ElectionID}'`,
-                    OrderBy: 'Sequence',
-                    ResultType: 'simple',
-                    Fields: ['ID', 'Entity', 'RecordID', 'Role', 'IsPrimary'],
-                },
             ]);
-            if (!e.Success || !c.Success || !a.Success) {
-                throw new Error(e.ErrorMessage || c.ErrorMessage || a.ErrorMessage || 'The election could not be loaded.');
+            if (!e.Success || !c.Success) {
+                throw new Error(e.ErrorMessage || c.ErrorMessage || 'The election could not be loaded.');
             }
             const rows = e.Results as ElectionRow[];
             this.Election = rows[0] ?? null;
@@ -476,27 +481,56 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
                 throw new Error('The election was not found, or you do not have access to it.');
             }
             this.Contests = c.Results as ContestRow[];
-            this.Anchors = a.Results as AnchorRow[];
+            this.Anchors = await this.LoadAnchors();
             await this.LoadNominations();
         } catch (error) {
             LogError('[VotingElections] Overview load failed', undefined, error);
             this.LoadError = error instanceof Error ? error.message : 'The election could not be loaded.';
         } finally {
             this.IsLoading = false;
+            this.cdr.detectChanges();
         }
+    }
+
+    /**
+     * Whether the signed-in user may read an entity. Anchors and nominations are closed to ordinary members (see the
+     * permission model), so the overview skips them for members instead of failing as a whole.
+     */
+    private CanRead(entityName: string): boolean {
+        const user = this.ProviderToUse.CurrentUser;
+        const entity = this.ProviderToUse.Entities.find((x) => x.Name === entityName);
+        return !!user && !!entity && entity.GetUserPermisions(user).CanRead;
+    }
+
+    /** The election's linked records, when the user may read them. */
+    private async LoadAnchors(): Promise<AnchorRow[]> {
+        if (!this.CanRead(ANCHOR_ENTITY)) {
+            return [];
+        }
+        const res = await RunView.FromMetadataProvider(this.ProviderToUse).RunView<AnchorRow>({
+            EntityName: ANCHOR_ENTITY,
+            ExtraFilter: `ElectionID='${this.ElectionID}'`,
+            OrderBy: 'Sequence',
+            ResultType: 'simple',
+            Fields: ['ID', 'Entity', 'RecordID', 'Role', 'IsPrimary'],
+        });
+        if (!res.Success) {
+            throw new Error(res.ErrorMessage || 'The election could not be loaded.');
+        }
+        return res.Results;
     }
 
     /** Nominations of the election's office contests. A failure shows in the panel and does not block the overview. */
     private async LoadNominations(): Promise<void> {
         this.NominationError = null;
         const officeIds = this.Contests.filter((c) => c.Kind === 'Office').map((c) => c.ID);
-        if (officeIds.length === 0) {
+        if (officeIds.length === 0 || !this.CanRead(NOMINATION_ENTITY)) {
             this.Nominations = [];
             return;
         }
         const rv = RunView.FromMetadataProvider(this.ProviderToUse);
         const res = await rv.RunView<NominationRow>({
-            EntityName: 'MJ_BizApps_Voting: Nominations',
+            EntityName: NOMINATION_ENTITY,
             ExtraFilter: `ContestID IN (${officeIds.map((id) => `'${id}'`).join(',')})`,
             OrderBy: 'SubmittedAt',
             ResultType: 'simple',
@@ -505,11 +539,13 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
         if (!res.Success) {
             this.NominationError = res.ErrorMessage || 'Nominations could not be loaded.';
             this.Nominations = [];
+            this.cdr.detectChanges();
             return;
         }
         // Keep contests in election order rather than the order nominations arrived in.
         const order = new Map(this.Contests.map((c, i) => [c.ID.toLowerCase(), i]));
         this.Nominations = [...res.Results].sort((x, y) => (order.get(x.ContestID.toLowerCase()) ?? 0) - (order.get(y.ContestID.toLowerCase()) ?? 0));
+        this.cdr.detectChanges();
     }
 
     public BeginDecision(n: NominationRow, kind: 'Approved' | 'Rejected'): void {
@@ -538,6 +574,7 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
             this.Changed.emit();
         } finally {
             this.IsBusy = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -562,6 +599,7 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
             this.Changed.emit();
         } finally {
             this.IsBusy = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -618,6 +656,7 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
             this.Changed.emit();
         } finally {
             this.IsBusy = false;
+            this.cdr.detectChanges();
         }
     }
 }

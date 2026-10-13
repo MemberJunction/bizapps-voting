@@ -2,7 +2,7 @@
  * TurnoutTab — live turnout for an election via Voting.GetTurnout. It shows counts only: no
  * results of any kind. While the election is Open it refreshes every 30 seconds.
  */
-import { Component, EventEmitter, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, EventEmitter, OnChanges, OnDestroy, Output, SimpleChanges, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SharedGenericModule } from '@memberjunction/ng-shared-generic';
 import { MJButtonDirective } from '@memberjunction/ng-ui-components';
@@ -115,6 +115,7 @@ const REFRESH_MS = 30000;
     ],
 })
 export class TurnoutTabComponent extends BaseElectionAdminTab implements OnChanges, OnDestroy {
+    private readonly cdr = inject(ChangeDetectorRef);
     private readonly api = inject(VotingApiService);
 
     @Output() Changed = new EventEmitter<void>();
@@ -165,6 +166,7 @@ export class TurnoutTabComponent extends BaseElectionAdminTab implements OnChang
             this.LastUpdated = new Date();
         } finally {
             this.IsLoading = false;
+            this.cdr.detectChanges();
         }
     }
 

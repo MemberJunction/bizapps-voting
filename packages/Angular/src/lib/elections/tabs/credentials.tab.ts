@@ -3,7 +3,7 @@
  * the issuance log. The log never carries secrets: it lists method, timing and state only (the
  * stored control-number and secret hashes are not even requested).
  */
-import { Component, EventEmitter, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, EventEmitter, OnChanges, OnDestroy, Output, SimpleChanges, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LogError, RunView } from '@memberjunction/core';
@@ -284,6 +284,7 @@ const VOTER_ENTITY = 'MJ_BizApps_Voting: Eligible Voters';
     ],
 })
 export class CredentialsTabComponent extends BaseElectionAdminTab implements OnChanges, OnDestroy {
+    private readonly cdr = inject(ChangeDetectorRef);
     private readonly api = inject(VotingApiService);
 
     @Output() Changed = new EventEmitter<void>();
@@ -337,6 +338,7 @@ export class CredentialsTabComponent extends BaseElectionAdminTab implements OnC
 
     private async Init(): Promise<void> {
         await Promise.all([this.LoadMethods(), this.LoadBaseUrl(), this.LoadLog()]);
+        this.cdr.detectChanges();
     }
 
     private async LoadMethods(): Promise<void> {
@@ -349,6 +351,7 @@ export class CredentialsTabComponent extends BaseElectionAdminTab implements OnC
             LogError('[VotingElections] Failed to load sign-in methods', undefined, error);
             this.Methods = [];
         }
+        this.cdr.detectChanges();
     }
 
     private async LoadBaseUrl(): Promise<void> {
@@ -364,6 +367,7 @@ export class CredentialsTabComponent extends BaseElectionAdminTab implements OnC
         const dist = res.Success ? (res.Results.find((d) => d.Status === 'Active') ?? res.Results[0]) : undefined;
         this.SlugFound = !!dist;
         this.BaseUrl = dist ? `${origin}/vote/${encodeURIComponent(dist.Slug)}` : `${origin}/vote`;
+        this.cdr.detectChanges();
     }
 
     public GoTo(page: number): void {
@@ -407,6 +411,7 @@ export class CredentialsTabComponent extends BaseElectionAdminTab implements OnC
             this.LogError = error instanceof Error ? error.message : 'The issuance log could not be loaded.';
         } finally {
             this.IsLoading = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -470,6 +475,7 @@ export class CredentialsTabComponent extends BaseElectionAdminTab implements OnC
             this.Changed.emit();
         } finally {
             this.IssuingCode = null;
+            this.cdr.detectChanges();
         }
     }
     public AskSecrets(kind: SecretKind): void {
@@ -504,6 +510,7 @@ export class CredentialsTabComponent extends BaseElectionAdminTab implements OnC
             this.Changed.emit();
         } finally {
             this.IssuingSecrets = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -519,6 +526,7 @@ export class CredentialsTabComponent extends BaseElectionAdminTab implements OnC
         } catch {
             this.CopyNote = 'Copying was blocked by the browser. Use Download CSV instead.';
         }
+        this.cdr.detectChanges();
     }
 
     /** Hands the CSV to the browser as a file. The text is built here and never leaves the page. */

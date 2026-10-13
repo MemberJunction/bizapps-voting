@@ -6,7 +6,7 @@
  * Steps are assembled through the voting-ng-widgets contribution assembly (the type's UI driver can replace
  * or add steps; other apps can add steps), so the step list is data, not a fixed template.
  */
-import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IMetadataProvider, LogError } from '@memberjunction/core';
@@ -443,7 +443,7 @@ const FIELD_LABELS: Record<string, [string, PolicyField['Control'], string]> = {
                             <ul>
                                 @for (c of Draft.Contests; track $index) {
                                     <li>
-                                        <strong>{{ c.Name }}</strong> ({{ c.Kind }}, {{ c.Seats }} {{ c.Seats === 1 ? 'seat' : 'seats' }}, {{ c.TallyMethodCode }}):
+                                        <strong>{{ c.Name }}</strong> ({{ c.Kind }}, {{ c.Seats }} {{ c.Seats === 1 ? 'seat' : 'seats' }}, {{ TallyName(c.TallyMethodCode) }}):
                                         {{ OptionList(c) }}
                                     </li>
                                 }
@@ -535,6 +535,7 @@ const FIELD_LABELS: Record<string, [string, PolicyField['Control'], string]> = {
     ],
 })
 export class ElectionWizardComponent implements OnInit {
+    private readonly cdr = inject(ChangeDetectorRef);
     private readonly api = inject(VotingApiService);
 
     @Input({ required: true }) Provider!: IMetadataProvider;
@@ -587,6 +588,7 @@ export class ElectionWizardComponent implements OnInit {
             this.LoadError = error instanceof Error ? error.message : 'The wizard could not be loaded.';
         } finally {
             this.IsLoading = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -642,6 +644,11 @@ export class ElectionWizardComponent implements OnInit {
 
     public HasWriteInOption(c: ContestDraft): boolean {
         return c.Options.some((o) => o.IsWriteIn);
+    }
+
+    /** The tally method's display name (the code only when the method is unknown). */
+    public TallyName(code: string): string {
+        return this.TallyChoices.find((m) => m.Code === code)?.Name ?? code;
     }
 
     public OptionList(c: ContestDraft): string {
@@ -812,6 +819,7 @@ export class ElectionWizardComponent implements OnInit {
         if (file) {
             this.Draft.CsvText = await file.text();
         }
+        this.cdr.detectChanges();
     }
 
     // -- navigation ----------------------------------------------------------------------------------------------
@@ -898,6 +906,7 @@ export class ElectionWizardComponent implements OnInit {
             this.Created.emit(result.Output.ElectionID);
         } finally {
             this.IsCreating = false;
+            this.cdr.detectChanges();
         }
     }
 }

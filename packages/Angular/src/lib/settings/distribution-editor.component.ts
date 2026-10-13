@@ -3,7 +3,7 @@
  * object directly (list/create/edit/retire all go through Save()), validating each field before
  * the entity is touched.
  */
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IMetadataProvider, LogError, RunView } from '@memberjunction/core';
@@ -203,6 +203,7 @@ interface FieldErrors {
     ],
 })
 export class DistributionEditorComponent implements OnChanges {
+    private readonly cdr = inject(ChangeDetectorRef);
     /** The distribution to edit, or a freshly created (NewRecord) entity for create. */
     @Input({ required: true }) Distribution!: mjBizAppsVotingBallotDistributionEntity;
     @Input() IsNew = false;
@@ -301,6 +302,7 @@ export class DistributionEditorComponent implements OnChanges {
             this.SaveError = error instanceof Error ? error.message : 'The distribution could not be saved.';
         } finally {
             this.IsSaving = false;
+            this.cdr.detectChanges();
         }
     }
 

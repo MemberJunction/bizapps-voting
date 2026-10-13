@@ -8,7 +8,7 @@
  *
  * State round-trips through query params: ?electionId=...&tab=...&wizard=1 (restored in OnQueryParamsChanged).
  */
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ResourceData } from '@memberjunction/core-entities';
@@ -24,9 +24,8 @@ import {
 } from '@memberjunction/ng-ui-components';
 import type { ElectionAdminTabDescriptor, ElectionUIContext } from '@mj-biz-apps/voting-ng-widgets';
 import { VotingEngineBase } from '@mj-biz-apps/voting-engine-base';
-import { inject } from '@angular/core';
 import { StatusChipComponent } from '../shared/status-chip.component';
-import { HasVotingPrivilege } from '../results/op-result';
+import { HasVotingAdministratorRole, HasVotingPrivilege } from '../results/op-result';
 import { ContributionHostComponent, type HostedContribution } from './contribution-host.component';
 import { AssembleAdminTabs, ResolveTabComponent } from './election-parts';
 import { ElectionWizardComponent } from './election-wizard.component';
@@ -36,6 +35,11 @@ type ElectionStatus = 'Draft' | 'Nominations' | 'Ready' | 'Open' | 'Closed' | 'T
 
 const STATUSES: ElectionStatus[] = ['Draft', 'Nominations', 'Ready', 'Open', 'Closed', 'Tallied', 'Certified', 'Cancelled'];
 const ELECTION_ENTITY = 'MJ_BizApps_Voting: Elections';
+
+/** Built-in tabs that only a voting administrator can use (credentials, paper entry, the key ceremony). */
+const ADMIN_ONLY_TABS = ['credentials', 'paper', 'trustees'];
+/** Built-in tabs that read data only administrators and inspectors may see (roll, poll book, tally). */
+const OBSERVER_TABS = ['roll', 'turnout', 'tally'];
 
 interface ElectionListItem {
     ID: string;
@@ -250,6 +254,7 @@ interface TabView {
     ],
 })
 export class VotingElectionsResource extends BaseResourceComponent implements OnInit {
+    private readonly cdr = inject(ChangeDetectorRef);
     private readonly navService = inject(NavigationService, { optional: true });
 
     public readonly Statuses = STATUSES;
@@ -272,13 +277,17 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
     public ActiveTab = 'overview';
 
     public IsAdministrator = false;
+    /** Administrator or inspector: may see the roll, turnout and tally tabs (the server enforces the real check). */
+    public IsObserver = false;
 
     override async ngOnInit(): Promise<void> {
         super.ngOnInit();
         this.IsAdministrator = this.ComputeIsAdministrator();
+        this.IsObserver = this.IsAdministrator || this.ComputeIsObserver();
         await this.LoadElections();
         await this.ApplyParams(this.GetQueryParams());
         this.NotifyLoadComplete();
+        this.cdr.detectChanges();
     }
 
     protected override OnQueryParamsChanged(params: Record<string, string>, _source: 'popstate' | 'deeplink'): void {
@@ -337,6 +346,7 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
         if (this.SelectedId) {
             await this.LoadSelected();
         }
+        this.cdr.detectChanges();
     }
 
     private async LoadElections(): Promise<void> {
@@ -362,6 +372,7 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
             this.LoadError = error instanceof Error ? error.message : 'Elections could not be loaded.';
         } finally {
             this.IsLoading = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -400,6 +411,7 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
             this.DetailError = error instanceof Error ? error.message : 'The election could not be loaded.';
         } finally {
             this.IsLoadingDetail = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -417,6 +429,8 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
         // The key ceremony applies only to high-assurance elections.
         return AssembleAdminTabs(ctx, type?.UIDriverClass ?? null)
             .filter((d) => d.key !== 'trustees' || election.AssuranceTier === 'HighAssurance')
+            .filter((d) => this.IsAdministrator || !ADMIN_ONLY_TABS.includes(d.key))
+            .filter((d) => this.IsObserver || !OBSERVER_TABS.includes(d.key))
             .map((d) => ({ Descriptor: d, Component: ResolveTabComponent(d) }));
     }
 
@@ -440,6 +454,7 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
         } else if (!this.WizardOpen && id && tab && tab !== this.ActiveTab) {
             this.ActiveTab = tab;
         }
+        this.cdr.detectChanges();
     }
 
     public Select(id: string): void {
@@ -488,11 +503,13 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
         this.UpdateQueryParams({ wizard: null, electionId, tab: null });
         this.ActiveTab = 'overview';
         await this.ApplyParams({ electionId });
+        this.cdr.detectChanges();
     }
 
     public async OnTabChanged(): Promise<void> {
         await this.LoadElections();
         await this.LoadSelected();
+        this.cdr.detectChanges();
     }
 
     public OpenRecord(): void {
@@ -501,10 +518,19 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
         }
     }
 
+    /** Voting administrators (and the platform owner) run elections; inspectors only observe. */
     private ComputeIsAdministrator(): boolean {
         try {
             const user = this.ProviderToUse.CurrentUser;
-            return HasVotingPrivilege((user?.UserRoles ?? []).map((r) => r.Role)) || user?.Type === 'Owner';
+            return HasVotingAdministratorRole((user?.UserRoles ?? []).map((r) => r.Role)) || user?.Type === 'Owner';
+        } catch {
+            return false;
+        }
+    }
+
+    private ComputeIsObserver(): boolean {
+        try {
+            return HasVotingPrivilege((this.ProviderToUse.CurrentUser?.UserRoles ?? []).map((r) => r.Role));
         } catch {
             return false;
         }

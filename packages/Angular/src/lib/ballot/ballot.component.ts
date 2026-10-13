@@ -6,8 +6,9 @@
  * receipt (and, when the election allows, a way to change their vote) plus results when
  * Voting.GetResults says they are visible.
  */
-import { Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { LogError } from '@memberjunction/core';
 import { MJButtonDirective } from '@memberjunction/ng-ui-components';
 import { SharedGenericModule } from '@memberjunction/ng-shared-generic';
@@ -48,7 +49,8 @@ const SECRECY_TEXT: Record<string, string> = {
 @Component({
     selector: 'mj-voting-explorer-ballot',
     standalone: true,
-    imports: [CommonModule, MJButtonDirective, SharedGenericModule, BallotContestComponent, ContestOutcomeComponent, ReceiptVerifyComponent],
+    // FormsModule: the ballot is a <form (ngSubmit)>; without NgForm the submit is a native one that reloads the page.
+    imports: [CommonModule, FormsModule, MJButtonDirective, SharedGenericModule, BallotContestComponent, ContestOutcomeComponent, ReceiptVerifyComponent],
     template: `
         <div class="ballot" #root>
             <div class="sr-only" aria-live="polite" role="status">{{ Announcement }}</div>
@@ -285,6 +287,7 @@ const SECRECY_TEXT: Record<string, string> = {
     ],
 })
 export class VotingExplorerBallotComponent implements OnChanges {
+    private readonly cdr = inject(ChangeDetectorRef);
     /** The election the signed-in user is voting in. */
     @Input() electionId: string | null = null;
     /** Emits the receipt code after a ballot is recorded. */
@@ -317,6 +320,7 @@ export class VotingExplorerBallotComponent implements OnChanges {
         if (changes['electionId']) {
             await this.Load();
         }
+        this.cdr.detectChanges();
     }
 
     public get SecrecyText(): string {
@@ -394,18 +398,21 @@ export class VotingExplorerBallotComponent implements OnChanges {
         try {
             const res = await new VotingGetMyBallotOperation().Execute({ ElectionID: electionId });
             if (this.electionId !== electionId) {
+                this.cdr.detectChanges();
                 return; // selection changed while loading
             }
             const unwrapped = UnwrapOperation<VotingGetMyBallotOutput>(res, 'Your ballot could not be loaded.');
             if (unwrapped.Error || !unwrapped.Output) {
                 this.ErrorMessage = unwrapped.Error;
                 this.SetStep(this.LooksLikeNoBallot(unwrapped.Error) ? 'closed' : 'error', 'Your ballot could not be loaded.');
+                this.cdr.detectChanges();
                 return;
             }
             const out = unwrapped.Output;
             if (!out.Style) {
                 this.ErrorMessage = out.Message ?? 'There is no ballot for you in this election.';
                 this.SetStep('closed', this.ErrorMessage);
+                this.cdr.detectChanges();
                 return;
             }
             this.Style = out.Style;
@@ -424,6 +431,7 @@ export class VotingExplorerBallotComponent implements OnChanges {
             this.ErrorMessage = error instanceof Error ? error.message : 'Your ballot could not be loaded.';
             this.SetStep('error', this.ErrorMessage);
         }
+        this.cdr.detectChanges();
     }
 
     public StartRevote(): void {
@@ -490,6 +498,7 @@ export class VotingExplorerBallotComponent implements OnChanges {
             this.CastError = error instanceof Error ? error.message : 'Your ballot could not be cast.';
         } finally {
             this.IsCasting = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -534,6 +543,7 @@ export class VotingExplorerBallotComponent implements OnChanges {
             this.Results = null;
         } finally {
             this.ResultsLoading = false;
+            this.cdr.detectChanges();
         }
     }
 

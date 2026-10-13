@@ -2,7 +2,7 @@
  * EmbedSnippetsComponent — copy-ready embed code for a ballot distribution: the custom element
  * (script tag + <mj-ballot>) and the iframe fallback, built from the API origin.
  */
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MJButtonDirective } from '@memberjunction/ng-ui-components';
 
@@ -67,6 +67,7 @@ interface Snippet {
     ],
 })
 export class EmbedSnippetsComponent {
+    private readonly cdr = inject(ChangeDetectorRef);
     @Input({ required: true }) Slug!: string;
     /** Origin of the MJ API that serves the ballot edge, e.g. https://api.example.org. */
     @Input({ required: true }) ApiOrigin!: string;
@@ -115,5 +116,6 @@ export class EmbedSnippetsComponent {
         } catch {
             this.CopyFailed = true;
         }
+        this.cdr.detectChanges();
     }
 }

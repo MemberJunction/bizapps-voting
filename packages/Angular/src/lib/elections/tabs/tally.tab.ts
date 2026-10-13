@@ -2,7 +2,7 @@
  * TallyTab — Close & Tally: closes voting, runs the tally (with an optional seed so tie-breaks by lot
  * are reproducible) and shows the per-contest outcome. Re-tallying is allowed until certification.
  */
-import { Component, EventEmitter, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, EventEmitter, OnChanges, Output, SimpleChanges, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LogError } from '@memberjunction/core';
@@ -118,6 +118,7 @@ interface TallyView {
     ],
 })
 export class TallyTabComponent extends BaseElectionAdminTab implements OnChanges {
+    private readonly cdr = inject(ChangeDetectorRef);
     private readonly api = inject(VotingApiService);
     private readonly navService = inject(NavigationService, { optional: true });
 
@@ -181,6 +182,7 @@ export class TallyTabComponent extends BaseElectionAdminTab implements OnChanges
             this.Changed.emit();
         } finally {
             this.IsBusy = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -199,6 +201,7 @@ export class TallyTabComponent extends BaseElectionAdminTab implements OnChanges
             this.Changed.emit();
         } finally {
             this.IsBusy = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -212,6 +215,7 @@ export class TallyTabComponent extends BaseElectionAdminTab implements OnChanges
             LogError('[VotingElections] Failed to load contest details for the tally', undefined, error);
             this.Views = outcomes.map((o) => ({ Meta: FallbackContestMeta(o.ContestID), Outcome: o }));
         }
+        this.cdr.detectChanges();
     }
 
     public OpenResults(): void {

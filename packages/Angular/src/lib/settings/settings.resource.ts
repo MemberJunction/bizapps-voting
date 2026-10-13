@@ -4,7 +4,7 @@
  *
  * Deep-links with ?electionId=... (restored through OnQueryParamsChanged).
  */
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ResourceData } from '@memberjunction/core-entities';
@@ -26,6 +26,7 @@ import { DistributionEditorComponent, type SignInMethodOption } from './distribu
 import { EmbedSnippetsComponent } from './embed-snippets.component';
 import { CredentialIssuerComponent } from './credential-issuer.component';
 import { ParseJsonStringArray } from './distribution-validation';
+import { HasVotingAdministratorRole } from '../results/op-result';
 
 type ElectionStatus = 'Draft' | 'Nominations' | 'Ready' | 'Open' | 'Closed' | 'Tallied' | 'Certified' | 'Cancelled';
 
@@ -58,18 +59,25 @@ const ELECTION_ENTITY = 'MJ_BizApps_Voting: Elections';
     template: `
         <mj-page-layout>
             <mj-page-header Title="Settings" Icon="fa-solid fa-sliders" Subtitle="Ballot distributions, embedding and voter credentials">
-                <div actions>
-                    <button type="button" mjButton variant="secondary" size="sm" (click)="Reload()" [disabled]="IsLoading">
-                        <i class="fa-solid fa-arrows-rotate" [class.fa-spin]="IsLoading"></i> Refresh
-                    </button>
-                    <button type="button" mjButton variant="primary" size="sm" (click)="StartCreate()" [disabled]="!SelectedElection || EditorOpen">
-                        <i class="fa-solid fa-plus"></i> New distribution
-                    </button>
-                </div>
+                @if (IsAdministrator) {
+                    <div actions>
+                        <button type="button" mjButton variant="secondary" size="sm" (click)="Reload()" [disabled]="IsLoading">
+                            <i class="fa-solid fa-arrows-rotate" [class.fa-spin]="IsLoading"></i> Refresh
+                        </button>
+                        <button type="button" mjButton variant="primary" size="sm" (click)="StartCreate()" [disabled]="!SelectedElection || EditorOpen">
+                            <i class="fa-solid fa-plus"></i> New distribution
+                        </button>
+                    </div>
+                }
             </mj-page-header>
 
             <mj-page-body [Padding]="true">
-                @if (IsLoading && Elections.length === 0) {
+                @if (!IsAdministrator) {
+                    <div class="state-box empty" role="status">
+                        <i class="fa-solid fa-lock"></i>
+                        <p>Ballot distributions, embedding and voter credentials are managed by voting administrators.</p>
+                    </div>
+                } @else if (IsLoading && Elections.length === 0) {
                     <div class="state-box"><mj-loading text="Loading settings..." size="large"></mj-loading></div>
                 } @else if (LoadError) {
                     <div class="banner banner-error" role="alert">
@@ -237,6 +245,7 @@ const ELECTION_ENTITY = 'MJ_BizApps_Voting: Elections';
     ],
 })
 export class VotingSettingsResourceComponent extends BaseResourceComponent implements OnInit {
+    private readonly cdr = inject(ChangeDetectorRef);
     private readonly navService = inject(NavigationService, { optional: true });
 
     public readonly UUIDsEqual = UUIDsEqual;
@@ -263,20 +272,39 @@ export class VotingSettingsResourceComponent extends BaseResourceComponent imple
 
     private loadToken = 0;
 
+    /** Only voting administrators manage distributions and credentials (the server enforces the real check). */
+    public IsAdministrator = false;
+
     override async ngOnInit(): Promise<void> {
         super.ngOnInit();
+        this.IsAdministrator = this.ComputeIsAdministrator();
+        if (!this.IsAdministrator) {
+            this.IsLoading = false;
+            this.NotifyLoadComplete();
+            return;
+        }
         await this.LoadAll();
         const initial = this.GetQueryParams()['electionId'];
         if (initial) {
             await this.SelectElection(initial, false);
         }
         this.NotifyLoadComplete();
+        this.cdr.detectChanges();
     }
 
     protected override OnQueryParamsChanged(params: Record<string, string>, _source: 'popstate' | 'deeplink'): void {
         const id = params['electionId'] || null;
-        if (id !== this.SelectedElectionID) {
+        if (this.IsAdministrator && id !== this.SelectedElectionID) {
             void this.SelectElection(id, false);
+        }
+    }
+
+    private ComputeIsAdministrator(): boolean {
+        try {
+            const user = this.ProviderToUse.CurrentUser;
+            return HasVotingAdministratorRole((user?.UserRoles ?? []).map((r) => r.Role)) || user?.Type === 'Owner';
+        } catch {
+            return false;
         }
     }
 
@@ -299,10 +327,12 @@ export class VotingSettingsResourceComponent extends BaseResourceComponent imple
         if (this.SelectedElectionID) {
             await this.LoadDistributions();
         }
+        this.cdr.detectChanges();
     }
 
     public async OnElectionChosen(id: string | null): Promise<void> {
         await this.SelectElection(id, true);
+        this.cdr.detectChanges();
     }
 
     public StatusClass(status: string): string {
@@ -349,6 +379,7 @@ export class VotingSettingsResourceComponent extends BaseResourceComponent imple
             LogError('[VotingSettings] Failed to start a new distribution', undefined, error);
             this.ActionError = error instanceof Error ? error.message : 'A new distribution could not be started.';
         }
+        this.cdr.detectChanges();
     }
 
     public StartEdit(d: mjBizAppsVotingBallotDistributionEntity): void {
@@ -374,6 +405,7 @@ export class VotingSettingsResourceComponent extends BaseResourceComponent imple
         this.EditingEntity = null;
         await this.LoadDistributions();
         this.SnippetFor = this.Distributions.find((d) => UUIDsEqual(d.ID, saved.ID)) ?? this.SnippetFor;
+        this.cdr.detectChanges();
     }
 
     public async Retire(d: mjBizAppsVotingBallotDistributionEntity): Promise<void> {
@@ -394,6 +426,7 @@ export class VotingSettingsResourceComponent extends BaseResourceComponent imple
             this.ActionError = error instanceof Error ? error.message : 'The distribution could not be retired.';
         } finally {
             this.IsRetiring = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -434,6 +467,7 @@ export class VotingSettingsResourceComponent extends BaseResourceComponent imple
             this.LoadError = error instanceof Error ? error.message : 'Settings could not be loaded.';
         } finally {
             this.IsLoading = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -451,6 +485,7 @@ export class VotingSettingsResourceComponent extends BaseResourceComponent imple
         if (id) {
             await this.LoadDistributions();
         }
+        this.cdr.detectChanges();
     }
 
     private async LoadDistributions(): Promise<void> {
@@ -491,6 +526,7 @@ export class VotingSettingsResourceComponent extends BaseResourceComponent imple
             if (token === this.loadToken) {
                 this.IsLoadingDistributions = false;
             }
+            this.cdr.detectChanges();
         }
     }
 

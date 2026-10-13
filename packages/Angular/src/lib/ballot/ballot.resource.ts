@@ -2,7 +2,7 @@
  * VotingBallotResource — hosts the Explorer ballot for the signed-in user. Deep-links with
  * ?electionId=...; without one it lists the open elections the user can vote in.
  */
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ResourceData } from '@memberjunction/core-entities';
 import { RegisterClass } from '@memberjunction/global';
@@ -16,6 +16,7 @@ import {
     MJButtonDirective,
 } from '@memberjunction/ng-ui-components';
 import { VotingExplorerBallotComponent } from './ballot.component';
+import { VotingApiService } from '../shared/voting-api.service';
 
 interface OpenElection {
     ID: string;
@@ -23,6 +24,14 @@ interface OpenElection {
     Description: string | null;
     ClosesAt: string | null;
 }
+
+/** An open election the signed-in user can vote in; `HasVoted` is null when participation could not be checked. */
+interface MyOpenElection extends OpenElection {
+    HasVoted: boolean | null;
+}
+
+/** How many participation checks run at once while building the list. */
+const PARTICIPATION_CONCURRENCY = 6;
 
 @RegisterClass(BaseResourceComponent, 'VotingBallotResource')
 @Component({
@@ -63,7 +72,7 @@ interface OpenElection {
                 } @else if (OpenElections.length === 0) {
                     <div class="state-box empty">
                         <i class="fa-solid fa-box-open"></i>
-                        <p>There are no open elections right now.</p>
+                        <p>There are no open elections you can vote in right now.</p>
                     </div>
                 } @else {
                     <ul class="election-list" aria-label="Open elections">
@@ -77,9 +86,12 @@ interface OpenElection {
                                     @if (e.ClosesAt) {
                                         <p class="muted small"><i class="fa-solid fa-clock"></i> Closes {{ e.ClosesAt | date: 'medium' }}</p>
                                     }
+                                    @if (e.HasVoted) {
+                                        <p class="voted small"><i class="fa-solid fa-circle-check"></i> You have voted</p>
+                                    }
                                 </div>
-                                <button type="button" mjButton variant="primary" size="sm" (click)="Open(e.ID)">
-                                    <i class="fa-solid fa-check-to-slot"></i> Open ballot
+                                <button type="button" mjButton [variant]="e.HasVoted ? 'secondary' : 'primary'" size="sm" (click)="Open(e.ID)" [attr.aria-label]="(e.HasVoted ? 'View your receipt for ' : 'Open ballot for ') + e.Name">
+                                    <i class="fa-solid" [class.fa-check-to-slot]="!e.HasVoted" [class.fa-receipt]="e.HasVoted"></i> {{ e.HasVoted ? 'View receipt' : 'Open ballot' }}
                                 </button>
                             </li>
                         }
@@ -102,12 +114,15 @@ interface OpenElection {
             .election p { margin: 0.25rem 0 0; }
             .muted { color: var(--mj-text-muted); }
             .small { font-size: 0.85rem; }
+            .voted { color: var(--mj-status-success-text); margin: 0.25rem 0 0; }
         `,
     ],
 })
 export class VotingBallotResourceComponent extends BaseResourceComponent implements OnInit {
+    private readonly cdr = inject(ChangeDetectorRef);
     public ElectionId: string | null = null;
-    public OpenElections: OpenElection[] = [];
+    public OpenElections: MyOpenElection[] = [];
+    private readonly api = inject(VotingApiService);
     public IsLoading = false;
     public LoadError: string | null = null;
 
@@ -118,6 +133,7 @@ export class VotingBallotResourceComponent extends BaseResourceComponent impleme
             await this.LoadOpenElections();
         }
         this.NotifyLoadComplete();
+        this.cdr.detectChanges();
     }
 
     protected override OnQueryParamsChanged(params: Record<string, string>, _source: 'popstate' | 'deeplink'): void {
@@ -156,13 +172,36 @@ export class VotingBallotResourceComponent extends BaseResourceComponent impleme
             if (!res.Success) {
                 throw new Error(res.ErrorMessage || 'Open elections could not be loaded.');
             }
-            this.OpenElections = res.Results;
+            this.OpenElections = await this.OnlyMine(res.Results);
         } catch (error) {
             LogError('[VotingBallot] Failed to load open elections', undefined, error);
             this.LoadError = error instanceof Error ? error.message : 'Open elections could not be loaded.';
         } finally {
             this.IsLoading = false;
+            this.cdr.detectChanges();
         }
+    }
+
+    /**
+     * Keeps the elections the signed-in user is on the roll for. Members can read every election whose roll is frozen,
+     * so the open list alone would offer ballots the user cannot cast. Participation is checked per election (the voter
+     * operation authorizes against the roll); an election whose check fails for another reason stays listed.
+     */
+    private async OnlyMine(elections: OpenElection[]): Promise<MyOpenElection[]> {
+        const out: Array<MyOpenElection | null> = new Array<MyOpenElection | null>(elections.length).fill(null);
+        let next = 0;
+        const worker = async (): Promise<void> => {
+            for (let i = next++; i < elections.length; i = next++) {
+                const r = await this.api.GetMyParticipation({ ElectionID: elections[i].ID });
+                if (r.Success) {
+                    out[i] = { ...elections[i], HasVoted: r.Output?.HasVoted === true };
+                } else if (!r.Output) {
+                    out[i] = { ...elections[i], HasVoted: null };
+                }
+            }
+        };
+        await Promise.all(Array.from({ length: Math.min(PARTICIPATION_CONCURRENCY, elections.length) }, worker));
+        return out.filter((e): e is MyOpenElection => e !== null);
     }
 
     async GetResourceDisplayName(_data: ResourceData): Promise<string> {

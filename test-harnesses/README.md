@@ -88,11 +88,54 @@ Needs the built `IntegrationTests` package (`pnpm wire:provision` builds it), th
 | `csp` | host-page CSP/headers, bundle headers, injected inline script blocked |
 | `receipt` | the element has no verification UI; the shown code verifies over the wire |
 
-## Explorer browser tier (`test-harnesses/explorer-live.mjs`, STARTED)
+## Explorer browser tier (`test-harnesses/explorer-live.mjs`)
 
 Drives the Voting screens inside MJ Explorer in headless Chrome. Explorer runs from the MJ checkout with a local-only `voting`
 build/serve configuration (`MJ/packages/MJExplorer/angular.json`, `src/environments/environment.voting.ts`: GraphQL -> :4105,
-`AUTH_TYPE: 'magic-link'`) and `@mj-biz-apps/voting-ng` in `MJ/mj.config.cjs` `dynamicPackages.client`. Session tokens come from the
-real invite flow (`CreateExplorerMagicLink`). Run: `VOTING_WIRE_PORT=4105 node test-harnesses/explorer-live.mjs`.
-Currently only the shell-bootstrap gate exists; it reports BLOCKED while external magic-link roles lack the entity permissions the
-Explorer shell needs (see the build notes).
+`AUTH_TYPE: 'magic-link'`) and `@mj-biz-apps/voting-ng` in `MJ/mj.config.cjs` `dynamicPackages.client`.
+
+Every scenario signs a **provisioned persona** (`admin`, `inspector`, `member1`.., `trustee1`..) into Explorer through MJ's real
+invite flow (`CreateExplorerMagicLink`; the role is `Voting Administrator` / `Election Inspector` / `UI`). That needs the host
+started with `VOTING_TEST_HOST_RELAX_MAGIC_LINK=1` (test host only: `UI` becomes grantable and the provisioning guard warns
+instead of blocking) and `VOTING_WIRE_EXPLORER_URL`. Each scenario drives the real UI, then proves the outcome **over the wire**
+with the persona's own API key or the system key. Every page asserts zero page errors, console errors and failed responses;
+the only tolerated noise is listed in `ENVIRONMENT_NOISE` with its reason (the M5 shell also loads the Orders app's client
+code, whose `Event Products` reads 400 against this voting-only host).
+
+```bash
+VOTING_TEST_HOST_RELAX_MAGIC_LINK=1 VOTING_WIRE_EXPLORER_URL=http://localhost:4304 VOTING_WIRE_PORT=4105 \
+  VOTING_WIRE_RUN_DIR=$PWD/tmp/c2 node test-harnesses/host.mjs start
+(in MJ/packages/MJExplorer)  ng serve --configuration voting --port 4304
+pnpm --filter @mj-biz-apps/voting-integration-tests run build
+VOTING_WIRE_PORT=4105 node test-harnesses/explorer-live.mjs            # everything (~5 min); exit 0 = all green
+VOTING_WIRE_PORT=4105 node test-harnesses/explorer-live.mjs flow       # the flow story only
+```
+
+Screenshots go to `tmp/explorer-shots` (`SHOT_DIR` overrides): named shots per step plus `end-<scenario>-<persona>.png`, the last
+state of every page, which is the first thing to read when a scenario fails. The `flow-*` scenarios are one story sharing the
+elections the wizard creates; `deeplinks` and `settings` reuse the newest certified `XP motion` / `XP board` when run alone.
+
+| Id | Persona(s) | Covers (UI, then wire) |
+|---|---|---|
+| `shell-admin` `shell-inspector` `shell-member1` | each | shell boots into the Voting app, every nav item, "New election" only for the administrator |
+| `external-limited` | new external email | a magic link granting `Voting Administrator` to an unknown email yields MJ's restricted shell ("No Applications Available"), no Voting nav |
+| `flow-motion` | admin | wizard: Motion type, details, contest, inline CSV roll, review, create; Roll tab freeze; Overview "Open voting". Wire: name, Draft, contest kind, Yes/No options, unfrozen draft invisible to a member, frozen roll of 3, Open |
+| `flow-board` | admin | wizard: Board Election, Office contest with 2 seats / max 2 and 3 candidates; freeze; open. Wire: kind, seats, candidates |
+| `flow-draft-hidden` | member1 | an unfrozen draft is absent from Elections search, My Ballot and the Results picker; wire read (server RLS) returns nothing |
+| `flow-member-vote` | member1 | My Ballot list -> ballot -> Yes -> review -> cast -> receipt; refresh shows "already voted". Wire: HasVoted, receipt verifies, turnout 1 |
+| `flow-member-board` | member2, member4 | two directors cast; the list then shows "You have voted" + "View receipt". member4 (not on the roll) is not offered it; wire GetMyBallot refuses |
+| `flow-member-rls` | member1 | member sees only Overview + Certification tabs and no lifecycle buttons; Settings is an administrators-only notice; open election's results hidden on screen and over the wire |
+| `flow-close-tally` | admin, inspector | Close & Tally: close, tally (wire: Closed, Tallied); the inspector gets no close/tally actions |
+| `flow-certify` | inspector | Results & Certification: certify both elections, confirmation shown. Wire: a Certified certification, election Certified |
+| `flow-member-results` | member1 | certified outcomes (motion, board candidates) on screen; wire GetResults visible to the member |
+| `lists` | admin | Elections search, status filter, type filter, clear, "no match"; every count equals the wire count (needs a quiet database: run it apart from tiers that create elections) |
+| `deeplinks` | admin | selections write `electionId` / `tab` / `wizard` to the URL; refresh restores election + tab, Results selection and the wizard; back/forward walk tabs |
+| `election-types` | admin | catalog loads, counts match the wire, configuration expands, every section tab |
+| `settings` | admin | create, edit and retire a ballot distribution (each proven over the wire); embed snippet shows the slug |
+| `trustee-share` | trustee1, trustee2 | high-assurance election (ceremony + votes + close over the wire); each trustee submits a share on Trustee Share, the form clears; wire tally succeeds with 2 of 3 shares |
+
+Known MJ-shell behaviour (not Voting): on a cold page load Explorer restores an already-open tab from the **saved workspace**,
+not from the URL's query params, and saves the workspace a few seconds after a change. A pasted deep link into a tab the user
+already has open keeps the old selection, and a refresh within ~5 s of a change comes back one step behind. The harness
+navigates through the UI and waits out the save before refreshing (`XP_RELOAD_WAIT`, default 6000 ms). Explorer also persists
+each persona's workspace server side, so runs leave tabs in the personas' workspaces (the harness normalizes its landing view).
