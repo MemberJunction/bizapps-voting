@@ -1,0 +1,63 @@
+{
+  "name": "bizapps-voting",
+  "version": "0.0.0",
+  "private": true,
+  "license": "BUSL-1.1",
+  "description": "Template repository for MemberJunction Open Apps - clone, rename, fill in. See README.md and docs/.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "prebuild": "node -e \"try { require.resolve('turbo') } catch (e) { console.error('\\n[ERROR] Dependencies not installed. Run: pnpm install\\n'); process.exit(1); }\"",
+    "init": "node scripts/init-template.mjs",
+    "build": "pnpm run build:stream",
+    "build:stream": "turbo --log-order=stream build",
+    "build:packages": "turbo --log-order=stream build --filter=\"@mj-biz-apps/voting-*\"",
+    "test": "turbo --log-order=stream test --filter=\"@mj-biz-apps/voting-*\"",
+    "mj": "mj",
+    "mj:migrate": "mj migrate --schema __mj_BizAppsVoting --dir ./migrations",
+    "mj:codegen": "mj codegen",
+    "mj:migrate:convert": "mj migrate convert --source-dir ./migrations --output-dir ./migrations-pg --schema __mj_BizAppsVoting",
+    "change": "changeset",
+    "version": "changeset version",
+    "version:prepare": "changeset version && node ci/sync-mj-app-version.mjs && pnpm install --lockfile-only"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MemberJunction/bizapps-voting"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "devDependencies": {
+    "@angular/common": "21.2.22",
+    "@angular/compiler": "21.2.22",
+    "@angular/compiler-cli": "21.2.22",
+    "@angular/core": "21.2.22",
+    "@angular/forms": "21.2.22",
+    "@changesets/cli": "^2.29.8",
+    "@memberjunction/cli": "6.2.0-edge.2",
+    "@memberjunction/core": "6.2.0-edge.2",
+    "@memberjunction/core-entities": "6.2.0-edge.2",
+    "@memberjunction/global": "6.2.0-edge.2",
+    "@memberjunction/ng-base-forms": "6.2.0-edge.2",
+    "@memberjunction/ng-entity-viewer": "6.2.0-edge.2",
+    "@memberjunction/ng-link-directives": "6.2.0-edge.2",
+    "@memberjunction/ng-shared": "6.2.0-edge.2",
+    "@memberjunction/server": "6.2.0-edge.2",
+    "@types/node": "^22.10.0",
+    "simple-git": "^3.31.1",
+    "tsc-alias": "^1.8.16",
+    "turbo": "^2.7.3",
+    "typescript": "^5.9.3",
+    "zod": "^3.25.76"
+  },
+  "pnpm": {
+    "overrides": {
+      "@memberjunction/core": "6.2.0-edge.2",
+      "@memberjunction/global": "6.2.0-edge.2"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=10.0.0"
+  }
+}

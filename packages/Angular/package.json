@@ -1,0 +1,57 @@
+{
+  "name": "@mj-biz-apps/voting-ng",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Client bootstrap package - Angular components loaded by MJExplorer via the generated open-app bootstrap import. TODO(template): rename.",
+  "main": "dist/public-api.js",
+  "files": [
+    "/dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "types": "dist/public-api.d.ts",
+  "scripts": {
+    "build": "ngc",
+    "test": "vitest run --passWithNoTests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MemberJunction/bizapps-voting"
+  },
+  "license": "BUSL-1.1",
+  "dependencies": {
+    "@mj-biz-apps/voting-entities": "0.0.0",
+    "@mj-biz-apps/voting-ng-widgets": "0.0.0",
+    "@mj-biz-apps/voting-engine-base": "0.0.0"
+  },
+  "peerDependencies": {
+    "@angular/common": "^21.2.22",
+    "@angular/core": "^21.2.22",
+    "@angular/forms": "^21.2.22",
+    "@memberjunction/core-entities": "^6.2.0-edge.2",
+    "@memberjunction/global": "^6.2.0-edge.2",
+    "@memberjunction/ng-base-forms": "^6.2.0-edge.2",
+    "@memberjunction/ng-entity-viewer": "^6.2.0-edge.2",
+    "@memberjunction/ng-link-directives": "^6.2.0-edge.2",
+    "@memberjunction/ng-shared": "^6.2.0-edge.2",
+    "@memberjunction/core": "^6.2.0-edge.2",
+    "@memberjunction/ng-base-types": "^6.2.0-edge.2",
+    "@memberjunction/graphql-dataprovider": "^6.2.0-edge.2"
+  },
+  "devDependencies": {
+    "@angular/compiler": "21.2.22",
+    "@angular/compiler-cli": "21.2.22",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18",
+    "@memberjunction/core": "6.2.0-edge.2",
+    "@memberjunction/core-entities": "6.2.0-edge.2",
+    "@memberjunction/global": "6.2.0-edge.2",
+    "@memberjunction/ng-base-forms": "6.2.0-edge.2",
+    "@memberjunction/ng-entity-viewer": "6.2.0-edge.2",
+    "@memberjunction/ng-link-directives": "6.2.0-edge.2",
+    "@memberjunction/ng-shared": "6.2.0-edge.2",
+    "@memberjunction/ng-base-types": "6.2.0-edge.2",
+    "@memberjunction/graphql-dataprovider": "6.2.0-edge.2"
+  }
+}

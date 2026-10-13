@@ -1,0 +1,86 @@
+{
+  "description": "Schema facts CodeGen cannot read off the database. Referenced from mj.config.cjs via the TOP-LEVEL `additionalSchemaInfo` key (a path string). The path is resolved against the CodeGen process's CWD, not against mj.config.cjs, so run `pnpm run mj:codegen` from the repo root. A missing or unparseable file is a SILENT no-op: the ballot tables would get timestamp columns and Standards Ballot Elections would lose its IS-A parent, with nothing in the log.",
+  "version": "1.0",
+  "_comment_Entities": [
+    "Secrecy controls that live in entity metadata (plans/bizapps-voting-design.md \u00a74.2).",
+    "",
+    "CastBallot, BallotSelection and ContestRunningTally: TrackRecordChanges=false means no",
+    "__mj_CreatedAt/__mj_UpdatedAt columns (a ballot carries no time) and no Record Changes rows naming",
+    "the acting user. BallotAttribution (the Open/Confidential voter link) gets the same access lockdown.",
+    "",
+    "Access: AutoAddPermissions=false creates the entity with NO role permissions (CodeGen's defaults",
+    "would otherwise grant UI read and Developer/Integration full CRUD), and every API surface flag is",
+    "off. Only the server engines, running as the system user, read or write these rows.",
+    "",
+    "Why not IncludeInAPI=false, as the design first said: in MJ that flag also stops CodeGen generating",
+    "the base view and the create/update/delete procedures, so no server code could use the entity at",
+    "all. Permissions are the control that keeps the SQL objects and closes the API.",
+    "",
+    "All of this is applied when CodeGen first CREATES the entity (MJ CodeGenLib",
+    "resolveCreationTimeEntityConfig / resolveCreationTimeAutoAddPermissions). Before that MJ fix,",
+    "TrackRecordChanges=false arrived only after the timestamp columns had been added, and the default",
+    "permissions were always granted."
+  ],
+  "Entities": [
+    {
+      "BaseTable": "CastBallot",
+      "SchemaName": "__mj_BizAppsVoting",
+      "TrackRecordChanges": false,
+      "AutoAddPermissions": false,
+      "AllowCreateAPI": false,
+      "AllowUpdateAPI": false,
+      "AllowDeleteAPI": false,
+      "AllowUserSearchAPI": false,
+      "AllowAllRowsAPI": false,
+      "AuditRecordAccess": false,
+      "AuditViewRuns": false
+    },
+    {
+      "BaseTable": "BallotSelection",
+      "SchemaName": "__mj_BizAppsVoting",
+      "TrackRecordChanges": false,
+      "AutoAddPermissions": false,
+      "AllowCreateAPI": false,
+      "AllowUpdateAPI": false,
+      "AllowDeleteAPI": false,
+      "AllowUserSearchAPI": false,
+      "AllowAllRowsAPI": false,
+      "AuditRecordAccess": false,
+      "AuditViewRuns": false
+    },
+    {
+      "BaseTable": "ContestRunningTally",
+      "SchemaName": "__mj_BizAppsVoting",
+      "TrackRecordChanges": false,
+      "AutoAddPermissions": false,
+      "AllowCreateAPI": false,
+      "AllowUpdateAPI": false,
+      "AllowDeleteAPI": false,
+      "AllowUserSearchAPI": false,
+      "AllowAllRowsAPI": false,
+      "AuditRecordAccess": false,
+      "AuditViewRuns": false
+    },
+    {
+      "BaseTable": "BallotAttribution",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowCreateAPI": false,
+      "AllowUpdateAPI": false,
+      "AllowDeleteAPI": false,
+      "AllowUserSearchAPI": false,
+      "AllowAllRowsAPI": false
+    }
+  ],
+  "_comment_ISARelationships": [
+    "Standards Ballot Elections IS-A Election, sharing the primary key (design \u00a76, ElectionType.ElectionExtensionEntityID).",
+    "CodeGen never infers IS-A. ChildEntity is the BASE TABLE name: on the first run the child entity does not exist yet."
+  ],
+  "ISARelationships": [
+    {
+      "ChildEntity": "StandardsBallotElection",
+      "ParentEntity": "MJ_BizApps_Voting: Elections",
+      "SchemaName": "__mj_BizAppsVoting"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "name": "@mj-biz-apps/voting-ng-widgets",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "BizApps Voting widgets and composites (L2): the election-type UI driver base, contribution base classes, and the <mj-ballot> custom element.",
+  "main": "dist/public-api.js",
+  "types": "dist/public-api.d.ts",
+  "files": [
+    "/dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "ngc",
+    "test": "vitest run --passWithNoTests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MemberJunction/bizapps-voting"
+  },
+  "license": "BUSL-1.1",
+  "dependencies": {
+    "@mj-biz-apps/voting-entities": "0.0.0"
+  },
+  "peerDependencies": {
+    "@angular/common": "^21.2.22",
+    "@angular/core": "^21.2.22",
+    "@memberjunction/core": "^6.2.0-edge.2",
+    "@memberjunction/global": "^6.2.0-edge.2",
+    "@memberjunction/ng-base-types": "^6.2.0-edge.2"
+  },
+  "devDependencies": {
+    "@angular/common": "21.2.22",
+    "@angular/compiler": "21.2.22",
+    "@angular/compiler-cli": "21.2.22",
+    "@angular/core": "21.2.22",
+    "@memberjunction/core": "6.2.0-edge.2",
+    "@memberjunction/global": "6.2.0-edge.2",
+    "@memberjunction/ng-base-types": "6.2.0-edge.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "mjUILayer": "widgets"
+}

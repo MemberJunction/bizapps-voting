@@ -1,0 +1,37 @@
+{
+  "name": "@mj-biz-apps/voting-engine-base",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Browser-safe metadata engine for BizApps Voting - cached election types, tally methods, eligibility sources and sign-in methods shared by the admin UI, widgets and server.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "/dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc && tsc-alias -f",
+    "test": "vitest run --passWithNoTests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MemberJunction/bizapps-voting"
+  },
+  "license": "BUSL-1.1",
+  "dependencies": {
+    "@mj-biz-apps/voting-entities": "0.0.0"
+  },
+  "peerDependencies": {
+    "@memberjunction/core": "^6.2.0-edge.2",
+    "@memberjunction/global": "^6.2.0-edge.2"
+  },
+  "devDependencies": {
+    "@memberjunction/core": "6.2.0-edge.2",
+    "@memberjunction/global": "6.2.0-edge.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "mjUILayer": "runtime"
+}
