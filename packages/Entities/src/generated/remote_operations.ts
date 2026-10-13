@@ -105,6 +105,8 @@ export interface VotingBallotSubmission {
 export interface VotingCastBallotInput {
   /** The election being voted in. */
   ElectionID: string;
+  /** Language the ballot is shown in (part of the ballot-style hash). Defaults to the distribution or English. */
+  Language?: string;
   /** The ballot style hash from GetMyBallot; allows detection of style changes between preview and submission. */
   BallotStyleHash: string;
   /** The voter's submission: contests and selections. */
@@ -386,6 +388,8 @@ export interface VotingFreezeRollOutput {
 export interface VotingGetMyBallotInput {
   /** The election for which to retrieve the ballot style. */
   ElectionID: string;
+  /** Language the ballot is shown in (part of the ballot-style hash). Defaults to the distribution or English. */
+  Language?: string;
 }
 
 export interface VotingBallotStyleOption {
@@ -472,7 +476,8 @@ export interface VotingGetResultsInput {
  *
  * NO import statements — definitions are emitted verbatim.
  */
-export type VotingTallyContestOutcome = 'Passed' | 'Failed' | 'Decided' | 'Tied' | 'Void';
+/** Running: results while voting is open (no outcome yet). NoQuorum: turnout below the election's quorum. */
+export type VotingTallyContestOutcome = 'Passed' | 'Failed' | 'Decided' | 'Tied' | 'Void' | 'NoQuorum' | 'Running';
 
 export type VotingTallyOptionOutcome = 'Elected' | 'Defeated' | 'Excluded' | 'Tied' | 'Counted';
 

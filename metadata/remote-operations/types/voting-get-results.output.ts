@@ -4,7 +4,8 @@
  * NO import statements — definitions are emitted verbatim.
  */
 
-export type VotingTallyContestOutcome = 'Passed' | 'Failed' | 'Decided' | 'Tied' | 'Void';
+/** Running: results while voting is open (no outcome yet). NoQuorum: turnout below the election's quorum. */
+export type VotingTallyContestOutcome = 'Passed' | 'Failed' | 'Decided' | 'Tied' | 'Void' | 'NoQuorum' | 'Running';
 export type VotingTallyOptionOutcome = 'Elected' | 'Defeated' | 'Excluded' | 'Tied' | 'Counted';
 
 export interface VotingTallyRound {

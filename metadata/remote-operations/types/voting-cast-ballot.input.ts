@@ -31,6 +31,8 @@ export interface VotingBallotSubmission {
 export interface VotingCastBallotInput {
   /** The election being voted in. */
   ElectionID: string;
+  /** Language the ballot is shown in (part of the ballot-style hash). Defaults to the distribution or English. */
+  Language?: string;
   /** The ballot style hash from GetMyBallot; allows detection of style changes between preview and submission. */
   BallotStyleHash: string;
   /** The voter's submission: contests and selections. */
