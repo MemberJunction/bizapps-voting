@@ -12,7 +12,7 @@ import {
     type VotingFreezeRollInput,
     type VotingFreezeRollOutput,
 } from '@mj-biz-apps/voting-entities';
-import { type VotingContext, IsFailure } from '../shared/index.js';
+import { type VotingContext, IsFailure, RefreshCachedViews } from '../shared/index.js';
 import { FailOperation } from './operation-support.js';
 import { VotingAuthorization } from '../shared/authorization.js';
 import { VoterRollEngine } from '../engines/index.js';
@@ -36,6 +36,8 @@ export class FreezeRollOperation extends VotingFreezeRollOperationBase {
             if (IsFailure(result)) {
                 return { Success: false, Message: result.ErrorMessage };
             }
+
+            await RefreshCachedViews(['MJ_BizApps_Voting: Elections', 'MJ_BizApps_Voting: Eligible Voters']);
 
             return {
                 Success: true,

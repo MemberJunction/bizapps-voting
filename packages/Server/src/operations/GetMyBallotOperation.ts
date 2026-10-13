@@ -12,8 +12,8 @@ import {
     type VotingGetMyBallotInput,
     type VotingGetMyBallotOutput,
 } from '@mj-biz-apps/voting-entities';
-import { VoterIdentityResolver, type VotingContext, LoadElectionGraph, IsFailure, GuestMayAccessElection, SystemContext } from '../shared/index.js';
-import { DescribeMyBallotState, FailOperation } from './operation-support.js';
+import { type VotingContext, LoadElectionGraph, IsFailure, GuestMayAccessElection } from '../shared/index.js';
+import { DescribeMyBallotState, FailOperation, NOT_ON_ROLL_MESSAGE, OpenVoterSession } from './operation-support.js';
 import { BallotStyleBuilder, CastEngine, VoterRollEngine } from '../engines/index.js';
 import { DEFAULT_BALLOT_LANGUAGE } from '../engines/ballot-style-builder.js';
 
@@ -30,15 +30,16 @@ export class GetMyBallotOperation extends VotingGetMyBallotOperationBase {
 
         const ctx: VotingContext = { ContextUser: user, Provider: provider };
 
-        // Resolve the voter identity (guest or MJ session)
-        const identity = await VoterIdentityResolver.Resolve(input.ElectionID, ctx);
-        if (!identity) {
-            return { Success: false, Message: 'You are not on the roll for this election.' };
+        // Authorize first (guest session scope or MJ user matched to the roll); the engines then run as the system principal.
+        const session = await OpenVoterSession(input.ElectionID, ctx);
+        if (!session) {
+            return { Success: false, Message: NOT_ON_ROLL_MESSAGE };
         }
+        const { Identity: identity, Engine: engine } = session;
 
         try {
             // Load the election graph
-            const graphResult = await LoadElectionGraph(input.ElectionID, ctx);
+            const graphResult = await LoadElectionGraph(input.ElectionID, engine);
             if (IsFailure(graphResult)) {
                 return { Success: false, Message: graphResult.ErrorMessage };
             }
@@ -46,13 +47,13 @@ export class GetMyBallotOperation extends VotingGetMyBallotOperationBase {
             const graph = graphResult.Value;
 
             // The ballot is the one this voter's class is shown, in the default language (the input carries none).
-            const voterResult = await VoterRollEngine.Instance.GetVoter(identity.EligibleVoterID, SystemContext(ctx));
+            const voterResult = await VoterRollEngine.Instance.GetVoter(identity.EligibleVoterID, engine);
             if (IsFailure(voterResult)) {
                 return { Success: false, Message: voterResult.ErrorMessage };
             }
-            const style = await BallotStyleBuilder.Instance.Build(graph, voterResult.Value.VotingClass, input.Language || DEFAULT_BALLOT_LANGUAGE, ctx);
+            const style = await BallotStyleBuilder.Instance.Build(graph, voterResult.Value.VotingClass, input.Language || DEFAULT_BALLOT_LANGUAGE, engine);
 
-            const participation = await CastEngine.Instance.GetMyParticipation(input.ElectionID, identity.EligibleVoterID, ctx);
+            const participation = await CastEngine.Instance.GetMyParticipation(input.ElectionID, identity.EligibleVoterID, engine);
             if (IsFailure(participation)) {
                 return { Success: false, Message: participation.ErrorMessage };
             }

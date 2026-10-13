@@ -51,6 +51,15 @@ Only limitations verified in the code are listed.
 - **Standards-ballot comments** are stored only for Open elections. The widget renders comment boxes; there is no dashboard
   for `Voting.ResolveComment`.
 
+- **`ResultsMinCast` guards running results only.** Below the threshold, running results (`Live`, `AfterVoting`,
+  `AdministratorsOnly` while Open) are withheld from the audience. The final result of record is published to the audience
+  once tallied, whatever the ballot count, so in an election with very few ballots the result reveals how those few voted
+  (with one ballot even the bare outcome does). The column description in the schema ("before any result is shown ...
+  small-electorate results") is broader than the behaviour; `wire-secrecy.X11` asserts the behaviour. An election that must
+  not disclose a tiny result should use administrators-only results.
+- **`GetTurnout.QuorumMet` is omitted when the election requires no quorum** (the Explorer turnout tab shows "None
+  required"); it is `true`/`false` only when a quorum is configured. The tally treats "no quorum configured" as met.
+
 ## Extensibility and UI
 
 - **Tally methods are not runtime-pluggable**: the registry is a fixed record in `@mj-biz-apps/voting-entities`.
@@ -61,7 +70,51 @@ Only limitations verified in the code are listed.
 - **Actions**: six exist (Create Motion Vote, Open, Close, Get Turnout, Get Election Results, Tally); none for certification,
   credentials or reminders.
 
+## Permissions
+
+- **Election configuration is readable by every signed-in user once the roll is frozen** (Elections, Contests, Contest
+  Options, Standards Ballot Elections, certified Certifications): an election's existence, name, dates, contests and
+  candidates are not secret from members, and the Explorer lists read them directly. Draft elections are hidden by
+  row-level security; there is no per-voter filter.
+- **Row-level security hides rows, not columns.** `Elections.Configuration` and the type settings stay readable to members
+  of a visible election. The one sensitive column that existed, an inline CSV roll in `EligibilitySourceSettings`, is
+  redacted at freeze; a roll source that keeps voter data elsewhere in those JSON columns would need the same.
+- **Open-ballot comments and their resolutions are readable by members**, as the Standards ballot widget requires. A comment
+  row carries its `ParticipationID`; members cannot resolve it to a voter (the poll book is closed), but administrators and
+  inspectors can, which is by design for Open ballots.
+- **`Developer` and `Integration` no longer administer elections.** A platform developer who needs to run elections must be
+  given the `Voting Administrator` role.
+- **The engine role is broad** (it covers everything the system user runs: voter operations, edge, jobs, tests). It is safe
+  only because it is held solely by the system user (asserted by `04-access.test.ts`); never grant it to a person or key.
+- **Audit events written during voter operations carry no acting user.**
+- **The Explorer screens that join to the poll book** (the comments panel's commenter names) show "Unknown voter" to
+  anyone but administrators and inspectors.
+- **A second CodeGen run over a database built from this migration rewrites seven base views and their create/update
+  procedures** (it adds related-name columns). The shipped migration is the first pass and is consistent with the generated
+  entity classes; do not run CodeGen against a live database and ship the result without regenerating the entity classes.
+
+## Caching
+
+- **A client can be served its own pre-write rows for up to 5 seconds after a Remote Operation wrote** (confirmed by
+  `wire-lifecycle.WL24`; MJ core behaviour, not voting's). MJ's `ProviderBase` (`MJCore/src/generic/providerBase.ts`)
+  keeps a **dedup-linger** replay: an identical `RunView`/`RunViews` request resolved within `ProviderBase.DedupLingerMs`
+  (default 5000 ms) is answered from the earlier result with no server round trip (`runViewsUncoalesced`, "Linger hit").
+  The replay is dropped only by a `BaseEntity` save/delete/`remote-invalidate` event raised **in the client process**
+  (`invalidateInflightViewsForEntity`). A Remote Operation saves on the server, so the client sees no save event; a
+  `remote-invalidate` reaches a client only through the GraphQL `cacheInvalidation` subscription, which MJAPI publishes
+  from Redis pub/sub (`MJServer/src/generic/CacheInvalidationResolver.ts`), i.e. not at all on a single instance without
+  Redis, nor for a client without a websocket. Verified over the wire: the same read passes with
+  `ProviderBase.DedupLingerMs = 0` and fails at the default. Nothing in MJ was patched; the fix belongs in MJ (for example,
+  dropping the linger entries of the entities an operation touched when `RouteOperation` returns, or not lingering across a
+  mutating Remote Operation). Clients that need ground truth immediately after an operation pass `BypassCache: true`, which
+  also bypasses the linger replay.
+- **The server side is fresh.** After a freeze, open, close, cancel, nominations change or certification has committed, the
+  operation awaits `RefreshCachedViews` (`packages/Server/src/shared/cache-refresh.ts`), which calls
+  `LocalCacheManager.InvalidateEntityCaches` for the entities it changed. MJ's own maintenance of the server cache is
+  fire-and-forget for a save outside a transaction and deferred to the outermost commit for one inside, so without this a
+  read racing the operation could be served the pre-write slot. It runs after the commit, never inside the transaction.
+
 ## Testing
 
-- The integration tier is pinned to a database named `MJ_Voting_Dev` and **skips with a warning** when the
+- The integration tier is pinned to a database named `MJ_Voting_Dev` (or the private voting database named by `VOTING_IT_DATABASE`) and **skips with a warning** when the
   database or credentials are missing, so a green run without database access proves nothing.

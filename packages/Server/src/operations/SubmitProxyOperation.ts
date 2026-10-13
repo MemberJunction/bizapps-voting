@@ -12,8 +12,8 @@ import {
     type VotingSubmitProxyInput,
     type VotingSubmitProxyOutput,
 } from '@mj-biz-apps/voting-entities';
-import { VoterIdentityResolver, type VotingContext, IsFailure, GuestMayAccessElection } from '../shared/index.js';
-import { FailOperation } from './operation-support.js';
+import { type VotingContext, IsFailure, GuestMayAccessElection } from '../shared/index.js';
+import { FailOperation, NOT_ON_ROLL_MESSAGE, OpenVoterSession } from './operation-support.js';
 import { VoterRollEngine } from '../engines/index.js';
 
 @RegisterClass(BaseRemotableOperation, 'Voting.SubmitProxy')
@@ -29,13 +29,13 @@ export class SubmitProxyOperation extends VotingSubmitProxyOperationBase {
 
         const ctx: VotingContext = { ContextUser: user, Provider: provider };
 
-        const identity = await VoterIdentityResolver.Resolve(input.ElectionID, ctx);
-        if (!identity) {
-            return { Success: false, Message: 'You are not on the roll for this election.' };
+        const session = await OpenVoterSession(input.ElectionID, ctx);
+        if (!session) {
+            return { Success: false, Message: NOT_ON_ROLL_MESSAGE };
         }
 
         try {
-            const result = await VoterRollEngine.Instance.SubmitProxy(input, identity, ctx);
+            const result = await VoterRollEngine.Instance.SubmitProxy(input, session.Identity, session.Engine);
 
             if (IsFailure(result)) {
                 return { Success: false, Message: result.ErrorMessage };

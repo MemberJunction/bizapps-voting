@@ -180,6 +180,9 @@ describe('host page', () => {
         expect(html).toContain('<script type="module" src="/vote/element/main.js" nonce="N0nce"></script>');
         expect(html).not.toContain('<script>');
     });
+    it('declares an inline icon so the browser never requests /favicon.ico (MJAPI answers that route 401)', () => {
+        expect(RenderHostPage({ Slug: 's', ApiRoot: '/vote', Nonce: 'n', ElementSrc: '/x.js' })).toContain('<link rel="icon" href="data:," />');
+    });
     it('renders graphql-url when the edge knows the GraphQL route, and omits it otherwise', () => {
         const withUrl = RenderHostPage({ Slug: 's', ApiRoot: '/vote', Nonce: 'n', ElementSrc: '/vote/element/main.js', GraphQLUrl: '/api/graphql' });
         expect(withUrl).toContain('<mj-ballot slug="s" api-root="/vote" graphql-url="/api/graphql"></mj-ballot>');

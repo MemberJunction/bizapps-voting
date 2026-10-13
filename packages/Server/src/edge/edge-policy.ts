@@ -184,3 +184,38 @@ export function ResolveGraphQLUrl(o: { Configured?: string; RootPath?: string | 
     const scheme = o.Protocol?.toLowerCase() === 'http' ? 'http' : 'https';
     return `${scheme}://${host}${NormalizeGraphQLPath(o.RootPath)}`;
 }
+
+/** Response headers a request picks up before it reaches the edge: the host's CORS grant and Express's fingerprint. */
+export const HOST_RESPONSE_HEADERS: readonly string[] = [
+    'X-Powered-By',
+    'Access-Control-Allow-Origin',
+    'Access-Control-Allow-Credentials',
+    'Access-Control-Allow-Methods',
+    'Access-Control-Allow-Headers',
+    'Access-Control-Expose-Headers',
+    'Access-Control-Max-Age',
+];
+
+/** Removes what the host set on a /vote response before the edge decided anything; the edge then adds only its own grants. */
+export function StripHostResponseHeaders(res: { removeHeader(name: string): void }): void {
+    for (const name of HOST_RESPONSE_HEADERS) res.removeHeader(name);
+}
+
+/** The part of an Express 5 application this module touches: its router's ordered layer list. */
+export interface AppWithRouterStack {
+    router?: { stack?: unknown[] };
+}
+
+/**
+ * Moves the most recently registered middleware to the front of the app's router, so it runs before the host's global
+ * middleware (CORS among them). Express offers no public way to mount ahead of middleware registered earlier; `app.router`
+ * is Express 5's own router and `stack` its ordered layer list. Returns false, changing nothing, when the router does not
+ * have that shape; the caller's middleware then stays where it was registered.
+ */
+export function PromoteLastLayerToFront(app: AppWithRouterStack): boolean {
+    const stack = app.router?.stack;
+    if (!Array.isArray(stack) || stack.length < 2) return false;
+    const last = stack.pop();
+    stack.unshift(last);
+    return true;
+}

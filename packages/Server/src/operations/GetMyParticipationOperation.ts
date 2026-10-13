@@ -12,8 +12,8 @@ import {
     type VotingGetMyParticipationInput,
     type VotingGetMyParticipationOutput,
 } from '@mj-biz-apps/voting-entities';
-import { VoterIdentityResolver, type VotingContext, IsFailure, GuestMayAccessElection } from '../shared/index.js';
-import { FailOperation } from './operation-support.js';
+import { type VotingContext, IsFailure, GuestMayAccessElection } from '../shared/index.js';
+import { FailOperation, NOT_ON_ROLL_MESSAGE, OpenVoterSession } from './operation-support.js';
 import { CastEngine } from '../engines/index.js';
 
 @RegisterClass(BaseRemotableOperation, 'Voting.GetMyParticipation')
@@ -29,13 +29,14 @@ export class GetMyParticipationOperation extends VotingGetMyParticipationOperati
 
         const ctx: VotingContext = { ContextUser: user, Provider: provider };
 
-        const identity = await VoterIdentityResolver.Resolve(input.ElectionID, ctx);
-        if (!identity) {
-            return { Success: false, Message: 'You are not on the roll for this election.' };
+        const session = await OpenVoterSession(input.ElectionID, ctx);
+        if (!session) {
+            return { Success: false, Message: NOT_ON_ROLL_MESSAGE };
         }
+        const { Identity: identity, Engine: engine } = session;
 
         try {
-            const result = await CastEngine.Instance.GetMyParticipation(input.ElectionID, identity.EligibleVoterID, ctx);
+            const result = await CastEngine.Instance.GetMyParticipation(input.ElectionID, identity.EligibleVoterID, engine);
 
             if (IsFailure(result)) {
                 return { Success: false, Message: result.ErrorMessage };

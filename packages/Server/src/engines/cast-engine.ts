@@ -42,6 +42,7 @@ import { DecryptSelections, EncryptSelections, SelectionCryptoError } from '../c
 import { type ElectionGraph, LoadElectionGraph } from '../shared/election-graph.js';
 import { SystemContext } from '../shared/system-user.js';
 import { BeginTransaction, type EngineResult, Fail, IsFailure, Ok, PassFailure, RunViewOf, type VotingContext } from '../shared/types.js';
+import { AcquireTransactionLocks } from '../shared/transaction-lock.js';
 import { SqlLiteral } from '../shared/voter-identity.js';
 import { BallotStyleBuilder, DEFAULT_BALLOT_LANGUAGE, IsRankedMethod } from './ballot-style-builder.js';
 
@@ -135,6 +136,11 @@ export function MergeTallyDeltas(...lists: TallyDelta[][]): TallyDelta[] {
         else merged.set(key, { ...d });
     }
     return [...merged.values()].filter((d) => d.Delta !== 0);
+}
+
+/** The transaction-lock names that serialize running-tally writers: one per contest touched (sorted, de-duplicated). */
+export function RunningTallyLockResources(deltas: readonly TallyDelta[]): string[] {
+    return [...new Set(deltas.map((d) => `voting-running-tally:${d.ContestID.toLowerCase()}`))].sort();
 }
 
 /** A 20-character Crockford receipt from 16 crypto-random bytes, grouped 4-4-4-4-4. */
@@ -454,12 +460,24 @@ export class CastEngine extends BaseSingleton<CastEngine> {
         return part.ID;
     }
 
+    /**
+     * Adds the deltas to the running tallies, inside the cast transaction. A running tally is a shared counter, so the
+     * contests counted here are locked first (RunningTallyLockResources; held until this transaction ends) and each row is
+     * then read FRESH from the database, never from a cache: without both, concurrent casts lose increments and race the
+     * first insert of an option's row (wire-volume.V03/V04).
+     */
     private async applyTallyDeltas(deltas: TallyDelta[], sys: VotingContext): Promise<void> {
+        try {
+            await AcquireTransactionLocks(sys, RunningTallyLockResources(deltas));
+        } catch (e) {
+            LogError(`CastEngine: running tally lock not granted (${e instanceof Error ? e.name : 'unknown'}).`);
+            throw new CastAbort('CastFailed', 'The running tally is busy; please try again.');
+        }
         const rv = RunViewOf(sys);
         for (const d of deltas) {
             const optionFilter = d.OptionID ? `ContestOptionID = ${SqlLiteral(d.OptionID)}` : 'ContestOptionID IS NULL';
             const found = await rv.RunView<mjBizAppsVotingContestRunningTallyEntity>(
-                { EntityName: RUNNING_TALLIES, ExtraFilter: `ContestID = ${SqlLiteral(d.ContestID)} AND ${optionFilter}`, MaxRows: 1, ResultType: 'entity_object' },
+                { EntityName: RUNNING_TALLIES, ExtraFilter: `ContestID = ${SqlLiteral(d.ContestID)} AND ${optionFilter}`, MaxRows: 1, ResultType: 'entity_object', BypassCache: true },
                 sys.ContextUser
             );
             if (!found.Success) throw new CastAbort('CastFailed', 'The running tally could not be read.');

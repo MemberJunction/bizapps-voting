@@ -20,6 +20,46 @@ import {
 import { SqlLiteral } from '../shared/voter-identity.js';
 import type { UserInfo } from '@memberjunction/core';
 
+/** The refusal a caller gets when the roll has no entry for them. */
+export const NOT_ON_ROLL_MESSAGE = 'You are not on the roll for this election.';
+
+/**
+ * A voter whose claims have been matched to a roll entry, plus the context the engines then run under.
+ *
+ * THE VOTER-OPERATION PATTERN. Voting tables are closed to ordinary members and to guest ballot sessions (the roll,
+ * poll book, credentials, trustee tables and ballot box hold no UI or guest grant, see docs/voting/security.md). A voter
+ * operation therefore (1) authorizes the CALLER first, from claims the platform already verified: the signed session scope
+ * of a guest, or the MJ user matched to the roll through their Person; then (2) runs the engines as the system principal,
+ * and (3) hands back only data scoped to that caller's own roll entry. `Engine` is that system context. It is created ONLY
+ * by `OpenVoterSession` / `EngineContextAfterAuthorization`, after the caller was authorized, and an operation must pass
+ * it only to engine calls keyed by `Identity.EligibleVoterID` / `Identity.ElectionID`, never to a caller-supplied id.
+ */
+export interface VoterSession {
+    /** Who the caller is on this election's roll. */
+    Identity: VoterIdentity;
+    /** The context to run engines under: same provider, system principal. */
+    Engine: VotingContext;
+}
+
+/**
+ * Authorizes a voter for an election and opens their session. Null when the caller has no Eligible roll entry for the
+ * election (a guest session is bound to exactly the election and voter its signed scope names; a member is matched
+ * through their Person), so the operation answers NOT_ON_ROLL_MESSAGE.
+ */
+export async function OpenVoterSession(electionID: string, caller: VotingContext): Promise<VoterSession | null> {
+    const identity = await VoterIdentityResolver.Resolve(electionID, caller);
+    return identity ? { Identity: identity, Engine: SystemContext(caller) } : null;
+}
+
+/**
+ * The engine context for an operation that authorizes the caller by some other rule than a roll entry (a receipt lookup, a
+ * results view whose audience rule the results engine applies, a trustee matched to a key share). The caller of this
+ * function is asserting that authorization has ALREADY happened.
+ */
+export function EngineContextAfterAuthorization(caller: VotingContext): VotingContext {
+    return SystemContext(caller);
+}
+
 /** What a caller sees when an operation fails for a reason that is not a designed engine failure. */
 export const GENERIC_FAILURE_MESSAGE = 'The operation could not be completed.';
 

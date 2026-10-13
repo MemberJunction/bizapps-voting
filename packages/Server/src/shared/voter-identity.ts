@@ -1,6 +1,11 @@
 /**
  * Resolves who the voter is for an election: a guest ballot session (scope-limited principal minted by the public edge)
  * or an ordinary MJ session matched to the roll through the bizapps-common Person.
+ *
+ * The CLAIMS come from the caller (the signed session scope, the MJ user id, the user's email). The roll and Person
+ * lookups that those claims are matched against run as the system principal: neither a guest nor an ordinary member
+ * holds any entity permission on the roll (it is closed to everyone but administrators and the engines), so reading it
+ * as the caller would refuse every voter. Nothing but the matched EligibleVoterID leaves this class.
  */
 
 import { UUIDsEqual } from '@memberjunction/global';
@@ -8,6 +13,7 @@ import type { UserInfo } from '@memberjunction/core';
 import { IsGuestPrincipal } from './principal.js';
 import { type mjBizAppsVotingEligibleVoterEntity } from '@mj-biz-apps/voting-entities';
 import { type VotingContext, RunViewOf } from './types.js';
+import { SystemContext } from './system-user.js';
 
 export interface VoterIdentity {
     ElectionID: string;
@@ -79,15 +85,16 @@ export class VoterIdentityResolver {
         const parsed = ParseGuestResource(scope.ResourceID);
         if (!parsed || !UUIDsEqual(parsed.ElectionID, electionID)) return null;
         // The scope was minted by the edge after verifying the voter; confirm the roll entry still stands.
-        const voter = await VoterIdentityResolver.loadEligibleVoter(electionID, parsed.EligibleVoterID, ctx);
+        const voter = await VoterIdentityResolver.loadEligibleVoter(electionID, parsed.EligibleVoterID, SystemContext(ctx));
         if (!voter) return null;
         return { ElectionID: electionID, EligibleVoterID: voter.ID, Via: 'GuestSession', CredentialMethodCode: 'guest-session' };
     }
 
     private static async resolveMJSession(electionID: string, ctx: VotingContext): Promise<VoterIdentity | null> {
-        const personID = await VoterIdentityResolver.findPersonID(ctx);
+        const sys = SystemContext(ctx);
+        const personID = await VoterIdentityResolver.findPersonID(ctx.ContextUser, sys);
         if (!personID) return null;
-        const rv = RunViewOf(ctx);
+        const rv = RunViewOf(sys);
         const result = await rv.RunView<{ ID: string }>(
             {
                 EntityName: ELIGIBLE_VOTERS_ENTITY,
@@ -96,7 +103,7 @@ export class VoterIdentityResolver {
                 MaxRows: 1,
                 ResultType: 'simple',
             },
-            ctx.ContextUser
+            sys.ContextUser
         );
         const row = result.Success ? result.Results[0] : undefined;
         return row ? { ElectionID: electionID, EligibleVoterID: row.ID, Via: 'MJSession', CredentialMethodCode: 'mj-session' } : null;
@@ -121,13 +128,13 @@ export class VoterIdentityResolver {
         return result.Success && result.Results[0] ? result.Results[0] : null;
     }
 
-    private static async findPersonID(ctx: VotingContext): Promise<string | null> {
-        const user = ctx.ContextUser;
-        const rv = RunViewOf(ctx);
+    /** The Person behind the calling user: `user` supplies the claims, `reader` (the system context) runs the lookups. */
+    private static async findPersonID(user: UserInfo, reader: VotingContext): Promise<string | null> {
+        const rv = RunViewOf(reader);
         if (user.ID) {
             const linked = await rv.RunView<{ ID: string }>(
                 { EntityName: PEOPLE_ENTITY, ExtraFilter: `LinkedUserID = ${SqlLiteral(user.ID)}`, Fields: ['ID'], MaxRows: 1, ResultType: 'simple' },
-                user
+                reader.ContextUser
             );
             if (linked.Success && linked.Results[0]) return linked.Results[0].ID;
         }
@@ -135,7 +142,7 @@ export class VoterIdentityResolver {
         if (!email) return null;
         const byEmail = await rv.RunView<{ ID: string }>(
             { EntityName: PEOPLE_ENTITY, ExtraFilter: `LOWER(Email) = ${SqlLiteral(email.toLowerCase())}`, Fields: ['ID'], MaxRows: 1, ResultType: 'simple' },
-            user
+            reader.ContextUser
         );
         return byEmail.Success && byEmail.Results[0] ? byEmail.Results[0].ID : null;
     }

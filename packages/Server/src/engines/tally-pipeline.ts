@@ -219,6 +219,17 @@ export function BuildTieBreakNotes(outcome: TallyOutcome, plan: ContestPlan, quo
     return notes.length > 0 ? notes.join('\n') : null;
 }
 
+/**
+ * The notes a caller sees for a contest result: the stored notes (the tally method's own, the quorum note, the provisional
+ * administrator tie-break note), with a quorum note guaranteed on a NoQuorum result. The Tally operation and GetResults
+ * both use this, so the two never disagree about why a contest was not decided.
+ */
+export function ContestNotesOf(result: { Outcome: ContestResultOutcome; TieBreakNotes: string | null }): string[] {
+    const notes = result.TieBreakNotes ? result.TieBreakNotes.split('\n') : [];
+    if (result.Outcome === 'NoQuorum' && !notes.some((n) => /quorum/i.test(n))) notes.unshift('Quorum was not met.');
+    return notes;
+}
+
 /** Maps a tally outcome to the rows the engine writes (ContestResult + one ContestOptionResult per option). */
 export function BuildContestResultRow(
     plan: ContestPlan,

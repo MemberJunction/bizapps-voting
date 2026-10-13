@@ -73,8 +73,11 @@ export class MajorityTallyMethod extends BaseTallyMethodContract {
     if (Kind === 'Motion' || Kind === 'Question' || Kind === 'Amendment' || Kind === 'StandardsItem') {
       // First option is Yes, second is No (if present)
       const yesVotes = totals[OptionIDs[0]] ?? 0;
+      // The opposing votes: every non-affirmative option (normally just "No"). Threshold 'None' is decided by yes > no,
+      // so passing 0 here would let a tie (or any losing motion with one yes vote) pass.
+      const noVotes = OptionIDs.slice(1).reduce((sum, oid) => sum + (totals[oid] ?? 0), 0);
 
-      const passed = MeetsThreshold(yesVotes, 0, basis, Threshold, CustomThreshold);
+      const passed = MeetsThreshold(yesVotes, noVotes, basis, Threshold, CustomThreshold);
 
       const rng = new SeededRandom(TieBreakSeed);
       const { ordered, tieBroken } = RankWithTies(totals, OptionIDs, Seats, rng);

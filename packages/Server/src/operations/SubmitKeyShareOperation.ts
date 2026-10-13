@@ -13,7 +13,7 @@ import {
     type VotingSubmitKeyShareOutput,
 } from '@mj-biz-apps/voting-entities';
 import { type VotingContext, IsFailure } from '../shared/index.js';
-import { FailOperation } from './operation-support.js';
+import { EngineContextAfterAuthorization, FailOperation } from './operation-support.js';
 import { IsGuestPrincipal } from '../shared/principal.js';
 import { TrusteeEngine } from '../engines/index.js';
 
@@ -31,7 +31,9 @@ export class SubmitKeyShareOperation extends VotingSubmitKeyShareOperationBase {
         const ctx: VotingContext = { ContextUser: user, Provider: provider };
 
         try {
-            const result = await TrusteeEngine.Instance.SubmitKeyShare(input, ctx);
+            // Authorize() admitted a signed-in, non-guest caller. The engine matches that caller to a trustee's Person, then reads the
+            // trustee tables and records the share as the system principal (a trustee is an ordinary member with no grant on them).
+            const result = await TrusteeEngine.Instance.SubmitKeyShare(input, EngineContextAfterAuthorization(ctx), ctx);
 
             if (IsFailure(result)) {
                 return { Success: false, Message: result.ErrorMessage };

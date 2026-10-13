@@ -145,8 +145,13 @@ export class TrusteeEngine extends BaseSingleton<TrusteeEngine> {
         });
     }
 
-    /** Verifies and holds one trustee's share; reconstructs the key when the threshold is reached. */
-    public async SubmitKeyShare(input: VotingSubmitKeyShareInput, ctx: VotingContext): Promise<EngineResult<SubmitKeyShareValue>> {
+    /**
+     * Verifies and holds one trustee's share; reconstructs the key when the threshold is reached.
+     * `ctx` is the context the engine reads and writes under (the system context from a voter-facing operation: a trustee
+     * is an ordinary member with no permission on the trustee tables); `caller` is who is asking, and is matched to the
+     * trustee's Person. Both default to one another for in-process callers that already hold the right context.
+     */
+    public async SubmitKeyShare(input: VotingSubmitKeyShareInput, ctx: VotingContext, caller: VotingContext = ctx): Promise<EngineResult<SubmitKeyShareValue>> {
         const election = await LoadElectionEntity(input.ElectionID, ctx);
         if (!election) return Fail('ElectionNotFound', 'The election was not found.');
         if (election.AssuranceTier !== 'HighAssurance') return Fail('WrongTier', 'Key shares apply only to High assurance elections.');
@@ -157,7 +162,7 @@ export class TrusteeEngine extends BaseSingleton<TrusteeEngine> {
         const publicKey = election.ElectionPublicKey;
         if (!threshold || !publicKey) return Fail('NoTrusteeKeys', 'This election has no trustee keys.');
 
-        const person = await FindPersonForUser(ctx);
+        const person = await FindPersonForUser(caller, ctx);
         if (!person) return Fail('NotATrustee', 'You are not a trustee of this election.');
         const trustees = await this.loadTrustees(election.ID, ctx);
         const trustee = trustees.find((t) => t.ShareIndex === input.ShareIndex && t.Status !== 'Removed');

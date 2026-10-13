@@ -5,3 +5,5 @@ export * from './audit.js';
 export * from './voter-identity.js';
 export * from './election-graph.js';
 export * from './principal.js';
+export * from './cache-refresh.js';
+export * from './transaction-lock.js';

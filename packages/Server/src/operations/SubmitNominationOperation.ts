@@ -12,9 +12,9 @@ import {
     type VotingSubmitNominationOutput,
     type mjBizAppsVotingContestEntity,
 } from '@mj-biz-apps/voting-entities';
-import { VoterIdentityResolver, type VotingContext, IsFailure, GuestMayAccessElection, SystemContext } from '../shared/index.js';
+import { type VotingContext, IsFailure, GuestMayAccessElection } from '../shared/index.js';
 import { NominationEngine } from '../engines/index.js';
-import { FailOperation, HoldsBallotSession } from './operation-support.js';
+import { EngineContextAfterAuthorization, FailOperation, HoldsBallotSession, NOT_ON_ROLL_MESSAGE, OpenVoterSession } from './operation-support.js';
 
 const CONTESTS_ENTITY = 'MJ_BizApps_Voting: Contests';
 
@@ -32,8 +32,9 @@ export class SubmitNominationOperation extends VotingSubmitNominationOperationBa
         const ctx: VotingContext = { ContextUser: user, Provider: provider };
 
         try {
-            // The contest names its election (read with the system user: a guest has no read rights on contests).
-            const contest = await provider.GetEntityObject<mjBizAppsVotingContestEntity>(CONTESTS_ENTITY, SystemContext(ctx).ContextUser);
+            // The contest names its election (read as the system principal: neither a guest nor a member has read rights on a contest of an election they
+            // are not yet known to be on the roll of; the roll check follows below and nothing but the election id is used from it).
+            const contest = await provider.GetEntityObject<mjBizAppsVotingContestEntity>(CONTESTS_ENTITY, EngineContextAfterAuthorization(ctx).ContextUser);
             if (!(await contest.Load(input.ContestID))) {
                 return { Success: false, Message: 'The contest was not found.' };
             }
@@ -44,12 +45,12 @@ export class SubmitNominationOperation extends VotingSubmitNominationOperationBa
                 return { Success: false, Message: 'You are not permitted to nominate in this election.' };
             }
 
-            const identity = await VoterIdentityResolver.Resolve(electionID, ctx);
-            if (!identity) {
-                return { Success: false, Message: 'You are not on the roll for this election.' };
+            const session = await OpenVoterSession(electionID, ctx);
+            if (!session) {
+                return { Success: false, Message: NOT_ON_ROLL_MESSAGE };
             }
 
-            const result = await NominationEngine.Instance.SubmitNomination(input, identity, ctx);
+            const result = await NominationEngine.Instance.SubmitNomination(input, session.Identity, session.Engine);
             if (IsFailure(result)) {
                 return { Success: false, Message: result.ErrorMessage };
             }

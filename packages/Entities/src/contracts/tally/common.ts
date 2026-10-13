@@ -96,7 +96,10 @@ export function ComputeVotesCastAndAbstentions(
  *
  * Returns:
  * - ordered: list of optionIDs in descending order by votes
- * - tieBroken: true if a lot was drawn to break a tie
+ * - tieBroken: true only if a lot was drawn for a tie that straddles the seat boundary (i.e. the
+ *   tied group occupies positions on both sides of `seats`). Ties wholly above or below the
+ *   boundary are still ordered deterministically by the seeded RNG but do not decide the outcome,
+ *   so they do not set the flag.
  *
  * Tie-breaking: when two or more options have the same votes,
  * shuffle them using the seeded RNG and pick the order.
@@ -130,8 +133,11 @@ export function RankWithTies(
   for (const votes of sortedVotes) {
     const tied = byVotes.get(votes)!;
     if (tied.length > 1) {
-      // Tie: shuffle to break it
-      tieBroken = true;
+      // Tie: shuffle to order it; flag only if it straddles the seat boundary
+      const start = ordered.length;
+      if (start < seats && start + tied.length > seats) {
+        tieBroken = true;
+      }
       const shuffled = rng.Shuffle(tied);
       ordered.push(...shuffled);
     } else {

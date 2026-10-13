@@ -72,6 +72,13 @@ export class IrvTallyMethod extends BaseTallyMethodContract {
     // Track exclusion order
     const exclusionOrder: string[] = [];
 
+    // Most recent round tally per option: for an excluded option this is its count in the round it
+    // was excluded; for a survivor it is its count in the final round.
+    const lastTallies: Record<string, number> = {};
+    for (const oid of OptionIDs) {
+      lastTallies[oid] = 0;
+    }
+
     // Create a copy of ballots with their highest-ranked continuing option
     type ActivatedBallot = { ballot: TallyBallot; activatedOption: string | null };
     const activatedBallots: ActivatedBallot[] = Ballots.map((ballot) => {
@@ -119,6 +126,9 @@ export class IrvTallyMethod extends BaseTallyMethodContract {
 
       // Round tally recorded with votes rounded
       roundTallies.push(Object.fromEntries(Object.entries(tallies).map(([k, v]) => [k, RoundVotes(v)])));
+      for (const oid of continuing) {
+        lastTallies[oid] = RoundVotes(tallies[oid]);
+      }
 
       const totalContinuing = Object.values(tallies).reduce((a, b) => a + b, 0);
       const halfContinuing = totalContinuing / 2;
@@ -199,12 +209,11 @@ export class IrvTallyMethod extends BaseTallyMethodContract {
       }
       for (const { ballot } of activatedBallots) {
         if (ballot.Abstain || ballot.Selections.length === 0) continue;
-        const sorted = [...ballot.Selections].sort((a, b) => (a.Rank ?? 0) - (b.Rank ?? 0));
-        const option = sorted.find((s) => s.OptionID === elected);
-        if (option) {
+        if (ballot.Selections.some((s) => s.OptionID === elected)) {
           finalTallies[elected] += ballot.Weight;
         }
       }
+      lastTallies[elected] = RoundVotes(finalTallies[elected]);
       rounds.push({
         Round: roundNum,
         Tallies: Object.fromEntries(Object.entries(finalTallies).map(([k, v]) => [k, RoundVotes(v)])),
@@ -213,36 +222,27 @@ export class IrvTallyMethod extends BaseTallyMethodContract {
       });
     }
 
-    // Build final positions: winner is 1, then reverse exclusion order
+    // Finishing positions: winner is 1, then never-eliminated runners-up ordered by final-round
+    // votes (ties keep ballot option order, deterministic and not a lot), then excluded options in
+    // reverse order of exclusion (last excluded finishes best).
     const finalPositions = new Map<string, number>();
+    const finishOrder: string[] = [];
     if (elected) {
-      finalPositions.set(elected, 1);
+      finishOrder.push(elected);
     }
-    for (let i = 0; i < exclusionOrder.length; i++) {
-      finalPositions.set(exclusionOrder[i], exclusionOrder.length - i + 1);
+    const survivors = OptionIDs.filter((oid) => oid !== elected && continuing.has(oid));
+    survivors.sort((a, b) => lastTallies[b] - lastTallies[a]);
+    finishOrder.push(...survivors);
+    for (let i = exclusionOrder.length - 1; i >= 0; i--) {
+      finishOrder.push(exclusionOrder[i]);
     }
-
-    // Count final votes for elected option
-    const finalVotesCount: Record<string, number> = {};
-    for (const oid of OptionIDs) {
-      finalVotesCount[oid] = 0;
-    }
-    if (elected) {
-      for (const { ballot } of activatedBallots) {
-        if (ballot.Abstain || ballot.Selections.length === 0) continue;
-        const sorted = [...ballot.Selections].sort((a, b) => (a.Rank ?? 0) - (b.Rank ?? 0));
-        const option = sorted.find((s) => s.OptionID === elected);
-        if (option) {
-          finalVotesCount[elected] += ballot.Weight;
-        }
-      }
-    }
+    finishOrder.forEach((oid, idx) => finalPositions.set(oid, idx + 1));
 
     const options: TallyOptionResult[] = OptionIDs.map((oid) => {
       const outcome: 'Elected' | 'Defeated' = elected === oid ? 'Elected' : 'Defeated';
       return {
         OptionID: oid,
-        Votes: RoundVotes(finalVotesCount[oid]),
+        Votes: lastTallies[oid],
         Position: finalPositions.get(oid) ?? OptionIDs.length,
         Outcome: outcome,
       };

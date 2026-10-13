@@ -6,7 +6,9 @@ import {
     BallotWeight,
     BuildContestInput,
     BuildContestResultRow,
+    BuildTieBreakNotes,
     ComputeClassWeights,
+    ContestNotesOf,
     CryptoShuffle,
     EligibleCountForContest,
     EligibleWeightForContest,
@@ -184,5 +186,20 @@ describe('submission parsing and selection rows', () => {
         expect(rows[0]).toMatchObject({ IsAbstain: true, ContestOptionID: null, WriteInText: null });
         expect(rows[1]).toMatchObject({ IsAbstain: false, ContestOptionID: 'o1', Rank: 1 });
         expect(rows[2]).toMatchObject({ Rank: null, WriteInText: null });
+    });
+});
+
+describe('ContestNotesOf (the notes Tally and GetResults both report)', () => {
+    it('carries the quorum note of a NoQuorum result exactly once', () => {
+        const stored = BuildTieBreakNotes({ Outcome: 'Passed', VotesCast: 5, Abstentions: 0, Options: [], Rounds: [], TieBroken: false, Notes: [] }, plan(), false);
+        const notes = ContestNotesOf({ Outcome: 'NoQuorum', TieBreakNotes: stored });
+        expect(notes.filter((n) => /quorum/i.test(n))).toHaveLength(1);
+    });
+    it('adds a quorum note to a NoQuorum result stored without one', () => {
+        expect(ContestNotesOf({ Outcome: 'NoQuorum', TieBreakNotes: null })).toEqual(['Quorum was not met.']);
+    });
+    it('passes the stored notes through otherwise', () => {
+        expect(ContestNotesOf({ Outcome: 'Decided', TieBreakNotes: 'Tie broken by lot' })).toEqual(['Tie broken by lot']);
+        expect(ContestNotesOf({ Outcome: 'Passed', TieBreakNotes: null })).toEqual([]);
     });
 });

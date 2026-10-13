@@ -13,7 +13,7 @@ import {
     type VotingVerifyReceiptOutput,
 } from '@mj-biz-apps/voting-entities';
 import { type VotingContext, IsFailure, GuestMayAccessElection } from '../shared/index.js';
-import { FailOperation } from './operation-support.js';
+import { EngineContextAfterAuthorization, FailOperation } from './operation-support.js';
 import { CastEngine } from '../engines/index.js';
 
 @RegisterClass(BaseRemotableOperation, 'Voting.VerifyReceipt')
@@ -30,7 +30,7 @@ export class VerifyReceiptOperation extends VotingVerifyReceiptOperationBase {
         const ctx: VotingContext = { ContextUser: user, Provider: provider };
 
         try {
-            const result = await CastEngine.Instance.VerifyReceipt(input.ElectionID, input.ReceiptCode, ctx);
+            const result = await CastEngine.Instance.VerifyReceipt(input.ElectionID, input.ReceiptCode, EngineContextAfterAuthorization(ctx));
 
             if (IsFailure(result)) {
                 return { Success: false, Message: result.ErrorMessage };

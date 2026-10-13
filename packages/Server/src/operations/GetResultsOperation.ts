@@ -12,8 +12,8 @@ import {
     type VotingGetResultsInput,
     type VotingGetResultsOutput,
 } from '@mj-biz-apps/voting-entities';
-import { type VotingContext, IsFailure, IsGuestPrincipal, GuestMayAccessElection, VoterIdentityResolver } from '../shared/index.js';
-import { BuildResultsViewer, FailOperation } from './operation-support.js';
+import { type VotingContext, IsFailure, IsGuestPrincipal, GuestMayAccessElection } from '../shared/index.js';
+import { BuildResultsViewer, EngineContextAfterAuthorization, FailOperation, OpenVoterSession } from './operation-support.js';
 import { CastEngine, ResultsEngine } from '../engines/index.js';
 import { VotingAuthorization } from '../shared/authorization.js';
 
@@ -33,10 +33,14 @@ export class GetResultsOperation extends VotingGetResultsOperationBase {
         try {
             // Who is asking, as far as the visibility rule cares: role, roll entry, poll-book state, host membership.
             // A caller who is not on the roll resolves to a null identity and is simply not eligible.
-            const identity = await VoterIdentityResolver.Resolve(input.ElectionID, ctx);
+            // The results tables are closed to ordinary users: the viewer rule below (the election's results audience and timing)
+            // is the only gate, so the engine reads them as the system principal and applies that rule to this caller.
+            const session = await OpenVoterSession(input.ElectionID, ctx);
+            const engine = session?.Engine ?? EngineContextAfterAuthorization(ctx);
+            const identity = session?.Identity ?? null;
             let hasVoted = false;
             if (identity) {
-                const participation = await CastEngine.Instance.GetMyParticipation(input.ElectionID, identity.EligibleVoterID, ctx);
+                const participation = await CastEngine.Instance.GetMyParticipation(input.ElectionID, identity.EligibleVoterID, engine);
                 hasVoted = !IsFailure(participation) && participation.Value.HasVoted;
             }
             const viewer = BuildResultsViewer({
@@ -48,7 +52,7 @@ export class GetResultsOperation extends VotingGetResultsOperationBase {
                 HasVoted: hasVoted,
             });
 
-            const result = await ResultsEngine.Instance.GetResults(input.ElectionID, viewer, ctx);
+            const result = await ResultsEngine.Instance.GetResults(input.ElectionID, viewer, engine);
 
             if (IsFailure(result)) {
                 return { Success: false, Message: result.ErrorMessage };

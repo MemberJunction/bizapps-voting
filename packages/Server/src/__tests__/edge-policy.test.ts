@@ -7,7 +7,9 @@ import {
     IsValidSlug,
     OriginAllowed,
     ParseAllowedOrigins,
+    PromoteLastLayerToFront,
     ResolveClientIp,
+    StripHostResponseHeaders,
 } from '../edge/edge-policy.js';
 
 describe('edge policy: CSP', () => {
@@ -79,5 +81,32 @@ describe('edge policy: slug and client IP', () => {
         expect(ResolveClientIp(req, 1)).toBe('2.2.2.2');
         expect(ResolveClientIp(req, 2)).toBe('1.1.1.1');
         expect(ResolveClientIp(req, 9)).toBe('9.9.9.9');
+    });
+});
+
+describe('edge policy: what the host adds before the edge', () => {
+    it('strips the host CORS grant and X-Powered-By, and nothing else', () => {
+        const headers = new Map<string, string>([
+            ['x-powered-by', 'Express'],
+            ['access-control-allow-origin', 'https://evil.example'],
+            ['access-control-allow-credentials', 'true'],
+            ['access-control-max-age', '86400'],
+            ['vary', 'Origin'],
+        ]);
+        StripHostResponseHeaders({ removeHeader: (name: string) => void headers.delete(name.toLowerCase()) });
+        expect([...headers.keys()]).toEqual(['vary']);
+    });
+
+    it('moves the last router layer to the front', () => {
+        const app = { router: { stack: ['cors', 'auth', 'gate'] as unknown[] } };
+        expect(PromoteLastLayerToFront(app)).toBe(true);
+        expect(app.router.stack).toEqual(['gate', 'cors', 'auth']);
+    });
+
+    it('changes nothing when the router has no usable stack', () => {
+        expect(PromoteLastLayerToFront({})).toBe(false);
+        const single = { router: { stack: ['gate'] as unknown[] } };
+        expect(PromoteLastLayerToFront(single)).toBe(false);
+        expect(single.router.stack).toEqual(['gate']);
     });
 });

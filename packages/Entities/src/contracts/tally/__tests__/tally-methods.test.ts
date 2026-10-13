@@ -344,6 +344,36 @@ describe('PluralityTallyMethod', () => {
 describe('MajorityTallyMethod', () => {
   const method = new MajorityTallyMethod();
 
+  describe("Motion with Threshold 'None' (yes > no)", () => {
+    const motion = (yes: number, no: number, abstain: number): TallyContestInput => ({
+      ContestID: 'm',
+      Seats: 1,
+      OptionIDs: ['Yes', 'No'],
+      Kind: 'Motion',
+      Threshold: 'None',
+      ThresholdBasis: 'VotesCast',
+      EligibleWeight: yes + no + abstain,
+      Ballots: [
+        ...Array.from({ length: yes }, () => ({ Weight: 1, Abstain: false, Selections: [{ OptionID: 'Yes' }] })),
+        ...Array.from({ length: no }, () => ({ Weight: 1, Abstain: false, Selections: [{ OptionID: 'No' }] })),
+        ...Array.from({ length: abstain }, () => ({ Weight: 1, Abstain: true, Selections: [] })),
+      ],
+      TieBreakSeed: 'test',
+    });
+
+    it('fails on a tie (4-4 with 2 abstentions)', () => {
+      expect(method.Tally(motion(4, 4, 2)).Outcome).toBe('Failed');
+    });
+
+    it('fails when the no votes win', () => {
+      expect(method.Tally(motion(1, 5, 0)).Outcome).toBe('Failed');
+    });
+
+    it('passes when yes outnumbers no, however few voted', () => {
+      expect(method.Tally(motion(2, 1, 7)).Outcome).toBe('Passed');
+    });
+  });
+
   it('should elect single-seat winner meeting threshold', () => {
     const input: TallyContestInput = {
       ContestID: 'test',
@@ -720,5 +750,109 @@ describe('MeetsThreshold — Unanimous respects the basis', () => {
   });
   it('fails with any opposing vote', () => {
     expect(MeetsThreshold(7, 1, 8, 'Unanimous')).toBe(false);
+  });
+});
+
+function officeInput(seats: number, optionIDs: string[], ballots: TallyBallot[]): TallyContestInput {
+  return {
+    ContestID: 'c',
+    Seats: seats,
+    OptionIDs: optionIDs,
+    Kind: 'Office',
+    Threshold: 'Plurality',
+    ThresholdBasis: 'VotesCast',
+    EligibleWeight: ballots.length,
+    Ballots: ballots,
+    TieBreakSeed: 'seed',
+  };
+}
+
+function ranked(count: number, ...order: string[]): TallyBallot[] {
+  return Array.from({ length: count }, () => ({
+    Weight: 1,
+    Abstain: false,
+    Selections: order.map((OptionID, i) => ({ OptionID, Rank: i + 1 })),
+  }));
+}
+
+describe('IrvTallyMethod finishing positions and votes', () => {
+  const method = new IrvTallyMethod();
+
+  it('orders a never-eliminated runner-up second and reports final-round / elimination-round votes', () => {
+    // First prefs A4 D3 B2 C1 (10 ballots). R1: nobody > 5, C out (1), its ballot goes to A.
+    // R2: A5 D3 B2, nobody > 5, B out (2), its ballots exhaust. R3: A5 D3 of 8, A wins (5 > 4).
+    const result = method.Tally(
+      officeInput(1, ['A', 'B', 'C', 'D'], [
+        ...ranked(4, 'A'),
+        ...ranked(3, 'D'),
+        ...ranked(2, 'B'),
+        ...ranked(1, 'C', 'A'),
+      ])
+    );
+    const byId = (id: string) => result.Options.find((o) => o.OptionID === id)!;
+    expect(byId('A')).toMatchObject({ Position: 1, Votes: 5, Outcome: 'Elected' });
+    expect(byId('D')).toMatchObject({ Position: 2, Votes: 3, Outcome: 'Defeated' });
+    expect(byId('B')).toMatchObject({ Position: 3, Votes: 2, Outcome: 'Defeated' });
+    expect(byId('C')).toMatchObject({ Position: 4, Votes: 1, Outcome: 'Defeated' });
+    expect(result.TieBroken).toBe(false);
+  });
+
+  it('orders multiple surviving runners-up by final-round votes', () => {
+    // A6 B3 C1 of 10: A has 6 > 5 in round 1, so B and C are never eliminated.
+    const result = method.Tally(
+      officeInput(1, ['C', 'B', 'A'], [...ranked(6, 'A'), ...ranked(3, 'B'), ...ranked(1, 'C')])
+    );
+    const pos = (id: string) => result.Options.find((o) => o.OptionID === id)!.Position;
+    expect(pos('A')).toBe(1);
+    expect(pos('B')).toBe(2);
+    expect(pos('C')).toBe(3);
+    expect(result.Options.find((o) => o.OptionID === 'B')!.Votes).toBe(3);
+    expect(result.Options.find((o) => o.OptionID === 'C')!.Votes).toBe(1);
+  });
+
+  it('gives each option a distinct position', () => {
+    const result = method.Tally(
+      officeInput(1, ['A', 'B', 'C', 'D'], [...ranked(4, 'A'), ...ranked(3, 'D'), ...ranked(2, 'B'), ...ranked(1, 'C', 'A')])
+    );
+    expect(new Set(result.Options.map((o) => o.Position)).size).toBe(4);
+  });
+});
+
+describe('RankWithTies tie flag only at the seat boundary', () => {
+  const rng = () => new SeededRandom('s');
+
+  it('does not flag a tie below the boundary', () => {
+    const r = RankWithTies({ A: 4, B: 2, C: 2 }, ['A', 'B', 'C'], 1, rng());
+    expect(r.ordered[0]).toBe('A');
+    expect(r.ordered).toHaveLength(3);
+    expect(r.tieBroken).toBe(false);
+  });
+
+  it('does not flag a tie wholly above the boundary', () => {
+    expect(RankWithTies({ A: 4, B: 4, C: 1 }, ['A', 'B', 'C'], 2, rng()).tieBroken).toBe(false);
+  });
+
+  it('flags a tie straddling the boundary', () => {
+    expect(RankWithTies({ A: 4, B: 2, C: 2 }, ['A', 'B', 'C'], 2, rng()).tieBroken).toBe(true);
+    expect(RankWithTies({ A: 3, B: 3 }, ['A', 'B'], 1, rng()).tieBroken).toBe(true);
+  });
+
+  it('plurality, approval and majority do not flag a tie that decides nothing', () => {
+    const ballots: TallyBallot[] = [
+      ...ranked(4, 'A'),
+      ...ranked(2, 'B'),
+      ...ranked(2, 'C'),
+    ];
+    const input = officeInput(1, ['A', 'B', 'C'], ballots);
+    expect(new PluralityTallyMethod().Tally(input).TieBroken).toBe(false);
+    expect(new ApprovalTallyMethod().Tally(input).TieBroken).toBe(false);
+    expect(new MajorityTallyMethod().Tally(input).TieBroken).toBe(false);
+  });
+
+  it('plurality flags a tie for the last seat', () => {
+    const input = officeInput(2, ['A', 'B', 'C'], [...ranked(4, 'A'), ...ranked(2, 'B'), ...ranked(2, 'C')]);
+    const result = new PluralityTallyMethod().Tally(input);
+    expect(result.TieBroken).toBe(true);
+    expect(result.Notes).toContain('Tie broken by lot');
   });
 });

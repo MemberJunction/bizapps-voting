@@ -24,7 +24,8 @@ import {
     type mjBizAppsVotingElectionEntity,
 } from '@mj-biz-apps/voting-entities';
 import { ElectionAudit } from '../shared/audit.js';
-import { LoadElectionGraph } from '../shared/election-graph.js';
+import { RefreshCachedViews } from '../shared/cache-refresh.js';
+import { type ElectionGraph, LoadElectionGraph } from '../shared/election-graph.js';
 import { BeginTransaction, type EngineResult, Fail, IsFailure, Ok, PassFailure, type VotingContext } from '../shared/types.js';
 import { BallotStyleBuilder, DEFAULT_BALLOT_LANGUAGE } from './ballot-style-builder.js';
 import { VoterRollEngine } from './voter-roll-engine.js';
@@ -33,6 +34,7 @@ const ELECTIONS = 'MJ_BizApps_Voting: Elections';
 const CONTESTS = 'MJ_BizApps_Voting: Contests';
 const OPTIONS = 'MJ_BizApps_Voting: Contest Options';
 const ANCHORS = 'MJ_BizApps_Voting: Election Anchors';
+const ELIGIBLE_VOTERS = 'MJ_BizApps_Voting: Eligible Voters';
 
 /** Aborts a transactional create with a stable code. */
 class AdminAbort extends Error {
@@ -224,25 +226,44 @@ export class ElectionAdministrationEngine extends BaseSingleton<ElectionAdminist
         return Ok({ ElectionID: election.ID });
     }
 
-    /** Draft / Nominations / Ready -> Open. Freezes the roll if needed; validates readiness and the ballot style. */
+    /**
+     * Draft / Nominations / Ready -> Open. Validates readiness and the ballot style FIRST (neither depends on the
+     * roll), so a refusal changes nothing. The roll freeze and the status moves then run in ONE transaction: if the
+     * open fails after the roll was frozen, the freeze rolls back with it.
+     */
     public async OpenElection(electionID: string, ctx: VotingContext): Promise<EngineResult<{ Status: string }>> {
-        let graphRes = await LoadElectionGraph(electionID, ctx);
+        const graphRes = await LoadElectionGraph(electionID, ctx);
         if (IsFailure(graphRes)) return PassFailure(graphRes);
         const status = graphRes.Value.Election.Status;
         // The state machine has no Draft/Nominations -> Open edge; those elections pass through Ready (below).
         if (!CanTransition(status, 'Open') && !(CanTransition(status, 'Ready') && CanTransition('Ready', 'Open'))) {
             return Fail('InvalidTransition', `An election in ${status} status cannot be opened.`);
         }
+        const refusal = await this.checkOpenReadiness(graphRes.Value, ctx);
+        if (refusal) return refusal;
 
-        if (!graphRes.Value.Election.RollFrozenAt) {
-            const frozen = await VoterRollEngine.Instance.FreezeRoll(electionID, ctx);
-            if (IsFailure(frozen)) return PassFailure(frozen);
-            graphRes = await LoadElectionGraph(electionID, ctx);
-            if (IsFailure(graphRes)) return PassFailure(graphRes);
+        const scope = await BeginTransaction(ctx);
+        if (!scope) return Fail('TransactionsUnsupported', 'This provider cannot run the open transaction.');
+        let result: EngineResult<{ Status: string }>;
+        try {
+            result = await this.freezeAndOpen(graphRes.Value, ctx);
+        } catch (e) {
+            await this.rollbackQuietly(scope);
+            LogError(`ElectionAdministrationEngine.OpenElection failed: ${e instanceof Error ? e.message : String(e)}`);
+            return Fail('OpenFailed', 'The election could not be opened.');
         }
-        const graph = graphRes.Value;
-        const election = graph.Election;
+        if (IsFailure(result)) {
+            await this.rollbackQuietly(scope);
+            return result;
+        }
+        await scope.Commit();
+        await RefreshCachedViews([ELECTIONS, ELIGIBLE_VOTERS]);
+        return result;
+    }
 
+    /** Readiness and ballot-style validation. Reads only; returns the refusal, or null when the election may open. */
+    private async checkOpenReadiness(graph: ElectionGraph, ctx: VotingContext): Promise<EngineResult<{ Status: string }> | null> {
+        const election = graph.Election;
         const readiness = OpenReadinessProblems({
             AssuranceTier: election.AssuranceTier,
             ElectionPublicKey: election.ElectionPublicKey,
@@ -265,8 +286,19 @@ export class ElectionAdministrationEngine extends BaseSingleton<ElectionAdminist
             Configuration: graph.Configuration,
             Style: style,
         });
-        if (styleProblem) return Fail('InvalidBallotStyle', styleProblem);
+        return styleProblem ? Fail('InvalidBallotStyle', styleProblem) : null;
+    }
 
+    /** The writes of an open, inside the caller's transaction: freeze the roll if needed, then Ready (if not already) and Open. */
+    private async freezeAndOpen(graph: ElectionGraph, ctx: VotingContext): Promise<EngineResult<{ Status: string }>> {
+        let election = graph.Election;
+        if (!election.RollFrozenAt) {
+            const frozen = await VoterRollEngine.Instance.FreezeRoll(election.ID, ctx);
+            if (IsFailure(frozen)) return PassFailure(frozen);
+            const reloaded = await LoadElectionGraph(election.ID, ctx);
+            if (IsFailure(reloaded)) return PassFailure(reloaded);
+            election = reloaded.Value.Election;
+        }
         if (election.Status !== 'Ready') {
             const ready = await this.transition(election, 'Ready', 'Ready', ctx);
             if (IsFailure(ready)) return ready;
@@ -274,7 +306,14 @@ export class ElectionAdministrationEngine extends BaseSingleton<ElectionAdminist
         return this.transition(election, 'Open', 'Opened', ctx);
     }
 
-    /** Draft -> Nominations. Needs an office contest and a nomination window that has not already closed. */
+    /**
+     * Draft -> Nominations. Needs an office contest and a nomination window that has not already closed.
+     *
+     * Nominators are voters: `SubmitNomination` authorizes the caller against the roll, and members see the election only
+     * once its roll is frozen (row-level security). So opening nominations freezes the roll if it is not frozen yet, in ONE
+     * transaction with the status move: a freeze that fails leaves the election in Draft, and a failed move un-freezes.
+     * The roll stays amendable (`AmendRoll`) while nominations run.
+     */
     public async OpenNominations(electionID: string, ctx: VotingContext): Promise<EngineResult<{ Status: string }>> {
         const graphRes = await LoadElectionGraph(electionID, ctx);
         if (IsFailure(graphRes)) return PassFailure(graphRes);
@@ -285,7 +324,34 @@ export class ElectionAdministrationEngine extends BaseSingleton<ElectionAdminist
             new Date()
         );
         if (problems.length > 0) return Fail('NotReady', problems.join(' '));
-        return this.transition(election, 'Nominations', 'NominationsOpened', ctx);
+        if (election.RollFrozenAt) return this.transitionAndRefresh(election, 'Nominations', 'NominationsOpened', ctx);
+
+        const scope = await BeginTransaction(ctx);
+        if (!scope) return Fail('TransactionsUnsupported', 'This provider cannot run the nominations transaction.');
+        let result: EngineResult<{ Status: string }>;
+        try {
+            result = await this.freezeAndOpenNominations(election.ID, ctx);
+        } catch (e) {
+            await this.rollbackQuietly(scope);
+            LogError(`ElectionAdministrationEngine.OpenNominations failed: ${e instanceof Error ? e.message : String(e)}`);
+            return Fail('OpenNominationsFailed', 'Nominations could not be opened.');
+        }
+        if (IsFailure(result)) {
+            await this.rollbackQuietly(scope);
+            return result;
+        }
+        await scope.Commit();
+        await RefreshCachedViews([ELECTIONS, ELIGIBLE_VOTERS]);
+        return result;
+    }
+
+    /** The writes of an OpenNominations on an unfrozen roll, inside the caller's transaction: freeze, then Draft -> Nominations. */
+    private async freezeAndOpenNominations(electionID: string, ctx: VotingContext): Promise<EngineResult<{ Status: string }>> {
+        const frozen = await VoterRollEngine.Instance.FreezeRoll(electionID, ctx);
+        if (IsFailure(frozen)) return PassFailure(frozen);
+        const reloaded = await LoadElectionGraph(electionID, ctx);
+        if (IsFailure(reloaded)) return PassFailure(reloaded);
+        return this.transition(reloaded.Value.Election, 'Nominations', 'NominationsOpened', ctx);
     }
 
     /** Nominations -> Ready. */
@@ -293,7 +359,7 @@ export class ElectionAdministrationEngine extends BaseSingleton<ElectionAdminist
         const election = await ctx.Provider.GetEntityObject<mjBizAppsVotingElectionEntity>(ELECTIONS, ctx.ContextUser);
         if (!(await election.Load(electionID))) return Fail('ElectionNotFound', 'The election was not found.');
         if (election.Status !== 'Nominations') return Fail('InvalidTransition', `Nominations are not open (the election is ${election.Status}).`);
-        return this.transition(election, 'Ready', 'NominationsClosed', ctx);
+        return this.transitionAndRefresh(election, 'Ready', 'NominationsClosed', ctx);
     }
 
     /** Open -> Closed. */
@@ -301,7 +367,7 @@ export class ElectionAdministrationEngine extends BaseSingleton<ElectionAdminist
         const election = await ctx.Provider.GetEntityObject<mjBizAppsVotingElectionEntity>(ELECTIONS, ctx.ContextUser);
         if (!(await election.Load(electionID))) return Fail('ElectionNotFound', 'The election was not found.');
         if (!CanTransition(election.Status, 'Closed')) return Fail('InvalidTransition', `An election in ${election.Status} status cannot be closed.`);
-        return this.transition(election, 'Closed', 'Closed', ctx);
+        return this.transitionAndRefresh(election, 'Closed', 'Closed', ctx);
     }
 
     /** Any non-final status -> Cancelled, with the reason recorded in the audit trail. */
@@ -309,10 +375,23 @@ export class ElectionAdministrationEngine extends BaseSingleton<ElectionAdminist
         const election = await ctx.Provider.GetEntityObject<mjBizAppsVotingElectionEntity>(ELECTIONS, ctx.ContextUser);
         if (!(await election.Load(electionID))) return Fail('ElectionNotFound', 'The election was not found.');
         if (!CanTransition(election.Status, 'Cancelled')) return Fail('InvalidTransition', `An election in ${election.Status} status cannot be cancelled.`);
-        return this.transition(election, 'Cancelled', 'Cancelled', ctx, { Reason: reason });
+        return this.transitionAndRefresh(election, 'Cancelled', 'Cancelled', ctx, { Reason: reason });
     }
 
     // --- internals ---
+
+    /** A transition made outside any transaction of ours: once it is saved, drops the cached election views. */
+    private async transitionAndRefresh(
+        election: mjBizAppsVotingElectionEntity,
+        to: mjBizAppsVotingElectionEntity['Status'],
+        event: string,
+        ctx: VotingContext,
+        details?: Record<string, unknown>
+    ): Promise<EngineResult<{ Status: string }>> {
+        const result = await this.transition(election, to, event, ctx, details);
+        if (!IsFailure(result)) await RefreshCachedViews([ELECTIONS]);
+        return result;
+    }
 
     private async transition(
         election: mjBizAppsVotingElectionEntity,

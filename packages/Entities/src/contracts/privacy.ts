@@ -51,7 +51,8 @@ export interface ResultsVisibility {
  * - Live: audience throughout voting
  * - AdministratorsOnly: admins during open
  *
- * Results below MinCast threshold are never visible while open.
+ * Results below MinCast threshold are never visible while open. MinCast guards running results only: once Tallied or
+ * Certified, the final result follows the audience rule whatever the ballot count (every timing alike).
  *
  * @param params - The visibility parameters
  * @returns Visibility decision and reason
@@ -165,6 +166,13 @@ export function ResultsVisible(params: ResultsVisibilityParams): ResultsVisibili
         Reason: 'Voting has closed.',
         RunningResults: false,
       };
+    }
+
+    // Tallied or Certified: the final result of record follows the same audience rule as every other timing. The
+    // minimum-cast threshold guards RUNNING results (the differencing channel while voting is open), not the final result.
+    if (Status === 'Tallied' || Status === 'Certified') {
+      return audienceCheck(Audience, ViewerIsAdministrator, ViewerIsEligible, ViewerIsHostMember,
+        'Final results are visible to the authorized audience.');
     }
 
     // Election is Open: check audience and threshold

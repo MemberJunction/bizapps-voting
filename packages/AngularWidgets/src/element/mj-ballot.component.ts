@@ -178,17 +178,17 @@ const DEFAULT_STRINGS: BallotStrings = {
             {{ strings.hostAssertion }}
           </p>
           <p *ngIf="loginError()" class="login-error" role="alert">{{ loginError() }}</p>
-          <div *ngIf="showSecondFactor" class="second-factor-form">
+          <form *ngIf="showSecondFactor" class="second-factor-form" (submit)="onLoginSubmit($event)" novalidate>
             <div class="form-group">
               <label for="sourceKey">{{ strings.sourceKey }}</label>
-              <input id="sourceKey" type="text" [(ngModel)]="secondFactorSourceKey" />
+              <input id="sourceKey" name="sourceKey" type="text" autocomplete="username" [(ngModel)]="secondFactorSourceKey" />
             </div>
             <div class="form-group">
               <label for="pin">{{ strings.pin }}</label>
-              <input id="pin" type="password" [(ngModel)]="secondFactorPin" />
+              <input id="pin" name="pin" type="password" autocomplete="one-time-code" [(ngModel)]="secondFactorPin" />
             </div>
-            <button (click)="submitSecondFactor()" class="btn-submit">{{ strings.signIn }}</button>
-          </div>
+            <button type="submit" class="btn-submit">{{ strings.signIn }}</button>
+          </form>
         </div>
       </div>
 
@@ -483,6 +483,9 @@ const DEFAULT_STRINGS: BallotStrings = {
       --color-focus: #0066cc;
       --color-error: #dc3545;
       --color-success: #28a745;
+      /* Filled buttons: backgrounds and the text on them are chosen as pairs that meet 4.5:1 (WCAG AA). */
+      --color-success-fill: #1e7e34;
+      --color-on-accent: #ffffff;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -493,6 +496,8 @@ const DEFAULT_STRINGS: BallotStrings = {
         --color-focus: #4d94ff;
         --color-error: #ff6b6b;
         --color-success: #51cf66;
+        --color-success-fill: #51cf66;
+        --color-on-accent: #000000;
       }
     }
 
@@ -654,7 +659,7 @@ const DEFAULT_STRINGS: BallotStrings = {
       width: 1.5rem;
       height: 1.5rem;
       background-color: var(--color-focus);
-      color: white;
+      color: var(--color-on-accent);
       border-radius: 50%;
       font-weight: bold;
       font-size: 0.8rem;
@@ -677,7 +682,7 @@ const DEFAULT_STRINGS: BallotStrings = {
     .btn-move:hover:not(:disabled),
     .btn-remove:hover {
       background-color: var(--color-focus);
-      color: white;
+      color: var(--color-on-accent);
     }
 
     .btn-move:disabled {
@@ -766,7 +771,7 @@ const DEFAULT_STRINGS: BallotStrings = {
     .btn-submit,
     .btn-confirm {
       background-color: var(--color-focus);
-      color: white;
+      color: var(--color-on-accent);
       border-color: var(--color-focus);
       flex: 1;
     }
@@ -863,9 +868,9 @@ const DEFAULT_STRINGS: BallotStrings = {
 
     .btn-copy {
       margin-top: 0.5rem;
-      background-color: var(--color-success);
-      color: white;
-      border-color: var(--color-success);
+      background-color: var(--color-success-fill);
+      color: var(--color-on-accent);
+      border-color: var(--color-success-fill);
     }
 
     .btn-copy:hover {
@@ -1086,6 +1091,12 @@ export class MjBallotComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
+  /** The sign-in form's submit: Enter in either field works as well as the button. */
+  onLoginSubmit(event: Event): void {
+    event.preventDefault();
+    void this.submitSecondFactor();
+  }
+
   async submitSecondFactor(): Promise<void> {
     // Item 10: second-factor sign-in
     if (!this.secondFactorSourceKey || !this.secondFactorPin) {
@@ -1221,6 +1232,7 @@ export class MjBallotComponent implements OnInit, OnChanges, OnDestroy {
     // Item 2: for ranked, rank is position + 1
     const rank = this.getContestStyle(contestId)?.IsRanked ? contest.Selections.length + 1 : undefined;
     contest.Selections.push({ OptionID: optionId, Rank: rank });
+    contest.Abstain = false;
     this.commitSubmission(submission);
 
     select.value = '';
@@ -1234,13 +1246,21 @@ export class MjBallotComponent implements OnInit, OnChanges, OnDestroy {
     if (!contest) return;
 
     if (input.checked) {
-      // Item 3: check MaxSelections
+      // Single choice (a radio group): picking another option replaces the previous pick.
       const style = this.getContestStyle(contestId);
+      if (style?.MaxSelections === 1) {
+        contest.Selections = [{ OptionID: optionId }];
+        contest.Abstain = false;
+        this.commitSubmission(submission);
+        return;
+      }
+      // Item 3: check MaxSelections
       if (style && contest.Selections.length >= style.MaxSelections) {
         input.checked = false;
         return;
       }
       contest.Selections.push({ OptionID: optionId });
+      contest.Abstain = false;
     } else {
       const idx = contest.Selections.findIndex((s) => s.OptionID === optionId);
       if (idx >= 0) contest.Selections.splice(idx, 1);
@@ -1321,6 +1341,8 @@ export class MjBallotComponent implements OnInit, OnChanges, OnDestroy {
     for (const contest of submission.Contests) {
       const styleContest = style?.Contests.find((c) => c.ContestID === contest.ContestID);
       if (styleContest) contest.Comments = BuildContestComments(styleContest, contest.Selections, this.commentDrafts);
+      // A ranked ballot's ranks ARE the list order: renumber after every move or removal so they stay 1..n with no gap or duplicate.
+      if (styleContest?.IsRanked) contest.Selections.forEach((selection, index) => (selection.Rank = index + 1));
     }
     this.ballotSubmission.set({ ...submission });
   }
@@ -1335,9 +1357,19 @@ export class MjBallotComponent implements OnInit, OnChanges, OnDestroy {
       return;
     }
 
-    const errors = ValidateSubmission(style, submission);
+    const errors = ValidateSubmission(style, submission).map((issue) => ({ ...issue, Message: this.humanizeIssue(issue.Message, style) }));
     this.validationErrors.set(errors);
     this.formValid.set(errors.length === 0);
+  }
+
+  /** Validation messages quote contest and option ids; the voter should read their names. */
+  private humanizeIssue(message: string, style: BallotStyle): string {
+    let text = message;
+    for (const contest of style.Contests) {
+      text = text.split(contest.ContestID).join(contest.Name);
+      for (const option of contest.Options) text = text.split(option.OptionID).join(option.Label);
+    }
+    return text;
   }
 
   // Helpers
@@ -1360,6 +1392,8 @@ export class MjBallotComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   canSelectOption(contest: BallotStyleContest, optionId: string): boolean {
+    // A single-choice contest never disables its options: choosing another one replaces the pick.
+    if (contest.MaxSelections === 1) return true;
     const selected = this.getContestSelections(contest.ContestID).length;
     return selected < contest.MaxSelections || this.isOptionSelected(contest.ContestID, optionId);
   }

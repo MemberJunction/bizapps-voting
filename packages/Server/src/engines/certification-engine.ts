@@ -4,7 +4,9 @@
  * Each call to Certify is one certifier's signature (the acting user's Person). The ElectionCertification row is created on
  * the first call (Draft) with the roll hash, the ballot-set hash and the results-timing disclosure; when the number of
  * signed certifiers reaches Configuration.RequiredCertifiers (default 1) the certification becomes Certified, the election
- * becomes Certified and the election-type driver's OnResultsCertified runs, all in one transaction.
+ * becomes Certified and the election-type driver's OnResultsCertified runs, all in one transaction. The certification and
+ * certifier rows are written as the signer; the election status and the driver hook run as the system principal (an
+ * Election Inspector may certify but holds no update grant on Elections).
  *
  * BallotSetHash = Sha256Hex of the sorted `${CastBallot.ID}:${BallotStyleHash}:${ReceiptCode}` of the counted ballots, so a
  * ballot added, removed or altered after certification changes the hash. It reads identity columns only, never selections.
@@ -15,14 +17,16 @@ import { ElectionTypeDriverRegistry } from '@mj-biz-apps/voting-core-entities-se
 import {
     type mjBizAppsVotingElectionCertificationEntity,
     type mjBizAppsVotingElectionCertifierEntity,
+    type mjBizAppsVotingElectionEntity,
 } from '@mj-biz-apps/voting-entities';
 import { ElectionAudit } from '../shared/audit.js';
+import { RefreshCachedViews } from '../shared/cache-refresh.js';
 import { LoadElectionGraph } from '../shared/election-graph.js';
 import { VotingAuthorization } from '../shared/authorization.js';
 import { SystemContext } from '../shared/system-user.js';
 import { type EngineResult, type VotingContext, Fail, IsFailure, Ok, PassFailure, RunViewOf } from '../shared/types.js';
 import { SqlLiteral } from '../shared/voter-identity.js';
-import { BuildResultsContext, ErrorText, FindPersonForUser, LoadFinalContestResults, SaveOrThrow, RunTransactional } from './person-support.js';
+import { BuildResultsContext, ErrorText, FindPersonForUser, LoadElectionEntity, LoadFinalContestResults, SaveOrThrow, RunTransactional } from './person-support.js';
 import { type BallotIdentity, ComputeBallotSetHash } from './tally-pipeline.js';
 import { DescribeResultsTimingDisclosure, RequiredCertifiersOf } from './results-policy.js';
 
@@ -30,6 +34,7 @@ const CERTIFICATIONS_ENTITY = 'MJ_BizApps_Voting: Election Certifications';
 const CERTIFIERS_ENTITY = 'MJ_BizApps_Voting: Election Certifiers';
 const CAST_BALLOTS_ENTITY = 'MJ_BizApps_Voting: Cast Ballots';
 const SNAPSHOTS_ENTITY = 'MJ_BizApps_Voting: Result Snapshots';
+const ELECTIONS_ENTITY = 'MJ_BizApps_Voting: Elections';
 
 export interface CertifyValue {
     CertificationID: string;
@@ -123,9 +128,9 @@ export class CertificationEngine extends BaseSingleton<CertificationEngine> {
                     certification.Status = 'Certified';
                     certification.CertifiedAt = new Date();
                     await SaveOrThrow(certification, 'The certification');
-                    election.Status = 'Certified';
-                    await SaveOrThrow(election, 'The election status');
-                    await driver.OnResultsCertified(await BuildResultsContext(graph, ctx));
+                    const certified = await this.markElectionCertified(election.ID, ctx);
+                    await driver.OnResultsCertified(await BuildResultsContext({ ...graph, Election: certified }, SystemContext(ctx)));
+                    return { CertificationID: certification.ID, Status: certified.Status, SignaturesReceived: signed, SignaturesRequired: required };
                 }
                 return { CertificationID: certification.ID, Status: election.Status, SignaturesReceived: signed, SignaturesRequired: required };
             });
@@ -133,6 +138,7 @@ export class CertificationEngine extends BaseSingleton<CertificationEngine> {
             return Fail('CertifyFailed', ErrorText(e));
         }
 
+        if (value.Status === 'Certified') await RefreshCachedViews([ELECTIONS_ENTITY, CERTIFICATIONS_ENTITY]);
         await ElectionAudit.Record(ctx, election.ID, value.Status === 'Certified' ? 'Certified' : 'CertifierSigned', {
             SignaturesReceived: value.SignaturesReceived,
             SignaturesRequired: value.SignaturesRequired,
@@ -140,6 +146,20 @@ export class CertificationEngine extends BaseSingleton<CertificationEngine> {
             RollHash: election.RollHash,
         });
         return Ok(value);
+    }
+
+    /**
+     * Tallied -> Certified on the election row, as the system principal. The certifier was authorized by the operation
+     * (administrator or Election Inspector) and signs as themselves, but the election row is writable only by Voting
+     * Administrators and the engine (an inspector holds R on Elections, docs/voting/security.md), so the status move that
+     * the last signature triggers is the engine's write, not the signer's. Runs inside the certification transaction.
+     */
+    private async markElectionCertified(electionID: string, ctx: VotingContext): Promise<mjBizAppsVotingElectionEntity> {
+        const row = await LoadElectionEntity(electionID, SystemContext(ctx));
+        if (!row) throw new Error('The election could not be reloaded to record its certification.');
+        row.Status = 'Certified';
+        await SaveOrThrow(row, 'The election status');
+        return row;
     }
 
     /** Hash of the counted ballot set (identity columns only). */

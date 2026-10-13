@@ -54,6 +54,7 @@ export function RenderHostPage(o: HostPageOptions): string {
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="robots" content="noindex" />
   <meta name="referrer" content="no-referrer" />
+  <link rel="icon" href="data:," />
   <title>${title}</title>
   <style>${PAGE_CSS}</style>${script}
 </head>
@@ -72,6 +73,7 @@ export function RenderHostErrorPage(message: string): string {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex" />
+  <link rel="icon" href="data:," />
   <title>Ballot unavailable</title>
   <style>${PAGE_CSS}</style>
 </head>

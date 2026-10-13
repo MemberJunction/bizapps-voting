@@ -32,7 +32,10 @@ The widget bundle imports only `@mj-biz-apps/voting-entities/contracts` and Angu
    - insert `CastBallot` (database-generated random id, ciphertext, receipt code, voting class, weight class, `Counted`);
      on a revote the previous ballot becomes `Superseded`;
    - insert `BallotAttribution` only when `SecrecyMode` is not `Secret`;
-   - update `ContestRunningTally` only when `ResultsTiming` is not `AfterClose` **and** the tier is Standard;
+   - update `ContestRunningTally` only when `ResultsTiming` is not `AfterClose` **and** the tier is Standard; a running tally
+     is a shared counter, so each contest's rows are written under a transaction-scoped exclusive lock (`sp_getapplock` /
+     `pg_advisory_xact_lock`, `shared/transaction-lock.ts`) and read fresh (`BypassCache`), else concurrent casts lose
+     increments. That lock is the only SQL Voting issues outside entity saves, and it writes nothing;
    - for `Open` elections, write `BallotComment` rows for standards-ballot comments.
 6. Return the receipt code. In Secret mode `GetMyParticipation` / `GetMyBallot` cannot return the receipt later
    (no attribution to find it); the voter must keep it.
@@ -88,8 +91,9 @@ All are `BaseSingleton`s in `Server/src/engines`. Operations, Actions-via-operat
 |---|---|
 | No timestamps on ballot data: `TrackRecordChanges = false` on `CastBallot`, `BallotSelection`, `ContestRunningTally` | `codegen/additional-schema-info.json`; applied when CodeGen *creates* the entity (needs the MJ CodeGen change, see README) |
 | Random clustered primary keys (`NEWID()`, `PRIMARY KEY CLUSTERED`) on those three tables, so physical order does not follow cast order | `migrations/V...Voting_Core_Schema.sql` |
+| Every non-catalog table is created with `AutoAddPermissions` false and explicit role grants (see [security.md](security.md)); the poll book, audit trail, roll, credentials, proxies, trustees, results and certification also have `AllowDeleteAPI` false | `codegen/additional-schema-info.json`, `metadata/entity-permissions`, `metadata/row-level-security-filters` |
 | `AutoAddPermissions`, `AllowDeleteAPI`, `AllowUserSearchAPI`, `AllowAllRowsAPI` false on all four ballot-box entities (also `AuditRecordAccess` / `AuditViewRuns` false on the three timestamp-free ones). `BallotAttribution` keeps change tracking: it only exists for non-Secret elections | `codegen/additional-schema-info.json` |
-| Zero permissions except role `Voting Ballot Engine` (read/create/update, never delete), held only by MJ's system user | `metadata/roles`, `metadata/entity-permissions`, `metadata/user-roles` |
+| Zero permissions except role `Voting Ballot Engine` (read/create/update, never delete), held only by MJ's system user. Voter operations authorize the caller, then run the engines as that principal (`OpenVoterSession`) | `metadata/roles`, `metadata/entity-permissions`, `metadata/user-roles` |
 | No delete procedures for the ballot-box entities | Generated SQL (`AllowDeleteAPI: false`) |
 | Entity-server write guards: ballot-box creation only inside `BallotBoxWriteGuard`; results only inside `TallyWriteGuard` while the election is `Closed`/`Tallied`; selections and participations immutable | `CoreEntitiesServer/src/entity-servers.ts` |
 | `AllowCreateAPI` / `AllowUpdateAPI` **left on**: turning them off makes CodeGen omit `spCreate` / `spUpdate` and generate a `Save()` that always throws, so the cast engine could not write | `codegen/additional-schema-info.json` comments |

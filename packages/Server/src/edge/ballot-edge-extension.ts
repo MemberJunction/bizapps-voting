@@ -9,7 +9,7 @@
  * The decisions live in `edge-core.ts` (gate order, error contract); this file is Express wiring and the data loaders.
  */
 import BodyParser from 'body-parser';
-import type { Application, Request, Response } from 'express';
+import type { Application, NextFunction, Request, Response } from 'express';
 import { LogError, LogStatus, Metadata } from '@memberjunction/core';
 import { RegisterClass } from '@memberjunction/global';
 import {
@@ -43,7 +43,16 @@ import {
     type EdgeRequest,
     type EdgeResponse,
 } from './edge-core.js';
-import { ElementAssetHeaders, IsValidSlug, NormalizeGraphQLPath, ParseAllowedOrigins, ResolveClientIp, ResolveGraphQLUrl } from './edge-policy.js';
+import {
+    ElementAssetHeaders,
+    IsValidSlug,
+    NormalizeGraphQLPath,
+    ParseAllowedOrigins,
+    PromoteLastLayerToFront,
+    ResolveClientIp,
+    ResolveGraphQLUrl,
+    StripHostResponseHeaders,
+} from './edge-policy.js';
 import { BuildHostErrorResponse, BuildHostPageResponse, type HostPageResponse } from './host-page.js';
 import { FixedWindowRateLimiter } from './rate-limiter.js';
 import { MAX_BODY_LIMIT } from './request-validation.js';
@@ -120,8 +129,18 @@ export class BallotEdgeExtension extends BaseServerExtension {
             LogStatus(`[Voting] Ballot element served from ${elementDir} at GET ${root}/element/main.js`);
         }
 
+        // The edge owns its namespace's CORS and fingerprinting. The host's global CORS middleware (mounted before every
+        // extension) reflects any Origin and answers every preflight itself, and Express stamps X-Powered-By on every response;
+        // neither may reach a /vote response. Preflights are decided ahead of the host middleware; everything else is cleaned
+        // here, before the edge's own handlers set exactly the grants its policy allows.
+        app.use(root, (req: Request, res: Response, next: NextFunction) => this.preflightGate(req, res, next));
+        if (!PromoteLastLayerToFront(app)) LogError('[VotingBallotEdge] Could not order the preflight gate ahead of the host CORS middleware; the host answers /vote preflights.');
+        app.use(root, (_req: Request, res: Response, next: NextFunction) => {
+            StripHostResponseHeaders(res);
+            next();
+        });
+
         const json = BodyParser.json({ limit: MAX_BODY_LIMIT });
-        app.options(`${root}/session`, (req: Request, res: Response) => void this.run(res, () => HandlePreflight(this.deps, this.edgeRequest(req))));
         app.post(`${root}/session`, (req: Request, res: Response) => this.parseBodyThen(json, req, res));
         app.get(`${root}/:slug/info`, (req: Request, res: Response) => void this.run(res, () => HandleInfo(this.deps, this.edgeRequest(req), String(req.params.slug ?? ''))));
         app.get(`${root}/:slug`, (req: Request, res: Response) => void this.handleHost(req, res));
@@ -146,6 +165,25 @@ export class BallotEdgeExtension extends BaseServerExtension {
     }
 
     // ─── Express glue ─────────────────────────────────────────────────────────
+
+    /**
+     * Every OPTIONS request under the edge root ends here, under the edge's own preflight rules (no Origin or a malformed one
+     * is refused; `/:slug/info` also needs an origin the distribution allows). Other methods pass through untouched.
+     */
+    private preflightGate(req: Request, res: Response, next: NextFunction): void {
+        if (req.method !== 'OPTIONS') {
+            next();
+            return;
+        }
+        StripHostResponseHeaders(res);
+        const info = /^\/([^/]+)\/info\/?$/.exec(req.path);
+        const slug = info ? decodeURIComponent(info[1]) : undefined;
+        if (!info && !/^\/session\/?$/.test(req.path)) {
+            res.status(404).end();
+            return;
+        }
+        void this.run(res, () => HandlePreflight(this.deps, this.edgeRequest(req), slug));
+    }
 
     private edgeRequest(req: Request): EdgeRequest {
         const origin = req.headers.origin;

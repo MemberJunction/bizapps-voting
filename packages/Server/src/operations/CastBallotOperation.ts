@@ -13,8 +13,8 @@ import {
     type VotingCastBallotInput,
     type VotingCastBallotOutput,
 } from '@mj-biz-apps/voting-entities';
-import { VoterIdentityResolver, type VotingContext, IsFailure, GuestMayAccessElection } from '../shared/index.js';
-import { FailOperation, ResolveCredentialMethodID } from './operation-support.js';
+import { type VotingContext, IsFailure, GuestMayAccessElection } from '../shared/index.js';
+import { FailOperation, NOT_ON_ROLL_MESSAGE, OpenVoterSession, ResolveCredentialMethodID } from './operation-support.js';
 import { CastEngine } from '../engines/index.js';
 
 @RegisterClass(BaseRemotableOperation, 'Voting.CastBallot')
@@ -30,15 +30,16 @@ export class CastBallotOperation extends VotingCastBallotOperationBase {
 
         const ctx: VotingContext = { ContextUser: user, Provider: provider };
 
-        // Resolve the voter identity (guest or MJ session)
-        const identity = await VoterIdentityResolver.Resolve(input.ElectionID, ctx);
-        if (!identity) {
-            return { Success: false, Message: 'You are not on the roll for this election.' };
+        // Authorize first (guest session scope or MJ user matched to the roll); the cast then runs as the system principal.
+        const session = await OpenVoterSession(input.ElectionID, ctx);
+        if (!session) {
+            return { Success: false, Message: NOT_ON_ROLL_MESSAGE };
         }
+        const { Identity: identity, Engine: engine } = session;
 
         try {
             // The guest token does not carry the credential method, so it is looked up (system context read).
-            const credentialMethodID = await ResolveCredentialMethodID(identity, ctx);
+            const credentialMethodID = await ResolveCredentialMethodID(identity, engine);
             const result = await CastEngine.Instance.Cast(
                 {
                     ElectionID: input.ElectionID,
@@ -51,7 +52,7 @@ export class CastBallotOperation extends VotingCastBallotOperationBase {
                     ProxyDesignationID: undefined,
                     Language: input.Language,
                 },
-                ctx
+                engine
             );
 
             if (IsFailure(result)) {

@@ -147,6 +147,20 @@ describe('privacy.ts', () => {
         });
         expect(result.Visible).toBe(false);
       });
+
+      it('shows the final result to the audience once tallied, even below the minimum-cast threshold (as AfterClose does)', () => {
+        for (const Status of ['Tallied', 'Certified'] as const) {
+          const live = ResultsVisible({ ...baseParams, Timing: 'Live', Status, Audience: 'Eligible', ViewerIsEligible: true, BallotCount: 1, MinCast: 5 });
+          const afterClose = ResultsVisible({ ...baseParams, Timing: 'AfterClose', Status, Audience: 'Eligible', ViewerIsEligible: true, BallotCount: 1, MinCast: 5 });
+          expect(live).toMatchObject({ Visible: true, RunningResults: false });
+          expect(live.Visible).toBe(afterClose.Visible);
+        }
+      });
+
+      it('still applies the audience to the final result', () => {
+        const result = ResultsVisible({ ...baseParams, Timing: 'Live', Status: 'Tallied', Audience: 'Administrators', ViewerIsAdministrator: false, BallotCount: 10 });
+        expect(result.Visible).toBe(false);
+      });
     });
 
     describe('AdministratorsOnly timing', () => {

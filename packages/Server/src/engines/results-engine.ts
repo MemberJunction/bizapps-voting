@@ -28,6 +28,7 @@ import { type EngineResult, type VotingContext, Fail, IsFailure, Ok, PassFailure
 import { SqlLiteral } from '../shared/voter-identity.js';
 import { ErrorText, LoadElectionEntity, SaveOrThrow } from './person-support.js';
 import { IsRankedMethod } from './ballot-style-builder.js';
+import { ContestNotesOf } from './tally-pipeline.js';
 import {
     type ClassCount,
     type RunningTallyRow,
@@ -200,14 +201,13 @@ export class ResultsEngine extends BaseSingleton<ResultsEngine> {
     }
 
     private toContestOutcome(result: ContestResultRow, options: VotingTallyOptionResult[], ballotCount: number): VotingContestOutcome {
-        const notes = result.TieBreakNotes ? result.TieBreakNotes.split('\n') : [];
         const outcome: VotingContestOutcome = {
             ContestID: result.ContestID,
             Outcome: result.Outcome,
             VotesCast: Number(result.VotesCast),
             Abstentions: Number(result.Abstentions),
             Options: options,
-            Notes: result.Outcome === 'NoQuorum' ? ['Quorum was not met.', ...notes] : notes,
+            Notes: ContestNotesOf(result),
         };
         void ballotCount;
         const rounds = this.parseRounds(result.Rounds);

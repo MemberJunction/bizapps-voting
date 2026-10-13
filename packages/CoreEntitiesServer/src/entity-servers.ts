@@ -7,7 +7,7 @@
  * `SkipAsyncValidation: true`. A refused delete returns false with the reason on the result history, as MJ expects.
  */
 
-import { BaseEntity, LogError, type ValidationResult } from '@memberjunction/core';
+import { BaseEntity, EntityPermissionType, LogError, type ValidationResult } from '@memberjunction/core';
 import { RegisterClass } from '@memberjunction/global';
 import {
     CanTransition,
@@ -43,7 +43,6 @@ import {
     DeriveElectionChangeAction,
     DescribeConfigurationLockRefusal,
     DescribeResultWriteRefusal,
-    DescribeVoterDeleteRefusal,
     GetDirtyFieldNames,
     GetDirtyOldValues,
     GetOldFieldValue,
@@ -84,6 +83,20 @@ async function electionLockRefusal(
         if (refusal) return refusal;
     }
     return null;
+}
+
+/**
+ * Says why a delete of a child row is refused, deciding the caller's own DELETE permission first: a caller without it gets
+ * MJ's standard permission refusal (from `super.Delete`) and learns nothing about the election's state. Null means proceed.
+ */
+async function deleteRefusal(
+    entity: BaseEntity,
+    parentField: string,
+    loadElection: (e: BaseEntity, id: string | null) => Promise<ElectionEntity | null>,
+    what: string
+): Promise<string | null> {
+    if (!entity.CheckPermissions(EntityPermissionType.Delete, false)) return null;
+    return electionLockRefusal(entity, parentField, loadElection, what, 'delete');
 }
 
 /** Applies each rule violation to the validation result. */
@@ -247,7 +260,7 @@ export class ContestEntityServer extends mjBizAppsVotingContestEntity {
     }
 
     public override async Delete(options?: DeleteOptions): Promise<boolean> {
-        const refusal = await electionLockRefusal(this, 'ElectionID', LoadElection, 'a contest', 'delete');
+        const refusal = await deleteRefusal(this, 'ElectionID', LoadElection, 'a contest');
         return refusal ? FailDelete(this, refusal) : super.Delete(options);
     }
 }
@@ -270,7 +283,7 @@ export class ContestOptionEntityServer extends mjBizAppsVotingContestOptionEntit
     }
 
     public override async Delete(options?: DeleteOptions): Promise<boolean> {
-        const refusal = await electionLockRefusal(this, 'ContestID', LoadElectionOfContest, 'a contest option', 'delete');
+        const refusal = await deleteRefusal(this, 'ContestID', LoadElectionOfContest, 'a contest option');
         return refusal ? FailDelete(this, refusal) : super.Delete(options);
     }
 }
@@ -293,7 +306,7 @@ export class ElectionAnchorEntityServer extends mjBizAppsVotingElectionAnchorEnt
     }
 
     public override async Delete(options?: DeleteOptions): Promise<boolean> {
-        const refusal = await electionLockRefusal(this, 'ElectionID', LoadElection, 'an election anchor', 'delete');
+        const refusal = await deleteRefusal(this, 'ElectionID', LoadElection, 'an election anchor');
         return refusal ? FailDelete(this, refusal) : super.Delete(options);
     }
 }
@@ -322,11 +335,13 @@ export class EligibleVoterEntityServer extends mjBizAppsVotingEligibleVoterEntit
         return super.Save(WithValidation(options));
     }
 
-    public override async Delete(options?: DeleteOptions): Promise<boolean> {
-        const election = await LoadElection(this, this.ElectionID);
-        if (!election) return FailDelete(this, 'Voter delete refused: the election could not be read.');
-        const refusal = DescribeVoterDeleteRefusal(!!election.RollFrozenAt);
-        return refusal ? FailDelete(this, refusal) : super.Delete(options);
+    /**
+     * Roll rows are never deleted: the entity is created with AllowDeleteAPI = 0 (no delete procedure), and a voter leaves the roll
+     * by status (Removed, with the audit entry), which keeps the roll hash reproducible. A refusal rather than the generated throw,
+     * so the reason reaches the caller the same way every other roll rule does.
+     */
+    public override async Delete(): Promise<boolean> {
+        return FailDelete(this, 'Roll rows are never deleted; mark the voter Removed instead.');
     }
 }
 

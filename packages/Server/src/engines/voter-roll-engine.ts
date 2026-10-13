@@ -24,6 +24,7 @@ import {
     MergeSettings,
     NormalizeWeight,
     ParseJsonObject,
+    RedactInlineRoll,
     type RollChangeContext,
     type RollEntry,
     type UnmatchedRow,
@@ -118,6 +119,8 @@ export class VoterRollEngine extends BaseSingleton<VoterRollEngine> {
                 for (const entry of toInsert) await this.insertVoter(election.ID, entry, false, ctx);
                 election.RollFrozenAt = new Date();
                 election.RollHash = rollHash;
+                // The roll now lives in Eligible Voters; do not leave a CSV source's rows (emails) on the election row, which members can read.
+                election.EligibilitySourceSettings = RedactInlineRoll(election.EligibilitySourceSettings);
                 if (!(await election.Save())) throw new Error(`Could not record the frozen roll on the election: ${election.LatestResult?.CompleteMessage ?? 'unknown error'}`);
                 await Driver.OnRollFrozen(rollContext);
             });

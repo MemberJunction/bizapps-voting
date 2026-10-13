@@ -119,12 +119,13 @@ describe('new administrator operations: authorization', () => {
     ] as const;
 
     for (const [name, op, input] of operations) {
-        it(`${name}: allows a Voting Administrator and a Developer`, async () => {
+        it(`${name}: allows a Voting Administrator`, async () => {
             expect(await op['Authorize'](input as never, user({ UserRoles: [{ Role: 'Voting Administrator' }] }))).toBe(true);
-            expect(await op['Authorize'](input as never, user({ UserRoles: [{ Role: 'Developer' }] }))).toBe(true);
         });
-        it(`${name}: refuses a regular user, an inspector and a guest`, async () => {
+        it(`${name}: refuses a regular user, a Developer, an Integration user, an inspector and a guest`, async () => {
             expect(await op['Authorize'](input as never, user({ UserRoles: [{ Role: 'Regular User' }] }))).toBe(false);
+            expect(await op['Authorize'](input as never, user({ UserRoles: [{ Role: 'Developer' }] }))).toBe(false);
+            expect(await op['Authorize'](input as never, user({ UserRoles: [{ Role: 'Integration' }] }))).toBe(false);
             expect(await op['Authorize'](input as never, user({ UserRoles: [{ Role: 'Election Inspector' }] }))).toBe(false);
             expect(await op['Authorize'](input as never, user({ IsMagicLinkAnonymous: true, MagicLinkScope: { ResourceType: 'VotingBallotSession', ResourceID: 'E1:V1' } }))).toBe(false);
         });

@@ -45,6 +45,7 @@ import {
     BuildContestInput,
     BuildContestResultRow,
     ComputeClassWeights,
+    ContestNotesOf,
     CryptoShuffle,
     EligibleCountForContest,
     EligibleWeightForContest,
@@ -164,7 +165,7 @@ export class TallyEngine extends BaseSingleton<TallyEngine> {
                         election.Status = 'Tallied';
                         await SaveOrThrow(election, 'The election status');
                     }
-                    await driver.OnResultsTallied(await BuildResultsContext(graph, ctx));
+                    await driver.OnResultsTallied(await BuildResultsContext(graph, ctx, rows));
                 })
             );
         } catch (e) {
@@ -195,7 +196,7 @@ export class TallyEngine extends BaseSingleton<TallyEngine> {
                 Options: rows[i].Options,
                 Rounds: c.Outcome.Rounds,
                 TieBroken: c.Outcome.TieBroken,
-                Notes: c.Outcome.Notes,
+                Notes: ContestNotesOf(rows[i]),
             })),
         });
     }

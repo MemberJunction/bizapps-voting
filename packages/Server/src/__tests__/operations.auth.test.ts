@@ -172,7 +172,7 @@ describe('Remote Operations — Authorization', () => {
             expect(authorized).toBe(true);
         });
 
-        it('CreateElection: allows Developer (platform admin) role', async () => {
+        it('CreateElection: refuses the Developer and Integration platform roles (they hold no voting grants)', async () => {
             const op = new CreateElectionOperation();
             const user = createUser({
                 UserRoles: [{ Role: 'Developer' }],
@@ -185,7 +185,8 @@ describe('Remote Operations — Authorization', () => {
             };
 
             const authorized = await op['Authorize'](input, user);
-            expect(authorized).toBe(true);
+            expect(authorized).toBe(false);
+            expect(await op['Authorize'](input, createUser({ UserRoles: [{ Role: 'Integration' }] }))).toBe(false);
         });
 
         it('CreateElection: refuses regular user', async () => {

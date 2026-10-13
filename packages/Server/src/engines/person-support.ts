@@ -42,14 +42,18 @@ export interface PersonRef {
     DisplayName: string;
 }
 
-/** The Person linked to the acting user (LinkedUserID first, then email). Null when none. */
-export async function FindPersonForUser(ctx: VotingContext): Promise<PersonRef | null> {
-    const user = ctx.ContextUser;
-    const rv = RunViewOf(ctx);
+/**
+ * The Person linked to the acting user (LinkedUserID first, then email). Null when none.
+ * `caller` supplies the claims (user id, email); `reader` runs the lookups (defaults to the caller itself). Voter-facing
+ * operations pass the system context as `reader`: a member holds no permission on the roll or trustee tables.
+ */
+export async function FindPersonForUser(caller: VotingContext, reader: VotingContext = caller): Promise<PersonRef | null> {
+    const user = caller.ContextUser;
+    const rv = RunViewOf(reader);
     if (user.ID) {
         const linked = await rv.RunView<PersonRef>(
             { EntityName: PEOPLE_ENTITY, ExtraFilter: `LinkedUserID = ${SqlLiteral(user.ID)}`, Fields: ['ID', 'DisplayName'], MaxRows: 1, ResultType: 'simple' },
-            user
+            reader.ContextUser
         );
         if (linked.Success && linked.Results[0]) return linked.Results[0];
     }
@@ -57,7 +61,7 @@ export async function FindPersonForUser(ctx: VotingContext): Promise<PersonRef |
     if (!email) return null;
     const byEmail = await rv.RunView<PersonRef>(
         { EntityName: PEOPLE_ENTITY, ExtraFilter: `LOWER(Email) = ${SqlLiteral(email.toLowerCase())}`, Fields: ['ID', 'DisplayName'], MaxRows: 1, ResultType: 'simple' },
-        user
+        reader.ContextUser
     );
     return byEmail.Success && byEmail.Results[0] ? byEmail.Results[0] : null;
 }
@@ -95,8 +99,16 @@ export async function LoadFinalContestResults(contestIDs: readonly string[], ctx
 /**
  * The context a driver's OnResultsTallied / OnResultsCertified hook receives. A NoQuorum contest is summarized as 'Void'
  * (the driver contract has no NoQuorum value; the stored result keeps the real outcome).
+ *
+ * @param finals The final results when the caller already holds them. The tally passes the rows it has just written, inside
+ *   its own transaction: re-reading Contest Results there scans rows another election's concurrent tally has inserted
+ *   but not committed, while that tally does the same to ours, and SQL Server picks one as a deadlock victim.
  */
-export async function BuildResultsContext(graph: ElectionGraph, ctx: VotingContext): Promise<ElectionResultsContext> {
+export async function BuildResultsContext(
+    graph: ElectionGraph,
+    ctx: VotingContext,
+    finals?: ReadonlyArray<Pick<FinalContestResultRow, 'ContestID' | 'Outcome'>>
+): Promise<ElectionResultsContext> {
     const anchors = await RunViewOf(ctx).RunView<mjBizAppsVotingElectionAnchorEntity>(
         {
             EntityName: ANCHORS_ENTITY,
@@ -108,10 +120,10 @@ export async function BuildResultsContext(graph: ElectionGraph, ctx: VotingConte
     );
     const anchor = anchors.Success ? anchors.Results[0] : undefined;
     const entityName = anchor ? ctx.Provider.EntityByID(anchor.EntityID)?.Name : undefined;
-    const finals = await LoadFinalContestResults(graph.Contests.map((c) => c.ID), ctx);
+    const known = finals ?? (await LoadFinalContestResults(graph.Contests.map((c) => c.ID), ctx));
     const results: ContestResultSummary[] = [];
     for (const contest of graph.Contests) {
-        const final = finals.find((f) => f.ContestID.toLowerCase() === contest.ID.toLowerCase());
+        const final = known.find((f) => f.ContestID.toLowerCase() === contest.ID.toLowerCase());
         if (!final) continue;
         results.push({ ContestID: contest.ID, ContestName: contest.Name, Outcome: final.Outcome === 'NoQuorum' ? 'Void' : final.Outcome });
     }

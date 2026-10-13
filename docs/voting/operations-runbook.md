@@ -83,7 +83,9 @@ For paper ballots and roster-key + PIN sign-in. The election must be Ready or Op
 
 For elections with an Office contest. In the **Overview** tab (or `Voting.OpenNominations`), open nominations: Draft to
 `Nominations`. It is refused without an Office contest or when `NominationsCloseAt` has already passed (a future
-`NominationsOpenAt` is fine; submissions wait for it). Voters submit with `Voting.SubmitNomination`; the Overview
+`NominationsOpenAt` is fine; submissions wait for it). Opening nominations **freezes the roll** if it is not frozen yet (in
+the same transaction): nominators are voters on the roll, and members see the election only once its roll is frozen. The
+roll can still be amended while nominations run. Voters submit with `Voting.SubmitNomination`; the Overview
 **Nominations** panel lists them, and an administrator approves (which creates the contest option) or rejects each one
 (`Voting.DecideNomination`, until voting opens). Close nominations (`Voting.CloseNominations`) to move to `Ready`.
 

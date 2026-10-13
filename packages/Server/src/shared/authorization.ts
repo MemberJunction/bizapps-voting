@@ -8,9 +8,6 @@ import { UUIDsEqual } from '@memberjunction/global';
 
 export const ADMINISTRATOR_ROLE = 'Voting Administrator';
 export const INSPECTOR_ROLE = 'Election Inspector';
-/** MJ platform roles that administer everything. */
-const PLATFORM_ADMIN_ROLES: ReadonlyArray<string> = ['Developer', 'Integration'];
-
 function hasRole(user: UserInfo, names: ReadonlyArray<string>): boolean {
     const wanted = names.map((n) => n.toLowerCase());
     return (user.UserRoles ?? []).some((r) => wanted.includes((r.Role ?? '').trim().toLowerCase()));
@@ -26,9 +23,12 @@ function isSystemUser(user: UserInfo): boolean {
 }
 
 export class VotingAuthorization {
-    /** A Voting Administrator, an MJ Developer/Integration user, or the system user. */
+    /**
+     * A Voting Administrator or the system user. MJ's Developer and Integration roles do NOT administer elections: the voting tables
+     * grant them nothing (docs/voting/security.md), so passing this check without the entity grants would only fail later.
+     */
     public static IsAdministrator(user: UserInfo): boolean {
-        return isSystemUser(user) || hasRole(user, [ADMINISTRATOR_ROLE, ...PLATFORM_ADMIN_ROLES]);
+        return isSystemUser(user) || hasRole(user, [ADMINISTRATOR_ROLE]);
     }
 
     /** An Election Inspector (read-mostly oversight). */
