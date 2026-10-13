@@ -1,0 +1,14 @@
+[
+  {
+    "fields": {
+      "SchemaName": "__mj_BizAppsVoting",
+      "EntityIDMin": 10300001,
+      "EntityIDMax": 10399999,
+      "EntityNamePrefix": "MJ_BizApps_Voting",
+      "Description": "BizApps Voting - application schema"
+    },
+    "primaryKey": {
+      "ID": "9A3F9F6A-A211-4A47-974C-D5C3A55F0722"
+    }
+  }
+]

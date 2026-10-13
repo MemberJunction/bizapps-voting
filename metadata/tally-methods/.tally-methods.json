@@ -1,0 +1,72 @@
+[
+  {
+    "fields": {
+      "Name": "Plurality",
+      "Code": "plurality",
+      "Description": "Top-N candidates or options win based on most votes received",
+      "DriverClass": "PluralityTallyMethod",
+      "IsRanked": false,
+      "SupportsMultipleSeats": true,
+      "Status": "Active"
+    },
+    "primaryKey": {
+      "ID": "AEA65B60-5952-4114-9055-65FCDB101645"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Majority",
+      "Code": "majority",
+      "Description": "Candidate or option must exceed a specified threshold (typically over 50% of votes cast or eligible voters)",
+      "DriverClass": "MajorityTallyMethod",
+      "IsRanked": false,
+      "SupportsMultipleSeats": true,
+      "Status": "Active"
+    },
+    "primaryKey": {
+      "ID": "A5810ADA-5C0B-46D1-BA61-4721A7B06BEE"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Approval",
+      "Code": "approval",
+      "Description": "Voters approve multiple candidates or options; top-N approved options win",
+      "DriverClass": "ApprovalTallyMethod",
+      "IsRanked": false,
+      "SupportsMultipleSeats": true,
+      "Status": "Active"
+    },
+    "primaryKey": {
+      "ID": "89406514-07EE-4F7B-9BF8-DF96BEEB639C"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Instant Runoff (IRV)",
+      "Code": "irv",
+      "Description": "Ranked choice voting for single-seat contests with successive elimination",
+      "DriverClass": "IrvTallyMethod",
+      "IsRanked": true,
+      "SupportsMultipleSeats": false,
+      "Status": "Active"
+    },
+    "primaryKey": {
+      "ID": "8E4A6BF9-907F-40FF-A6AB-DC1CDEF90ECF"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Single Transferable Vote (STV)",
+      "Code": "stv",
+      "Description": "Ranked choice voting for multi-seat contests using Scottish STV with Weighted Inclusive Gregory Method and Droop quota",
+      "DriverClass": "StvTallyMethod",
+      "IsRanked": true,
+      "SupportsMultipleSeats": true,
+      "Status": "Active"
+    },
+    "primaryKey": {
+      "ID": "9C0AABB3-CA60-4184-9BDD-ED6A76911B5F"
+    }
+  }
+]

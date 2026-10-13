@@ -1,0 +1,40 @@
+{
+  "name": "@mj-biz-apps/voting-core-entities-server",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Server-side entity subclass overrides (validation, computed fields, save hooks). TODO(template): rename.",
+  "main": "dist/index.js",
+  "files": [
+    "/dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && tsc-alias -f",
+    "test": "vitest run --passWithNoTests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MemberJunction/bizapps-voting"
+  },
+  "license": "BUSL-1.1",
+  "dependencies": {
+    "@mj-biz-apps/voting-entities": "0.0.0"
+  },
+  "peerDependencies": {
+    "@memberjunction/core": "^6.2.0-edge.2",
+    "@memberjunction/core-entities": "^6.2.0-edge.2",
+    "@memberjunction/global": "^6.2.0-edge.2",
+    "@memberjunction/sqlserver-dataprovider": "^6.2.0-edge.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18",
+    "@memberjunction/core": "6.2.0-edge.2",
+    "@memberjunction/global": "6.2.0-edge.2",
+    "@memberjunction/core-entities": "6.2.0-edge.2",
+    "@memberjunction/sqlserver-dataprovider": "6.2.0-edge.2"
+  }
+}

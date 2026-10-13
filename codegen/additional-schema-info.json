@@ -1,0 +1,216 @@
+{
+  "description": "Schema facts CodeGen cannot read off the database. Referenced from mj.config.cjs via the TOP-LEVEL `additionalSchemaInfo` key (a path string). The path is resolved against the CodeGen process's CWD, not against mj.config.cjs, so run `pnpm run mj:codegen` from the repo root. A missing or unparseable file is a SILENT no-op: the ballot tables would get timestamp columns and Standards Ballot Elections would lose its IS-A parent, with nothing in the log.",
+  "version": "1.0",
+  "_comment_Entities": [
+    "Secrecy controls that live in entity metadata (plans/bizapps-voting-design.md \u00a74.2).",
+    "",
+    "CastBallot, BallotSelection and ContestRunningTally: TrackRecordChanges=false means no",
+    "__mj_CreatedAt/__mj_UpdatedAt columns (a ballot carries no time) and no Record Changes rows naming",
+    "the acting user. BallotAttribution (the Open/Confidential voter link) gets the same access lockdown.",
+    "",
+    "Access: AutoAddPermissions=false creates the entity with NO role permissions (CodeGen's defaults",
+    "would otherwise grant UI read and Developer/Integration full CRUD); deletes, user search and",
+    "all-rows API access are off. Only the server engines, running as the system user, read or",
+    "write these rows, and the entity server classes refuse writes outside the engines' write scope.",
+    "",
+    "AllowCreateAPI / AllowUpdateAPI stay ON deliberately: in MJ, turning them off makes CodeGen omit",
+    "the spCreate/spUpdate procedures and generate a Save() that always throws \u2014 even for the system",
+    "user \u2014 so the cast engine could never write a ballot. Permissions are the access control here.",
+    "",
+    "Why not IncludeInAPI=false, as the design first said: in MJ that flag also stops CodeGen generating",
+    "the base view and the create/update/delete procedures, so no server code could use the entity at",
+    "all. Permissions are the control that keeps the SQL objects and closes the API.",
+    "",
+    "All of this is applied when CodeGen first CREATES the entity (MJ CodeGenLib",
+    "resolveCreationTimeEntityConfig / resolveCreationTimeAutoAddPermissions). Before that MJ fix,",
+    "TrackRecordChanges=false arrived only after the timestamp columns had been added, and the default",
+    "permissions were always granted.",
+    "",
+    "PERMISSION MODEL (docs/voting/security.md): every table except the four catalogs (Election Types, Tally Methods,",
+    "Eligibility Source Types, Voter Credential Methods) is created with AutoAddPermissions=false. CodeGen's defaults would",
+    "otherwise give every signed-in Explorer user (UI role) READ on the poll book, the roll, credentials, the audit trail and",
+    "pre-publication results, and give Developer/Integration full CRUD including DELETE. Explicit grants live in",
+    "metadata/entity-permissions (Voting Administrator, Election Inspector, Voting Ballot Engine; UI read only on the election",
+    "configuration, behind row-level-security filters).",
+    "",
+    "AllowDeleteAPI=false additionally removes the delete procedure and the GraphQL delete mutation for the append-only and",
+    "voter-identifying tables (poll book, audit trail, roll, credentials, proxies, trustees, key commitments, result rows,",
+    "certification). Rows leave those tables only by a status change (Removed, Revoked, Superseded), never by DELETE."
+  ],
+  "Entities": [
+    {
+      "BaseTable": "CastBallot",
+      "SchemaName": "__mj_BizAppsVoting",
+      "TrackRecordChanges": false,
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false,
+      "AllowUserSearchAPI": false,
+      "AllowAllRowsAPI": false,
+      "AuditRecordAccess": false,
+      "AuditViewRuns": false
+    },
+    {
+      "BaseTable": "BallotSelection",
+      "SchemaName": "__mj_BizAppsVoting",
+      "TrackRecordChanges": false,
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false,
+      "AllowUserSearchAPI": false,
+      "AllowAllRowsAPI": false,
+      "AuditRecordAccess": false,
+      "AuditViewRuns": false
+    },
+    {
+      "BaseTable": "ContestRunningTally",
+      "SchemaName": "__mj_BizAppsVoting",
+      "TrackRecordChanges": false,
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false,
+      "AllowUserSearchAPI": false,
+      "AllowAllRowsAPI": false,
+      "AuditRecordAccess": false,
+      "AuditViewRuns": false
+    },
+    {
+      "BaseTable": "BallotAttribution",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false,
+      "AllowUserSearchAPI": false,
+      "AllowAllRowsAPI": false
+    },
+    {
+      "BaseTable": "Election",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "ElectionAnchor",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "Contest",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "ContestOption",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "Nomination",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "NominationEndorsement",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "EligibleVoter",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "VoterCredential",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "BallotDistribution",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "ProxyDesignation",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "Participation",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "ResultSnapshot",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "ContestResult",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "ContestOptionResult",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "ElectionCertification",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "ElectionCertifier",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "ElectionAuditEvent",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "ElectionTrustee",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "TrusteeKeyCommitment",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false,
+      "AllowDeleteAPI": false
+    },
+    {
+      "BaseTable": "StandardsBallotElection",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "BallotComment",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    },
+    {
+      "BaseTable": "CommentResolution",
+      "SchemaName": "__mj_BizAppsVoting",
+      "AutoAddPermissions": false
+    }
+  ],
+  "_comment_ISARelationships": [
+    "Standards Ballot Elections IS-A Election, sharing the primary key (design \u00a76, ElectionType.ElectionExtensionEntityID).",
+    "CodeGen never infers IS-A. ChildEntity is the BASE TABLE name: on the first run the child entity does not exist yet."
+  ],
+  "ISARelationships": [
+    {
+      "ChildEntity": "StandardsBallotElection",
+      "ParentEntity": "MJ_BizApps_Voting: Elections",
+      "SchemaName": "__mj_BizAppsVoting"
+    }
+  ]
+}

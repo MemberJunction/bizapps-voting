@@ -1,0 +1,44 @@
+{
+  "name": "@mj-biz-apps/voting-entities",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Generated entity subclasses for the app schema. TODO(template): rename package + description.",
+  "main": "dist/index.js",
+  "files": [
+    "/dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && tsc-alias -f",
+    "test": "vitest run --passWithNoTests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MemberJunction/bizapps-voting"
+  },
+  "license": "BUSL-1.1",
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "peerDependencies": {
+    "@memberjunction/core": "^6.2.0-edge.2",
+    "@memberjunction/global": "^6.2.0-edge.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./contracts": {
+      "types": "./dist/contracts/index.d.ts",
+      "default": "./dist/contracts/index.js"
+    }
+  }
+}

@@ -1,0 +1,82 @@
+[
+  {
+    "primaryKey": {
+      "ID": "FE2CF17A-7EA6-4918-B571-C43B603B401C"
+    },
+    "fields": {
+      "Name": "Voting: Elections with a frozen roll",
+      "Description": "An election is visible to ordinary signed-in users once its voter roll is frozen. Before that it can still carry an inline CSV roll in its eligibility source settings (the freeze redacts it), and it is not yet something a member can act on. Administrators and inspectors hold an unfiltered grant, which exempts them.",
+      "FilterText": "(RollFrozenAt IS NOT NULL)"
+    }
+  },
+  {
+    "primaryKey": {
+      "ID": "4FABF294-8C04-4B9D-B9F6-4C8370206540"
+    },
+    "fields": {
+      "Name": "Voting: Contests of elections with a frozen roll",
+      "Description": "Contests of an election visible under 'Voting: Elections with a frozen roll'.",
+      "FilterText": "(ElectionID IN (SELECT e.ID FROM [__mj_BizAppsVoting].[Election] e WHERE e.RollFrozenAt IS NOT NULL))"
+    }
+  },
+  {
+    "primaryKey": {
+      "ID": "EA04B252-928B-4A32-9532-271BEB193F88"
+    },
+    "fields": {
+      "Name": "Voting: Options of elections with a frozen roll",
+      "Description": "Contest options of an election visible under 'Voting: Elections with a frozen roll'.",
+      "FilterText": "(ContestID IN (SELECT c.ID FROM [__mj_BizAppsVoting].[Contest] c WHERE c.ElectionID IN (SELECT e.ID FROM [__mj_BizAppsVoting].[Election] e WHERE e.RollFrozenAt IS NOT NULL)))"
+    }
+  },
+  {
+    "primaryKey": {
+      "ID": "DEF8AE15-64C6-47B0-B1BA-EB0F0A3AC702"
+    },
+    "fields": {
+      "Name": "Voting: Standards ballot extensions of elections with a frozen roll",
+      "Description": "The Standards Ballot extension row shares its primary key with its election; visible exactly when the election is.",
+      "FilterText": "(ID IN (SELECT e.ID FROM [__mj_BizAppsVoting].[Election] e WHERE e.RollFrozenAt IS NOT NULL))"
+    }
+  },
+  {
+    "primaryKey": {
+      "ID": "7B32EAFB-1920-4CF6-8E26-BB458F0F1E30"
+    },
+    "fields": {
+      "Name": "Voting: Open-ballot comments",
+      "Description": "Ballot comments are readable by ordinary users only on Open ballots (voter-attributable by design) whose election is visible. Comments on Secret and Confidential ballots stay with administrators and inspectors.",
+      "FilterText": "(ContestID IN (SELECT c.ID FROM [__mj_BizAppsVoting].[Contest] c JOIN [__mj_BizAppsVoting].[Election] e ON e.ID = c.ElectionID WHERE e.SecrecyMode = N'Open' AND e.RollFrozenAt IS NOT NULL))"
+    }
+  },
+  {
+    "primaryKey": {
+      "ID": "6D948D4E-95C0-46C5-8B1F-28B41CB97758"
+    },
+    "fields": {
+      "Name": "Voting: Resolutions of open-ballot comments",
+      "Description": "Comment resolutions for the comments visible under 'Voting: Open-ballot comments'.",
+      "FilterText": "(BallotCommentID IN (SELECT bc.ID FROM [__mj_BizAppsVoting].[BallotComment] bc WHERE bc.ContestID IN (SELECT c.ID FROM [__mj_BizAppsVoting].[Contest] c JOIN [__mj_BizAppsVoting].[Election] e ON e.ID = c.ElectionID WHERE e.SecrecyMode = N'Open' AND e.RollFrozenAt IS NOT NULL)))"
+    }
+  },
+  {
+    "primaryKey": {
+      "ID": "C00396CA-05BC-429C-AB62-C2428481A8A7"
+    },
+    "fields": {
+      "Name": "Voting: Certified certifications",
+      "Description": "A certification record is public once the election is certified; drafts and revoked records stay with administrators and inspectors.",
+      "FilterText": "(Status = N'Certified')"
+    }
+  },
+  {
+    "primaryKey": {
+      "ID": "DDE2D912-DD5F-4D88-A0A5-E34AEBF74F1E"
+    },
+    "fields": {
+      "Name": "Voting: Certifiers of certified elections",
+      "Description": "Certifier signatures for certifications visible under 'Voting: Certified certifications'.",
+      "FilterText": "(ElectionCertificationID IN (SELECT ec.ID FROM [__mj_BizAppsVoting].[ElectionCertification] ec WHERE ec.Status = N'Certified'))"
+    }
+  }
+]

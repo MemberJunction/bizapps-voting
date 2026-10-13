@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.server.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "noEmit": false,
+    "declaration": true,
+    "sourceMap": true,
+    "types": ["node"]
+  },
+  "include": ["src/wire/**/*", "src/world/**/*", "src/checks/**/*", "src/provision/**/*", "src/support/**/*", "src/client-index.ts"],
+  "exclude": ["src/**/__tests__/**", "src/**/*.test.ts"]
+}
