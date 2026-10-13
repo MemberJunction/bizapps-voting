@@ -4,7 +4,9 @@ import {
   BallotFlow,
   BuildContestComments,
   CommentDraftKey,
+  DescribeReceiptCheck,
   EmptyCommentDraft,
+  NormalizeReceiptInput,
   GENERAL_COMMENT_KEY,
   classifyMyBallot,
   resolveLanguage,
@@ -154,7 +156,48 @@ describe('BallotFlow end to end (mocked fetch)', () => {
 
   it('operations before sign-in fail generically', async () => {
     await expect(new BallotFlow(config, 's').LoadMyBallot('en')).rejects.toThrow(BallotApiError);
+    await expect(new BallotFlow(config, 's').VerifyReceipt('AAAA-BBBB-CCCC-DDDD-EEEE')).rejects.toThrow(BallotApiError);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('receipt verification: Voting.VerifyReceipt with the session election and the code, answered found/counted only', async () => {
+    fetchMock
+      .mockResolvedValueOnce(json({ Token: 'jwt-1', ExpiresAt: '2030-01-01T00:00:00Z', ElectionID: 'e1' }))
+      .mockResolvedValueOnce(op({ Success: true, Found: true, Counted: true }))
+      .mockResolvedValueOnce(op({ Success: true, Found: true, Counted: false }))
+      .mockResolvedValueOnce(op({ Success: true, Found: false, Counted: false }))
+      .mockResolvedValueOnce(op({ Success: false, Message: 'ElectionID and ReceiptCode are required.' }));
+    const flow = new BallotFlow(config, 's');
+    expect(flow.SignedIn).toBe(false);
+    await flow.SignIn('second-factor', { SecondFactor: { SourceKey: 'k', Pin: '1234' } });
+    expect(flow.SignedIn).toBe(true);
+    expect(await flow.VerifyReceipt('AAAA-BBBB-CCCC-DDDD-EEEE')).toBe('counted');
+    expect(await flow.VerifyReceipt('AAAA-BBBB-CCCC-DDDD-FFFF')).toBe('not-counted');
+    expect(await flow.VerifyReceipt('ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ')).toBe('not-found');
+    await expect(flow.VerifyReceipt('x')).rejects.toThrow('ElectionID and ReceiptCode are required.');
+    const body = call(1).body as { variables: { operationKey: string } };
+    expect(body.variables.operationKey).toBe('Voting.VerifyReceipt');
+    expect(inputOf(1)).toEqual({ ElectionID: 'e1', ReceiptCode: 'AAAA-BBBB-CCCC-DDDD-EEEE' });
+    expect(JSON.stringify(fetchMock.mock.calls[1][1]?.headers)).toContain('Bearer jwt-1');
+  });
+});
+
+describe('receipt verification helpers', () => {
+  it('NormalizeReceiptInput trims, drops inner spaces and upper-cases what the voter typed', () => {
+    expect(NormalizeReceiptInput('  aaaa-bbbb-cccc-dddd-eeee ')).toBe('AAAA-BBBB-CCCC-DDDD-EEEE');
+    expect(NormalizeReceiptInput('AAAA BBBB')).toBe('AAAABBBB');
+    expect(NormalizeReceiptInput('   ')).toBe('');
+    expect(NormalizeReceiptInput(undefined)).toBe('');
+    expect(NormalizeReceiptInput(null)).toBe('');
+  });
+
+  it('DescribeReceiptCheck: counted, recorded but replaced, or unknown', () => {
+    expect(DescribeReceiptCheck({ Found: true, Counted: true })).toBe('counted');
+    expect(DescribeReceiptCheck({ Found: true, Counted: false })).toBe('not-counted');
+    expect(DescribeReceiptCheck({ Found: false, Counted: false })).toBe('not-found');
+    expect(DescribeReceiptCheck({})).toBe('not-found');
+    // Counted without Found cannot happen; it is still reported as not found rather than trusted
+    expect(DescribeReceiptCheck({ Found: false, Counted: true })).toBe('not-found');
   });
 });
 

@@ -513,17 +513,18 @@ scenario('referendum', '2d. yes/no referendum', async () => {
 scenario('writein', '2e. write-in option', async () => {
     const e = await makeElection({
         type: 'board-election',
-        contests: [{ ...office('Secretary', 'plurality', ['Ada', 'Grace'], { AllowWriteIn: true }), Options: [{ Label: 'Ada' }, { Label: 'Grace' }, { Label: 'Write-in', IsWriteIn: true }] }],
+        // AllowWriteIn alone: CreateElection must add the write-in option itself (the spec names only the candidates).
+        contests: [office('Secretary', 'plurality', ['Ada', 'Grace'], { AllowWriteIn: true })],
     });
     const page = await newPage();
     try {
         await signInReady(page, e, 'member1');
         const writeIn = page.locator('mj-ballot .option').filter({ hasText: /write/i });
-        if ((await writeIn.count()) === 0) {
-            // The wire style carries no write-in option unless the operation synthesises one; record what the voter sees.
+        if ((await writeIn.count()) !== 1) {
             const labels = await page.locator('mj-ballot .option label').allInnerTexts();
-            throw new AssertionError(`AllowWriteIn=true produced no write-in option in the ballot (options: ${JSON.stringify(labels)})`);
+            throw new AssertionError(`AllowWriteIn=true should give exactly one write-in option in the ballot (options: ${JSON.stringify(labels)})`);
         }
+        eq(await page.locator('mj-ballot .option').count(), 3, 'the ballot shows the two candidates plus the write-in');
         await writeIn.locator('input[type=radio],input[type=checkbox]').first().check();
         await writeIn.locator('input[type=text]').fill('Alan Turing');
         await writeIn.locator('input[type=text]').blur();
@@ -986,19 +987,81 @@ scenario('csp', '7. host page security headers and the element bundle', async ()
     }
 });
 
-scenario('receipt', '8. receipt verification in the browser (the element offers none: verify the shown code over the wire and confirm no UI)', async () => {
-    const e = await makeElection({ type: 'motion', contests: [yesNo()] });
+scenario('receipt', '8. receipt verification in the element: after casting and from the sign-in screen; counted, replaced and unknown codes; keyboard, focus, axe', async () => {
+    // A motion election allows re-voting, so a replaced ballot's receipt can be shown as "no longer counted".
+    const e = await makeElection({ type: 'motion', contests: [yesNo('Adopt the receipt resolution', { MinSelections: 1 })] });
+    const verifyBtn = (p) => p.getByRole('button', { name: 'Verify', exact: true });
+    const outcome = (p, kind) => p.locator(`mj-ballot .verify-outcome[data-outcome="${kind}"]`);
+    let first = '';
     const page = await newPage();
     try {
-        const receipt = await castAndProve(page, e, 'member1', async (p) => {
+        first = await castAndProve(page, e, 'member1', async (p) => {
             await p.getByLabel('Yes').check();
         });
-        const verifyControls = await page.locator('mj-ballot').getByText(/verify/i).count();
-        // The receipt text only says "Save this code to verify your ballot was counted": no verification control exists.
-        ok(verifyControls <= 1, 'no verification form is offered');
-        ok(receipt.length > 0, 'receipt shown');
+        // (a) straight after casting
+        await page.getByRole('button', { name: 'Verify a Receipt' }).click();
+        await waitState(page, 'verify');
+        eq(await page.locator('mj-ballot #receipt-code-input').inputValue(), first, 'the check opens prefilled with this ballot\'s receipt');
+        await eventually(() => page.evaluate(() => document.querySelector('mj-ballot')?.shadowRoot?.activeElement?.id === 'verify-heading'), 'focus moves to the check\'s heading');
+        await verifyBtn(page).click();
+        await outcome(page, 'counted').waitFor({ timeout: 15000 });
+        contains(await page.locator('mj-ballot .verify-result').innerText(), 'recorded and counted', 'the counted answer is announced in the status region');
+        await shot(page, 'receipt-verified');
+
+        await page.locator('mj-ballot #receipt-code-input').fill('   ');
+        await verifyBtn(page).click();
+        await eventually(async () => (await page.locator('mj-ballot #verify-error').count()) === 1 && (await page.locator('mj-ballot #verify-error').innerText()).includes('Enter a receipt code'), 'an empty code is refused in place');
+        eq(await page.locator('mj-ballot #receipt-code-input').getAttribute('aria-invalid'), 'true', 'the field is marked invalid');
+
+        // keyboard: Enter in the field submits
+        await page.locator('mj-ballot #receipt-code-input').fill('ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ');
+        await page.locator('mj-ballot #receipt-code-input').press('Enter');
+        await outcome(page, 'not-found').waitFor({ timeout: 15000 });
+        const axeVerify = await runAxe(page);
+        ok(axeVerify.length === 0, `axe (receipt check): ${JSON.stringify(axeVerify)}`);
+
+        await page.getByRole('button', { name: 'Back' }).click();
+        await waitState(page, 'cast');
+        await assertClean(page, 'receipt after cast');
     } finally {
         await page.closeAll();
+    }
+
+    // (b) from the sign-in screen: the check needs the same sign-in, then opens before the ballot
+    const page2 = await newPage();
+    try {
+        await openBallot(page2, e);
+        await waitState(page2, 'login');
+        await page2.getByRole('button', { name: 'Verify a Receipt' }).click();
+        await eventually(async () => (await page2.locator('mj-ballot #verify-signin-note').innerText()).includes('needs the same sign-in'), 'the sign-in screen says why it asks for a sign-in first');
+        eq(await page2.getByRole('button', { name: 'Verify a Receipt' }).getAttribute('aria-expanded'), 'true', 'the toggle reports its state');
+        await signIn(page2, e, 'member1');
+        await waitState(page2, 'verify');
+        // typed loosely: lower case, spaces around the dashes
+        await page2.locator('mj-ballot #receipt-code-input').fill(first.toLowerCase().replace(/-/g, ' - '));
+        await verifyBtn(page2).click();
+        await outcome(page2, 'counted').waitFor({ timeout: 15000 });
+
+        // Back from a check opened at sign-in goes to the ballot; a re-vote replaces the first ballot
+        await page2.getByRole('button', { name: 'Back' }).click();
+        await waitState(page2, 'ready');
+        await page2.getByLabel('No').check();
+        const second = await reviewAndCast(page2);
+        ok(second !== first, 'the replacement ballot has its own receipt');
+        await page2.getByRole('button', { name: 'Verify a Receipt' }).click();
+        await waitState(page2, 'verify');
+        await page2.locator('mj-ballot #receipt-code-input').fill(first);
+        await verifyBtn(page2).click();
+        await outcome(page2, 'not-counted').waitFor({ timeout: 15000 });
+        const p = await participation(e, 'member1');
+        const wire = await p.Guest.Call(new entities.VotingVerifyReceiptOperation(), { ElectionID: e.ElectionID, ReceiptCode: first });
+        ok(wire.Output?.Found === true && wire.Output?.Counted === false, 'over the wire the first receipt is found and no longer counted, as the element said');
+        await page2.locator('mj-ballot #receipt-code-input').fill(second);
+        await verifyBtn(page2).click();
+        await outcome(page2, 'counted').waitFor({ timeout: 15000 });
+        await assertClean(page2, 'receipt from sign-in');
+    } finally {
+        await page2.closeAll();
     }
 });
 
