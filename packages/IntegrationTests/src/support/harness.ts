@@ -77,7 +77,7 @@ async function connect(): Promise<Harness | null> {
     const coreSchema = process.env.MJ_CORE_SCHEMA || '__mj';
     try {
         const provider = await setupSQLServerClient(new SQLServerProviderConfigData(pool, coreSchema));
-        await UserCache.Instance.Refresh(pool);
+        await UserCache.Instance.Refresh(provider);
         const system = UserCache.Instance.GetSystemUser();
         if (!system) {
             console.warn('[voting-it] SKIPPED: the MJ system user is not present in the database.');
