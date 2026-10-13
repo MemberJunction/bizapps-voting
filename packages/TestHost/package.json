@@ -1,0 +1,25 @@
+{
+  "name": "@mj-biz-apps/voting-test-host",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Voting-only MJAPI host for the over-the-wire (GraphQL) integration tier. Boots MJ core + bizapps-common + voting against the private MJ_Voting_Dev database. Never published; not part of mj-app.json.",
+  "scripts": {
+    "start": "node src/start-host.mjs"
+  },
+  "license": "BUSL-1.1",
+  "dependencies": {
+    "@memberjunction/core": "6.2.0-edge.2",
+    "@memberjunction/global": "6.2.0-edge.2",
+    "@memberjunction/server": "6.2.0-edge.2",
+    "@memberjunction/server-bootstrap": "6.2.0-edge.3",
+    "@memberjunction/sqlserver-dataprovider": "6.2.0-edge.2",
+    "@mj-biz-apps/common-core-entities-server": "5.51.0",
+    "@mj-biz-apps/common-entities": "5.51.0",
+    "@mj-biz-apps/common-server": "5.51.0",
+    "@mj-biz-apps/voting-core-entities-server": "0.0.0",
+    "@mj-biz-apps/voting-entities": "0.0.0",
+    "@mj-biz-apps/voting-server": "0.0.0",
+    "dotenv": "^17.2.4"
+  }
+}

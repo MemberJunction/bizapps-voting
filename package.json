@@ -20,7 +20,10 @@
     "mj:migrate:convert": "mj migrate convert --source-dir ./migrations --output-dir ./migrations-pg --schema __mj_BizAppsVoting",
     "change": "changeset",
     "version": "changeset version",
-    "version:prepare": "changeset version && node ci/sync-mj-app-version.mjs && pnpm install --lockfile-only"
+    "version:prepare": "changeset version && node ci/sync-mj-app-version.mjs && pnpm install --lockfile-only",
+    "wire:host": "node test-harnesses/host.mjs",
+    "wire:provision": "pnpm --filter @mj-biz-apps/voting-integration-tests run build && pnpm --filter @mj-biz-apps/voting-integration-tests run provision:personas",
+    "wire:test": "pnpm --filter @mj-biz-apps/voting-integration-tests run build && node test-harnesses/integration-client.mjs"
   },
   "repository": {
     "type": "git",
@@ -44,6 +47,7 @@
     "@memberjunction/ng-shared": "6.2.0-edge.2",
     "@memberjunction/server": "6.2.0-edge.2",
     "@types/node": "^22.10.0",
+    "dotenv": "^17.2.4",
     "simple-git": "^3.31.1",
     "tsc-alias": "^1.8.16",
     "turbo": "^2.7.3",

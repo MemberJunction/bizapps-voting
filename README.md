@@ -295,6 +295,7 @@ cannot be reached the tests print `SKIPPED` rather than fail, so check the outpu
 |---|---|
 | [Architecture](docs/voting/architecture.md) | Packages, cast transaction, engines, secrecy controls, tiers |
 | [Operations reference](docs/voting/operations.md) | The 29 Remote Operations, audiences, fields; Actions |
+| [Security and permissions](docs/voting/security.md) | Who can read or write what, the grant matrix, row-level security, the voter-operation pattern, API scopes |
 | [Embedding](docs/voting/embedding.md) | `<mj-ballot>` attributes, events, sign-in, edge routes and gates |
 | [Extending](docs/voting/extending.md) | Drivers, tally methods, sources, sign-in methods, UI contributions |
 | [Runbook](docs/voting/operations-runbook.md) | Keys, trustee ceremony, rate limits, certification, recovery |

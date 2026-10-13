@@ -248,3 +248,7 @@ migrations/v*/*__RSU_*.sql
 
 # <mj-ballot> element bundle (built by packages/AngularWidgets/scripts/build-element.mjs)
 dist-element/
+
+# Wire-tier local state: user API keys for the provisioned personas (never commit)
+test-harnesses/.personas.local.json
+packages/TestHost/schema.graphql

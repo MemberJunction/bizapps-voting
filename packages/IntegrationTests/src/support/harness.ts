@@ -9,8 +9,8 @@
 import './env-setup.js';
 import sql from 'mssql';
 
-/** The only database this suite may touch (env-setup pins DB_DATABASE to it). */
-export const TEST_DATABASE = 'MJ_Voting_Dev';
+/** The only database this suite may touch (env-setup pins DB_DATABASE to it; VOTING_IT_DATABASE selects another private one). */
+export const TEST_DATABASE = process.env.VOTING_IT_DATABASE?.trim() || 'MJ_Voting_Dev';
 
 import { type IMetadataProvider, type UserInfo } from '@memberjunction/core';
 import { UserCache } from '@memberjunction/generic-database-provider';
