@@ -32,6 +32,10 @@
  *         operation; the client's own MJ dedup-linger window is waited out, see docs/voting/known-limitations.md "Caching")
  *   WL25  nominations: open, nominate, decide (approve creates the ballot option), close, then vote for the nominee
  *   WL26  challenging a voter on the roll (reason required, admin only) removes them from the electorate
+ *   WL27  AllowWriteIn on a contest spec gives the ballot exactly one write-in option; a write-in vote is cast and counted
+ *   WL28  re-tally (the recount path): replaces the results (one final per contest), audited with the actor; refused once Certified
+ *   WL29  no ballot distribution can be created for a Closed, Tallied, Certified or Cancelled election
+ *   WL30  audit events of voter operations name the acting voter (nominations by a member persona)
  */
 import { ProviderBase } from '@memberjunction/core';
 import { Assert, AssertEqual, IntegrationCheckRegistry, type NamedCheck } from '@memberjunction/testing-integration/registry';
@@ -82,6 +86,8 @@ const RECEIPT = /^[0-9A-Z]{4}(-[0-9A-Z]{4}){4}$/;
 const ELIGIBLE_VOTERS = 'MJ_BizApps_Voting: Eligible Voters';
 const CERTIFICATIONS = 'MJ_BizApps_Voting: Election Certifications';
 const AUDIT = 'MJ_BizApps_Voting: Election Audit Events';
+const OPTIONS = 'MJ_BizApps_Voting: Contest Options';
+const CONTEST_RESULTS = 'MJ_BizApps_Voting: Contest Results';
 
 let cast: WireCast | undefined;
 let admin: WireClient | undefined;
@@ -555,7 +561,7 @@ const checks: NamedCheck[] = [
         Name: 'WL17 - after certification everything is terminal; the result stays visible',
         Fn: async () => {
             AssertDeclined(await El().CertifyAs(await C().As('inspector')), 'only a Tallied election can be certified', 'second certify');
-            AssertDeclined(await El().TallyAs(A()), 'only a Closed election can be tallied', 're-tally of a certified election');
+            AssertDeclined(await El().TallyAs(A()), 'results are final', 're-tally of a certified election');
             AssertDeclined(await A().Call(new VotingCancelElectionOperation(), { ElectionID: El().ElectionID, Reason: 'too late' }), 'cannot be cancelled', 'cancel after certification');
             AssertDeclined(await A().Call(new VotingOpenElectionOperation(), { ElectionID: El().ElectionID }), 'cannot be opened', 'reopen after certification');
             AssertDeclined(await A().Call(new VotingCloseElectionOperation(), { ElectionID: El().ElectionID }), 'cannot be closed', 'close after certification');
@@ -835,6 +841,132 @@ const checks: NamedCheck[] = [
             await Ch.IssuePins().catch(() => undefined);
             const m3 = await C().As('member3');
             AssertDeclined(await m3.Call(new VotingGetMyBallotOperation(), { ElectionID: Ch.ElectionID }), 'not on the roll', 'the challenged voter asking for a ballot');
+        },
+    },
+    {
+        Id: `${BUNDLE}.WL27`,
+        Name: 'WL27 - write-ins: AllowWriteIn alone gives the ballot one write-in option; a write-in vote is cast and counted',
+        Fn: async () => {
+            const Wi = await CreateLiveElection(C(), A(), {
+                TypeCode: 'board-election',
+                Name: Tagged('Wire write-in'),
+                Voters: [PersonaVoter(C(), 'member1', 0), PersonaVoter(C(), 'member2', 1)],
+                // the spec names only the candidates: the write-in option must come from CreateElection
+                Contests: [{ Name: 'Secretary', Kind: 'Office', TallyMethodCode: 'plurality', Seats: 1, AllowWriteIn: true, Options: [{ Label: 'Ada' }, { Label: 'Grace' }] }],
+                Extra: { SecrecyMode: 'Secret' },
+            });
+            created.push(Wi);
+            const contest = Wi.Contests[0];
+            const options = await Rows<{ ID: string; Label: string; IsWriteIn: boolean }>(A(), OPTIONS, `ContestID = '${contest.ContestID}'`, ['ID', 'Label', 'IsWriteIn'], 'Sequence');
+            AssertEqual(options.map((o) => o.Label).join(','), 'Ada,Grace,Write-in', 'the candidates, then the write-in option');
+            AssertEqual(options.filter((o) => o.IsWriteIn).length, 1, 'exactly one write-in option');
+            const writeIn = options.find((o) => o.IsWriteIn)!;
+
+            const m1 = await Wi.Session(P().member1);
+            const style = Ok('Voting.GetMyBallot', await m1.GetBallot()).Style;
+            const styleOption = style?.Contests[0].Options.find((o) => o.OptionID.toLowerCase() === writeIn.ID.toLowerCase());
+            AssertEqual(styleOption?.IsWriteIn, true, 'the voter\'s ballot style offers the write-in option');
+            const submission = (text?: string) => ({ Contests: [{ ContestID: contest.ContestID, Selections: [{ OptionID: writeIn.ID, WriteInText: text }] }] });
+            AssertDeclined((await m1.CastPlan({}, { Submission: submission() })).Result, 'WriteInRequired', 'the write-in option with no name');
+            const accepted = await m1.CastPlan({}, { Submission: submission('Alan Turing') });
+            Assert(accepted.Accepted, `the write-in ballot is accepted (${accepted.Message ?? ''})`);
+            await (await Wi.Session(P().member2)).MustCast({ Secretary: ['Ada'] });
+            const result = Wi.LabelAll(Ok('Voting.Tally', await (async () => { await Wi.Close(); return Wi.TallyAs(A(), 'wire-writein'); })()).Contests).get('Secretary');
+            AssertEqual(result?.Options['Write-in']?.Votes, 1, 'the write-in vote is counted on the write-in option');
+            AssertEqual(result?.Options['Ada']?.Votes, 1, 'Ada');
+        },
+    },
+    {
+        Id: `${BUNDLE}.WL28`,
+        Name: 'WL28 - re-tally: the recount path replaces the results (one final per contest), audited with the actor; refused once Certified',
+        Fn: async () => {
+            const R = await CreateLiveElection(C(), A(), {
+                TypeCode: 'motion',
+                Name: Tagged('Wire re-tally'),
+                Voters: [PersonaVoter(C(), 'member1', 0), PersonaVoter(C(), 'member2', 1), PersonaVoter(C(), 'member3', 2)],
+                Contests: [MotionSpec('Recount motion')],
+                Extra: { SecrecyMode: 'Secret' },
+            });
+            created.push(R);
+            await CastAll(R, [{ 'Recount motion': ['Yes'] }, { 'Recount motion': ['Yes'] }, { 'Recount motion': ['No'] }]);
+            await R.Close();
+            const first = Ok('Voting.Tally', await R.TallyAs(A(), 'recount-1'));
+            const second = Ok('Voting.Tally (re-tally)', await R.TallyAs(A(), 'recount-2'));
+            AssertEqual(second.Status, 'Tallied', 'a re-tally leaves the election Tallied');
+            AssertEqual(JSON.stringify(R.LabelAll(second.Contests).get('Recount motion')?.Options), JSON.stringify(R.LabelAll(first.Contests).get('Recount motion')?.Options), 'the recount gives the same counts');
+            const contestID = R.Contests[0].ContestID;
+            const results = await Rows<{ ID: string; IsFinal: boolean }>(A(), CONTEST_RESULTS, `ContestID = '${contestID}'`, ['ID', 'IsFinal']);
+            AssertEqual(results.filter((r) => r.IsFinal).length, 1, 'exactly one final result for the contest after the re-tally');
+            AssertEqual(results.length, 2, 'the earlier result is kept as history (demoted), not duplicated as final');
+            const audit = await Rows<{ EventType: string; ActorUserID: string | null; Details: string | null }>(A(), AUDIT, `ElectionID = '${R.ElectionID}' AND EventType = 'Tallied'`, ['EventType', 'ActorUserID', 'Details'], 'OccurredAt');
+            AssertEqual(audit.length, 2, 'both tallies are audited');
+            const adminUser = C().Record('admin').UserID.toLowerCase();
+            for (const ev of audit) AssertEqual(ev.ActorUserID?.toLowerCase(), adminUser, 'the tally audit names the administrator who ran it');
+            AssertEqual((JSON.parse(audit[1].Details ?? '{}') as { Retally?: boolean }).Retally, true, 'the second event is marked as a re-tally');
+
+            Ok('Voting.Certify', await R.CertifyAs(await C().As('inspector'), 'wire re-tally'));
+            AssertEqual((await ReadElectionRow(A(), R.ElectionID))?.Status, 'Certified', 'certified');
+            AssertDeclined(await R.TallyAs(A(), 'recount-3'), 'results are final', 'a re-tally of a Certified election');
+            const after = await Rows<{ ID: string }>(A(), CONTEST_RESULTS, `ContestID = '${contestID}'`, ['ID']);
+            AssertEqual(after.length, 2, 'the refused re-tally wrote nothing');
+        },
+    },
+    {
+        Id: `${BUNDLE}.WL29`,
+        Name: 'WL29 - no new ballot distribution for a Closed, Tallied, Certified or Cancelled election (an Open one still takes one)',
+        Fn: async () => {
+            const D = await CreateLiveElection(C(), A(), {
+                TypeCode: 'motion',
+                Name: Tagged('Wire late distribution'),
+                Voters: [PersonaVoter(C(), 'member1', 0), PersonaVoter(C(), 'member2', 1)],
+                Contests: [MotionSpec('Late motion')],
+                Extra: { SecrecyMode: 'Secret' },
+            });
+            created.push(D);
+            const open = await D.TryDistribute();
+            Assert(open.Saved, `an Open election still takes a second distribution (${open.Message})`);
+            await CastAll(D, [{ 'Late motion': ['Yes'] }]);
+            const refusedAt = async (status: string): Promise<void> => {
+                AssertEqual((await ReadElectionRow(A(), D.ElectionID))?.Status, status, 'status');
+                const attempt = await D.TryDistribute();
+                Assert(!attempt.Saved, `a distribution for a ${status} election was created`);
+                Assert(attempt.Message.includes('no longer accepts ballots'), `the refusal names the reason (got "${attempt.Message}")`);
+            };
+            await D.Close();
+            await refusedAt('Closed');
+            Ok('Voting.Tally', await D.TallyAs(A(), 'late'));
+            await refusedAt('Tallied');
+            Ok('Voting.Certify', await D.CertifyAs(await C().As('inspector'), 'wire late distribution'));
+            await refusedAt('Certified');
+
+            const X = await CreateDraftElection(C(), A(), { TypeCode: 'motion', Name: Tagged('Wire cancelled distribution'), Voters: [PersonaVoter(C(), 'member1', 0)], Contests: [MotionSpec('Cancelled')], Extra: { SecrecyMode: 'Secret' } });
+            created.push(X);
+            Ok('Voting.CancelElection', await A().Call(new VotingCancelElectionOperation(), { ElectionID: X.ElectionID, Reason: 'wire test: late distribution' }));
+            const cancelled = await X.TryDistribute();
+            Assert(!cancelled.Saved && cancelled.Message.includes('Cancelled'), `a distribution for a Cancelled election is refused (got "${cancelled.Message}")`);
+        },
+    },
+    {
+        Id: `${BUNDLE}.WL30`,
+        Name: 'WL30 - an audit event written by a voter operation names the voter who called it, and carries no ballot content',
+        Fn: async () => {
+            const N = await CreateDraftElection(C(), A(), {
+                TypeCode: 'board-election',
+                Name: Tagged('Wire audit actor'),
+                Voters: [PersonaVoter(C(), 'member1', 0), PersonaVoter(C(), 'member2', 1)],
+                Contests: [{ Name: 'Audited seat', Kind: 'Office', TallyMethodCode: 'plurality', Seats: 1, AllowAbstain: true }],
+                Extra: { SecrecyMode: 'Secret' },
+            });
+            created.push(N);
+            Ok('Voting.OpenNominations', await A().Call(new VotingOpenNominationsOperation(), { ElectionID: N.ElectionID }));
+            const member1 = await C().As('member1');
+            Ok('nominate', await member1.Call(new VotingSubmitNominationOperation(), { ContestID: N.Contests[0].ContestID, NomineePersonID: C().Record('member2').PersonID as string, Statement: 'wire audit' }));
+            const events = await Rows<{ EventType: string; ActorUserID: string | null; Details: string | null }>(A(), AUDIT, `ElectionID = '${N.ElectionID}'`, ['EventType', 'ActorUserID', 'Details'], 'OccurredAt');
+            const nominated = events.find((e) => e.EventType === 'NominationSubmitted');
+            Assert(!!nominated, `a NominationSubmitted event exists (got ${events.map((e) => e.EventType).join(', ')})`);
+            AssertEqual(nominated!.ActorUserID?.toLowerCase(), C().Record('member1').UserID.toLowerCase(), 'the event names the member who nominated, not the system user');
+            const opened = events.find((e) => e.EventType === 'NominationsOpened');
+            AssertEqual(opened?.ActorUserID?.toLowerCase(), C().Record('admin').UserID.toLowerCase(), 'administrator events still name the administrator');
         },
     },
 ];

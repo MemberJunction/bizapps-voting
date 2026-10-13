@@ -53,12 +53,28 @@ export function DefaultThreshold(kind: ContestKind): 'Majority' | 'None' {
     return THRESHOLD_KINDS.includes(kind) ? 'Majority' : 'None';
 }
 
-/** The options a contest is created with: the spec's, or Yes/No (Approve/Disapprove for standards items) for yes/no kinds. */
-export function EffectiveOptions(spec: VotingContestSpec): Array<{ Label: string; Description?: string; CandidatePersonID?: string; IsWriteIn?: boolean }> {
+/** The label of the write-in option a contest gets when it allows write-ins and the spec names none. */
+export const WRITE_IN_OPTION_LABEL = 'Write-in';
+
+type ContestOptionSpec = { Label: string; Description?: string; CandidatePersonID?: string; IsWriteIn?: boolean };
+
+/** The spec's own options, or Yes/No (Approve/Disapprove for standards items) for yes/no kinds. */
+function baseOptions(spec: VotingContestSpec): ContestOptionSpec[] {
     if (spec.Options && spec.Options.length > 0) return spec.Options;
     if (spec.Kind === 'StandardsItem') return [{ Label: 'Approve' }, { Label: 'Disapprove' }];
     if (THRESHOLD_KINDS.includes(spec.Kind)) return [{ Label: 'Yes' }, { Label: 'No' }];
     return [];
+}
+
+/**
+ * The options a contest is created with. A write-in is a ballot option flagged `IsWriteIn` (the ballot shows a text box
+ * for it and validation accepts write-in text only on it), so a contest that allows write-ins gets one appended when the
+ * spec does not already name one. Without it `AllowWriteIn` would have no effect on the ballot.
+ */
+export function EffectiveOptions(spec: VotingContestSpec): ContestOptionSpec[] {
+    const options = baseOptions(spec);
+    if (!spec.AllowWriteIn || options.some((o) => o.IsWriteIn)) return options;
+    return [...options, { Label: WRITE_IN_OPTION_LABEL, IsWriteIn: true }];
 }
 
 /** Problems with a create request that need no database. Empty when fine. */

@@ -12,8 +12,10 @@ import { RegisterClass } from '@memberjunction/global';
 import {
     CanTransition,
     IsConfigurationLocked,
+    UndeclaredConfigurationKeys,
     ValidateResolvedConfiguration,
     mjBizAppsVotingBallotAttributionEntity,
+    mjBizAppsVotingBallotDistributionEntity,
     mjBizAppsVotingBallotSelectionEntity,
     mjBizAppsVotingCastBallotEntity,
     mjBizAppsVotingContestEntity,
@@ -42,6 +44,7 @@ import {
     ComputeVoterRollViolations,
     DeriveElectionChangeAction,
     DescribeConfigurationLockRefusal,
+    DescribeDistributionCreateRefusal,
     DescribeResultWriteRefusal,
     GetDirtyFieldNames,
     GetDirtyOldValues,
@@ -173,6 +176,17 @@ export class ElectionEntityServer extends mjBizAppsVotingElectionEntity {
         if (resolved.kind === 'refused') return Refuse(result, 'ElectionTypeID', resolved.message);
         const electionConfig = ParseConfiguration<IElectionConfiguration>(this.Configuration, 'The election configuration');
         if (electionConfig.Error) return Refuse(result, 'Configuration', electionConfig.Error);
+        // Configuration is readable by members once the roll is frozen: only documented (or driver-declared) keys are stored.
+        if (change.isNew || IsFieldDirty(this, 'Configuration')) {
+            const undeclared = UndeclaredConfigurationKeys(electionConfig.Value, [...resolved.driver.ConfigurationKeys, ...(resolved.typeConfig?.OverridableKeys ?? [])]);
+            if (undeclared.length > 0) {
+                return Refuse(
+                    result,
+                    'Configuration',
+                    `The election configuration has unrecognised key(s): ${undeclared.join(', ')}. It is readable by every member once the roll is frozen, so it accepts only the documented settings.`
+                );
+            }
+        }
         const configuration = BuildConfigurationToValidate(resolved.typeConfig, electionConfig.Value, {
             SecrecyMode: this.SecrecyMode,
             AssuranceTier: this.AssuranceTier,
@@ -308,6 +322,33 @@ export class ElectionAnchorEntityServer extends mjBizAppsVotingElectionAnchorEnt
     public override async Delete(options?: DeleteOptions): Promise<boolean> {
         const refusal = await deleteRefusal(this, 'ElectionID', LoadElection, 'an election anchor');
         return refusal ? FailDelete(this, refusal) : super.Delete(options);
+    }
+}
+
+// === Ballot distributions ===
+
+/**
+ * A distribution publishes the election's ballot at the public edge. Creating one (or pointing one at another election)
+ * after the election closed, was tallied, certified or cancelled is refused here, so every caller (the Explorer settings
+ * screen, raw GraphQL, server code) gets the rule. Pausing, retiring or editing an existing distribution stays allowed.
+ */
+@RegisterClass(BaseEntity, 'MJ_BizApps_Voting: Ballot Distributions')
+export class BallotDistributionEntityServer extends mjBizAppsVotingBallotDistributionEntity {
+    public override get DefaultSkipAsyncValidation(): boolean {
+        return false;
+    }
+
+    public override async ValidateAsync(): Promise<ValidationResult> {
+        const result = await super.ValidateAsync();
+        if (this.IsSaved && !IsFieldDirty(this, 'ElectionID')) return result;
+        const election = await LoadElection(this, this.ElectionID);
+        if (!election) return Refuse(result, 'ElectionID', 'Cannot create a ballot distribution: its election could not be read.');
+        const refusal = DescribeDistributionCreateRefusal(election.Status);
+        return refusal ? Refuse(result, 'ElectionID', refusal) : result;
+    }
+
+    public override async Save(options?: SaveOptions): Promise<boolean> {
+        return super.Save(WithValidation(options));
     }
 }
 

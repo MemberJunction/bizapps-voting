@@ -137,6 +137,20 @@ export function DescribeConfigurationLockRefusal(status: ElectionStatus, what: s
     return `Cannot ${verb} ${what}: the election is ${status} and its configuration is locked.`;
 }
 
+// === Ballot distributions ===
+
+/** Statuses after which no ballot can be cast: a distribution created then could only publish a ballot that refuses everyone. */
+export const DISTRIBUTION_CLOSED_STATUSES: ReadonlyArray<ElectionStatus> = ['Closed', 'Tallied', 'Certified', 'Cancelled'];
+
+/**
+ * Why a ballot distribution cannot be created for (or moved to) an election in `status`, or null when it can. Existing
+ * distributions of a finished election stay editable (pausing or retiring one is still useful); only new ones are refused.
+ */
+export function DescribeDistributionCreateRefusal(status: ElectionStatus): string | null {
+    if (!DISTRIBUTION_CLOSED_STATUSES.includes(status)) return null;
+    return `Cannot create a ballot distribution: the election is ${status} and no longer accepts ballots.`;
+}
+
 // === Voter roll ===
 
 /**

@@ -83,6 +83,11 @@ describe.skipIf(!h)('12. The permission model', () => {
                 expect(r.RLS, `${r.Entity}: UI read must carry a row-level-security filter`).not.toBeNull();
             }
         }
+        // A trustee key commitment is written once by the key ceremony and is what every submitted share is checked against:
+        // no role (not even the engine's) may rewrite one.
+        const commitmentUpdaters = rows.filter((r) => r.Entity === P + 'Trustee Key Commitments' && r.U).map((r) => r.Role);
+        expect(commitmentUpdaters, 'UPDATE on Trustee Key Commitments').toEqual([]);
+        expect(rows.filter((r) => r.Entity === P + 'Trustee Key Commitments' && r.C).map((r) => r.Role).sort()).toEqual(['Voting Administrator', 'Voting Ballot Engine']);
         // Delete is granted nowhere in the app except to the engine on Ballot Comments (a revote replaces its comments).
         const deleters = rows.filter((r) => r.D).map((r) => `${r.Role}:${r.Entity}`);
         const catalogDeleters = deleters.filter((d) => CATALOGS.some((c) => d.endsWith(c)));
@@ -166,8 +171,18 @@ describe.skipIf(!h)('12. The permission model', () => {
         const settings = await Rows<{ EligibilitySourceSettings: string | null }>(h, `SELECT EligibilitySourceSettings FROM [${await schema(h)}].[Election] WHERE ID = '${openID}'`);
         const stored = settings[0]?.EligibilitySourceSettings ?? '';
         for (const p of people) expect(stored.toLowerCase(), 'no roll email stays on a frozen election').not.toContain(p.Email.toLowerCase());
+        expect(Object.keys(JSON.parse(stored) as Record<string, unknown>).sort(), 'only the marker and the digest stay').toEqual(['SettingsRedactedAtFreeze', 'SettingsSha256']);
         const draftSettings = await Rows<{ EligibilitySourceSettings: string | null }>(h, `SELECT EligibilitySourceSettings FROM [${await schema(h)}].[Election] WHERE ID = '${draftID}'`);
         expect(draftSettings[0]?.EligibilitySourceSettings ?? '').toContain(people[0].Email);
+    });
+
+    it('an election Configuration holds only documented keys, so what members can read of it is public by construction', async () => {
+        if (!h) return;
+        const people = await CreatePeople(h, 2, 'cfg');
+        await expect(CreateDraft(h, { Voters: people, Overrides: { Configuration: { Quorum: { Kind: 'Count', Value: 1 }, AdminNotes: 'private' } } })).rejects.toThrow(/AdminNotes/);
+        const ok = await CreateDraft(h, { Voters: people, Overrides: { Configuration: { Quorum: { Kind: 'Count', Value: 1 }, RequiredCertifiers: 1 } } });
+        const stored = await Rows<{ Configuration: string | null }>(h, `SELECT Configuration FROM [${await schema(h)}].[Election] WHERE ID = '${ok}'`);
+        expect(Object.keys(JSON.parse(stored[0]?.Configuration ?? '{}') as Record<string, unknown>).sort()).toEqual(['Quorum', 'RequiredCertifiers']);
     });
 
     it('the voting API scopes exist and the MJAPI application allows them', async () => {

@@ -83,6 +83,43 @@ export interface IElectionConfiguration {
 }
 
 /**
+ * The keys an election's `Configuration` may carry: the election-level keys above plus the type defaults an election can
+ * override. `Election.Configuration` is readable by every signed-in member once the roll is frozen (row-level security
+ * hides rows, not columns), so it is limited to these documented governance parameters, none of which is secret; an
+ * election type may declare more, in its `OverridableKeys` or its server driver's `ConfigurationKeys`, under the same rule.
+ * Anything else (notes, credentials, roll data) is refused when the election is saved.
+ */
+export const ELECTION_CONFIGURATION_KEYS: ReadonlyArray<string> = [
+  'Quorum',
+  'Reminders',
+  'Languages',
+  'IndependentAdministrator',
+  'RequiredCertifiers',
+  'SecrecyMode',
+  'AssuranceTier',
+  'ResultsTiming',
+  'ResultsAudience',
+  'ResultsMinCast',
+  'AllowRevote',
+  'AllowedContestKinds',
+  'AllowedCredentialMethodCodes',
+  'DefaultTallyMethodCode',
+  'GoverningDocumentCitation',
+  'NoticePeriodDays',
+  'PaperOptionAvailable',
+  'WeightClassMinSize',
+];
+
+/**
+ * The keys of an election configuration that are neither documented (`ELECTION_CONFIGURATION_KEYS`) nor declared by the
+ * election type (`declaredKeys`: its OverridableKeys and its driver's ConfigurationKeys). Empty when it may be stored.
+ */
+export function UndeclaredConfigurationKeys(config: IElectionConfiguration | undefined | null, declaredKeys: ReadonlyArray<string> = []): string[] {
+  if (!config) return [];
+  return Object.keys(config).filter((key) => !ELECTION_CONFIGURATION_KEYS.includes(key) && !declaredKeys.includes(key));
+}
+
+/**
  * The fully resolved configuration for an election:
  * app defaults → type config → election-specific overrides.
  */

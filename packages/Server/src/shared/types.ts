@@ -4,10 +4,24 @@
 
 import { type EntityTransactionScope, type IMetadataProvider, type IRunViewProvider, RunView, type UserInfo } from '@memberjunction/core';
 
+/**
+ * The caller an action is attributed to when it runs as the system principal on that caller's behalf (a voter operation
+ * authorizes the caller, then acts as the system user). Audit attribution only: it never reaches an entity save except the
+ * audit row, and never a ballot-box row.
+ */
+export interface VotingActor {
+    /** The MJ user who called. Absent for a guest ballot session, whose principal is not a stored user. */
+    UserID?: string;
+    /** For a guest ballot session: the roll entry its signed scope is bound to. */
+    GuestEligibleVoterID?: string;
+}
+
 /** Who is acting and through which provider. Engines never reach for a global provider. */
 export interface VotingContext {
     ContextUser: UserInfo;
     Provider: IMetadataProvider;
+    /** Set only on a system-principal context opened for an authorized caller (`SystemContext`). */
+    Actor?: VotingActor;
 }
 
 /** A success value, or a stable machine-readable code plus a human message. Messages never carry ballot content. */

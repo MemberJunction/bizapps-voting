@@ -898,11 +898,15 @@
       "Type": "Allow",
       "CanCreate": 1,
       "CanRead": 1,
-      "CanUpdate": 1,
+      "CanUpdate": 0,
       "CanDelete": 0
     },
     "primaryKey": {
       "ID": "1F87D9AB-E81F-4FEA-8236-41168845A513"
+    },
+    "sync": {
+      "lastModified": "2026-10-13T22:03:34.641Z",
+      "checksum": "3d3a8d32c7a96f9ba35743cb936a8cc05f3bfdae1cac7611746bde6a21fc4de7"
     }
   },
   {

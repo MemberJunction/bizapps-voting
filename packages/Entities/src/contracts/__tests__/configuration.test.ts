@@ -4,6 +4,8 @@
 
 import { describe, it, expect } from 'vitest';
 import {
+  ELECTION_CONFIGURATION_KEYS,
+  UndeclaredConfigurationKeys,
   VOTING_APP_DEFAULTS,
   ResolveElectionConfiguration,
   ValidateResolvedConfiguration,
@@ -220,4 +222,22 @@ describe('configuration.ts', () => {
       expect(errors.filter(e => e.includes('WeightClassMinSize'))).toHaveLength(0);
     });
   });
+});
+
+describe('UndeclaredConfigurationKeys (Configuration is member-readable once the roll is frozen)', () => {
+    it('accepts the documented election keys and the overridable type defaults', () => {
+        expect(UndeclaredConfigurationKeys({ Quorum: { Kind: 'Count', Value: 3 }, Reminders: { DaysBeforeClose: [3] }, RequiredCertifiers: 2, ResultsMinCast: 4, AllowRevote: true })).toEqual([]);
+        expect(UndeclaredConfigurationKeys(undefined)).toEqual([]);
+        expect(UndeclaredConfigurationKeys(null)).toEqual([]);
+    });
+    it('names every key nobody declared', () => {
+        expect(UndeclaredConfigurationKeys({ Quorum: { Kind: 'Count', Value: 1 }, AdminNotes: 'x', ApiKey: 'y' })).toEqual(['AdminNotes', 'ApiKey']);
+    });
+    it('accepts keys the election type driver declares', () => {
+        expect(UndeclaredConfigurationKeys({ BallotRound: 2 }, ['BallotRound'])).toEqual([]);
+    });
+    it('does not let an election rewrite which keys its type allows to override', () => {
+        expect(ELECTION_CONFIGURATION_KEYS).not.toContain('OverridableKeys');
+        expect(UndeclaredConfigurationKeys({ OverridableKeys: ['SecrecyMode'] })).toEqual(['OverridableKeys']);
+    });
 });

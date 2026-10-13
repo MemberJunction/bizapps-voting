@@ -20,6 +20,7 @@ import {
     ComputeVoterRollViolations,
     DeriveElectionChangeAction,
     DescribeConfigurationLockRefusal,
+    DescribeDistributionCreateRefusal,
     DescribeResultWriteRefusal,
     DescribeVoterDeleteRefusal,
     GetAllowedLockedFieldChanges,
@@ -108,6 +109,19 @@ describe('DescribeConfigurationLockRefusal', () => {
             const msg = DescribeConfigurationLockRefusal(s, 'a contest', 'delete');
             expect(msg).toContain('delete a contest');
             expect(msg).toContain(s);
+        }
+    });
+});
+
+describe('DescribeDistributionCreateRefusal', () => {
+    it('allows a new distribution while the election can still take ballots', () => {
+        for (const status of ['Draft', 'Nominations', 'Ready', 'Open'] as ElectionStatus[]) expect(DescribeDistributionCreateRefusal(status)).toBeNull();
+    });
+    it('refuses one once the election is Closed, Tallied, Certified or Cancelled, naming the status', () => {
+        for (const status of ['Closed', 'Tallied', 'Certified', 'Cancelled'] as ElectionStatus[]) {
+            const refusal = DescribeDistributionCreateRefusal(status);
+            expect(refusal).toContain(status);
+            expect(refusal).toContain('no longer accepts ballots');
         }
     });
 });

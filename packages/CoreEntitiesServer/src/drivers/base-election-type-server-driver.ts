@@ -63,6 +63,15 @@ export interface ElectionResultsContext extends DriverBaseContext {
  */
 export class BaseElectionTypeServerDriver {
     /**
+     * Extra keys this type allows in `Election.Configuration`, beyond the documented ones (`ELECTION_CONFIGURATION_KEYS`).
+     * The column is readable by every signed-in member once the election's roll is frozen, so declare only public
+     * governance parameters here: never credentials, roll data or private notes. Any other key is refused on save.
+     */
+    public get ConfigurationKeys(): ReadonlyArray<string> {
+        return [];
+    }
+
+    /**
      * Validate a change to an election (Create, Update, Open, Close, Cancel, Tally, Certify).
      * Return null (ok) or an error message.
      */

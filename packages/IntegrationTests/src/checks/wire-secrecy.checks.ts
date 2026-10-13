@@ -14,14 +14,19 @@
  *   X10  the order the ballots were cast in is not recoverable from ids or storage order
  *   X11  the minimum-cast threshold (k) withholds RUNNING results below k ballots; the final result of record is not withheld
  *        (documented: docs/voting/known-limitations.md, "ResultsMinCast guards running results only")
+ *   X12  credential secrets are unreadable to non-administrators
+ *   X13  what a member CAN read of a frozen election row: the eligibility source settings are reduced to a marker and a
+ *        digest (no emails, no selection criteria), Configuration holds documented keys only; an undeclared key is refused
  *
  * Six generated people vote in each of three elections (Secret, Confidential, Open) in a known order, one per second.
  */
 import { randomBytes } from 'node:crypto';
 import { Assert, AssertEqual, IntegrationCheckRegistry, type IntegrationCheckContext, type NamedCheck } from '@memberjunction/testing-integration/registry';
 import {
+    ELECTION_CONFIGURATION_KEYS,
     VotingCastBallotOperation,
     VotingCloseElectionOperation,
+    VotingCreateElectionOperation,
     VotingGetMyBallotOperation,
     VotingGetResultsOperation,
     VotingGetTurnoutOperation,
@@ -580,6 +585,37 @@ const checks: NamedCheck[] = [
                 }
             }
             Assert(problems.length === 0, `${problems.length} secret column(s) exposed:\n         - ${problems.join('\n         - ')}`);
+        },
+    },
+    {
+        Id: `${BUNDLE}.X13`,
+        Name: 'X13 - a member reading a frozen election row sees no roll source detail and only documented Configuration keys; an undeclared key is refused',
+        Fn: async () => {
+            const w = W();
+            const ids = [w.S, w.C, w.O].map((e) => `'${e.E.ElectionID}'`).join(',');
+            const r = await RawRunView(PersonaCred('member1'), Info('Elections').ClassName, P + 'Elections', ['ID', 'EligibilitySourceSettings', 'Configuration'], { ExtraFilter: `ID IN (${ids})`, MaxRows: 10 });
+            Assert(r.Ran, `a member reads frozen elections (the documented UI grant): ${r.Message}`);
+            AssertEqual(r.Rows.length, 3, 'all three frozen elections are visible to the member');
+            const problems: string[] = [];
+            for (const row of r.Rows) {
+                const settings = typeof row.EligibilitySourceSettings === 'string' ? row.EligibilitySourceSettings : '';
+                const keys = settings ? Object.keys(JSON.parse(settings) as Record<string, unknown>).sort().join(',') : '';
+                if (keys !== 'SettingsRedactedAtFreeze,SettingsSha256') problems.push(`election ${String(row.ID)}: source settings keys are "${keys}"`);
+                for (const p of w.People) if (settings.toLowerCase().includes(p.Email.toLowerCase())) problems.push(`election ${String(row.ID)}: a roll email is readable`);
+                const config = typeof row.Configuration === 'string' && row.Configuration.trim() ? (JSON.parse(row.Configuration) as Record<string, unknown>) : {};
+                for (const key of Object.keys(config)) if (!ELECTION_CONFIGURATION_KEYS.includes(key)) problems.push(`election ${String(row.ID)}: undocumented Configuration key ${key}`);
+            }
+            Assert(problems.length === 0, `${problems.length} exposure(s):\n         - ${problems.join('\n         - ')}`);
+
+            const refused = await w.Admin.Call(new VotingCreateElectionOperation(), {
+                ElectionTypeCode: 'motion',
+                Name: `wire-secrecy undeclared ${randomBytes(3).toString('hex')}`,
+                EligibilitySource: { Code: 'csv', Settings: { Rows: [{ Email: w.People[0].Email, SourceKey: 'k0' }] } },
+                Contests: [{ Name: 'Motion', Kind: 'Motion', TallyMethodCode: 'majority', Threshold: 'Majority', Options: [{ Label: 'Yes' }, { Label: 'No' }] }],
+                Configuration: { Quorum: { Kind: 'Count', Value: 1 }, AdminNotes: 'private remark' },
+            });
+            Assert(refused.Success && refused.Output?.Success === false, 'a Configuration with an undeclared key is declined');
+            Assert((refused.Output?.Message ?? '').includes('AdminNotes'), `the refusal names the key (got "${refused.Output?.Message ?? ''}")`);
         },
     },
 ];

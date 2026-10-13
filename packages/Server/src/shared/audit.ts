@@ -11,8 +11,12 @@ import { UUIDsEqual } from '@memberjunction/global';
 
 const AUDIT_ENTITY = 'MJ_BizApps_Voting: Election Audit Events';
 
-/** Whether the audit row should name the acting user (guests and the system user are recorded as no actor). */
+/**
+ * The MJ user an audit row names. A system-principal context opened for an authorized caller names that caller
+ * (`ctx.Actor`); otherwise the context user, except guests and the system user (no actor).
+ */
 export function ActorIdFor(ctx: VotingContext): string | null {
+    if (ctx.Actor) return ctx.Actor.UserID ?? null;
     const user = ctx.ContextUser;
     if (!user?.ID || IsGuestPrincipal(user)) return null;
     try {
@@ -21,6 +25,16 @@ export function ActorIdFor(ctx: VotingContext): string | null {
         // no system user available: fall through and record the actor
     }
     return user.ID;
+}
+
+/**
+ * The audit payload. A guest ballot session has no MJ user to name, so the roll entry its signed scope is bound to is
+ * recorded instead (`ActorEligibleVoterID`). Callers pass counts, ids and codes only; ballot choices never come here.
+ */
+export function AuditDetails(ctx: VotingContext, details?: Record<string, unknown>): string | null {
+    const guest = ctx.Actor?.GuestEligibleVoterID;
+    const all = guest ? { ...details, ActorEligibleVoterID: guest } : details;
+    return all ? JSON.stringify(all) : null;
 }
 
 export class ElectionAudit {
@@ -38,7 +52,7 @@ export class ElectionAudit {
             row.EventType = eventType;
             row.ActorUserID = ActorIdFor(ctx);
             row.OccurredAt = new Date();
-            row.Details = details ? JSON.stringify(details) : null;
+            row.Details = AuditDetails(ctx, details);
             if (!(await row.Save())) {
                 LogError(`Voting audit: could not record "${eventType}" for election ${electionID}: ${row.LatestResult?.CompleteMessage ?? 'unknown error'}`);
             }
