@@ -44,6 +44,20 @@ interface StvBallot {
 
 type CandidateStatus = 'continuing' | 'elected' | 'excluded';
 
+/** What one count produces. */
+interface StvCountResult {
+    ElectedOrder: number[];
+    ExcludedOrder: number[];
+    LastTally: number[];
+    Rounds: TallyRound[];
+    /** One note per lot drawn, in order. */
+    LotNotes: string[];
+    LotsDrawn: number;
+}
+
+/** How many alternative counts `ElectionDependsOnLots` may run before it conservatively reports the lot as decisive. */
+const STV_LOT_PATH_LIMIT = 256;
+
 /**
  * Multi-seat Single Transferable Vote, counted by the Scottish STV rules: the Weighted Inclusive Gregory
  * Method (WIGM) of the Scottish Local Government Elections Order 2007 (SSI 2007/42), with Droop quota.
@@ -83,7 +97,11 @@ type CandidateStatus = 'continuing' | 'elected' | 'excluded';
  *   final count ('Defeated'), then excluded candidates, last excluded first ('Excluded'). `Position` follows
  *   that order. `Votes` is the candidate's last recorded count (quota for candidates whose surplus was
  *   transferred).
- * - Ties resolved by lot set `TieBroken` and add a note. The lot is a deterministic function of
+ * - Every tie resolved by lot adds a note. `TieBroken` is set only when a lot DECIDED the outcome: the set of elected
+ *   candidates would differ under some other fall of the lots (every combination is recounted, up to
+ *   STV_LOT_PATH_LIMIT counts, beyond which the flag is set conservatively). A lot that only sequences candidates who are
+ *   all elected, or excludes one of several candidates without changing who wins, adds its note but not the flag
+ *   (the same narrowing as `RankWithTies` for single-stage methods). The lot is a deterministic function of
  *   `TieBreakSeed` (FNV-1a hash into mulberry32), so the same input always yields the same result.
  * - With a single seat the result equals instant-runoff voting.
  */
@@ -136,6 +154,80 @@ export class StvTallyMethod extends BaseTallyMethodContract {
         notes.push(`Scottish STV (Weighted Inclusive Gregory Method), Droop quota ${quota / SCALE} on ${totalUnits / SCALE} valid votes for ${seats} seat(s).`);
 
         const lot = new StvLot(input.TieBreakSeed);
+        const count = this.Count(candidates, ballots, quota, seats, (tied) => tied[lot.PickIndex(tied.length)]);
+        notes.push(...count.LotNotes);
+        const tieBroken = count.LotsDrawn > 0 && this.ElectionDependsOnLots(candidates, ballots, quota, seats, count.ElectedOrder);
+        if (count.LotsDrawn > 0 && !tieBroken) notes.push('Ties were broken by lot, but no lot changed which candidates were elected.');
+
+        const { ElectedOrder: electedOrder, ExcludedOrder: excludedOrder, LastTally: lastTally } = count;
+        const electedSet = new Set(electedOrder);
+        const excludedSet = new Set(excludedOrder);
+        const defeated = candidates
+            .map((_, i) => i)
+            .filter(i => !electedSet.has(i) && !excludedSet.has(i))
+            .sort((a, b) => lastTally[b] - lastTally[a] || a - b);
+        const finalOrder: Array<{ Index: number; Outcome: TallyOptionResult['Outcome'] }> = [
+            ...electedOrder.map(i => ({ Index: i, Outcome: 'Elected' as const })),
+            ...defeated.map(i => ({ Index: i, Outcome: 'Defeated' as const })),
+            ...[...excludedOrder].reverse().map(i => ({ Index: i, Outcome: 'Excluded' as const }))
+        ];
+        return {
+            Outcome: 'Decided',
+            VotesCast: totalUnits / SCALE,
+            Abstentions: abstentionUnits / SCALE,
+            Options: finalOrder.map((f, p) => ({
+                OptionID: candidates[f.Index],
+                Votes: lastTally[f.Index] / SCALE,
+                Position: p + 1,
+                Outcome: f.Outcome
+            })),
+            Rounds: count.Rounds,
+            TieBroken: tieBroken,
+            Notes: notes
+        };
+    }
+
+    /**
+     * Whether the SET of elected candidates depends on how any lot fell: every combination of lot outcomes is counted
+     * (depth first, each lot's alternatives in turn) and compared with `elected`. A lot that only sequences candidates who
+     * are all elected (or all lose), or excludes one of several candidates without changing who wins, is not decisive.
+     * Bounded by STV_LOT_PATH_LIMIT counts; beyond it the answer is conservatively true.
+     */
+    private ElectionDependsOnLots(candidates: readonly string[], ballots: readonly StvBallot[], quota: number, seats: number, elected: readonly number[]): boolean {
+        const target = [...elected].sort((a, b) => a - b).join(',');
+        const pending: number[][] = [[]];
+        let counts = 0;
+        while (pending.length > 0) {
+            const prefix = pending.pop() as number[];
+            if (++counts > STV_LOT_PATH_LIMIT) return true;
+            const branching: number[] = [];
+            const result = this.Count(candidates, ballots, quota, seats, (tied) => {
+                const pick = branching.length < prefix.length ? prefix[branching.length] : 0;
+                branching.push(tied.length);
+                return tied[pick];
+            });
+            if ([...result.ElectedOrder].sort((a, b) => a - b).join(',') !== target) return true;
+            for (let j = prefix.length; j < branching.length; j++) {
+                for (let alt = 1; alt < branching[j]; alt++) {
+                    pending.push([...prefix, ...new Array<number>(j - prefix.length).fill(0), alt]);
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * One full count (the stages described on the class). `chooseByLot` resolves a tie that earlier-stage totals could not;
+     * the ballots are copied, so the same prepared ballots can be counted again.
+     */
+    private Count(
+        candidates: readonly string[],
+        prepared: readonly StvBallot[],
+        quota: number,
+        seats: number,
+        chooseByLot: (tied: number[]) => number
+    ): StvCountResult {
+        const ballots: StvBallot[] = prepared.map(b => ({ ...b }));
         const status: CandidateStatus[] = candidates.map(() => 'continuing');
         const settled: boolean[] = candidates.map(() => false);
         const lastTally: number[] = candidates.map(() => 0);
@@ -143,7 +235,8 @@ export class StvTallyMethod extends BaseTallyMethodContract {
         const excludedOrder: number[] = [];
         const history: number[][] = [];
         const rounds: TallyRound[] = [];
-        let tieBroken = false;
+        const lotNotes: string[] = [];
+        let lotsDrawn = 0;
 
         /** Pick the largest (or smallest) of `group`, resolving ties backwards through earlier stages, then by lot. */
         const pickExtreme = (group: number[], totals: number[], largest: boolean, what: string): number => {
@@ -152,9 +245,9 @@ export class StvTallyMethod extends BaseTallyMethodContract {
                 tied = this.Extremes(tied, history[h], largest);
             }
             if (tied.length === 1) return tied[0];
-            const chosen = tied[lot.PickIndex(tied.length)];
-            tieBroken = true;
-            notes.push(`Tie by lot (${what}) among ${tied.map(i => candidates[i]).join(', ')}; chose ${candidates[chosen]}.`);
+            const chosen = chooseByLot(tied);
+            lotsDrawn++;
+            lotNotes.push(`Tie by lot (${what}) among ${tied.map(i => candidates[i]).join(', ')}; chose ${candidates[chosen]}.`);
             return chosen;
         };
         const orderByTotal = (group: number[], totals: number[], what: string): number[] => {
@@ -264,31 +357,7 @@ export class StvTallyMethod extends BaseTallyMethodContract {
             if (finished) break;
         }
 
-        const electedSet = new Set(electedOrder);
-        const excludedSet = new Set(excludedOrder);
-        const defeated = candidates
-            .map((_, i) => i)
-            .filter(i => !electedSet.has(i) && !excludedSet.has(i))
-            .sort((a, b) => lastTally[b] - lastTally[a] || a - b);
-        const finalOrder: Array<{ Index: number; Outcome: TallyOptionResult['Outcome'] }> = [
-            ...electedOrder.map(i => ({ Index: i, Outcome: 'Elected' as const })),
-            ...defeated.map(i => ({ Index: i, Outcome: 'Defeated' as const })),
-            ...[...excludedOrder].reverse().map(i => ({ Index: i, Outcome: 'Excluded' as const }))
-        ];
-        return {
-            Outcome: 'Decided',
-            VotesCast: totalUnits / SCALE,
-            Abstentions: abstentionUnits / SCALE,
-            Options: finalOrder.map((f, p) => ({
-                OptionID: candidates[f.Index],
-                Votes: lastTally[f.Index] / SCALE,
-                Position: p + 1,
-                Outcome: f.Outcome
-            })),
-            Rounds: rounds,
-            TieBroken: tieBroken,
-            Notes: notes
-        };
+        return { ElectedOrder: electedOrder, ExcludedOrder: excludedOrder, LastTally: lastTally, Rounds: rounds, LotNotes: lotNotes, LotsDrawn: lotsDrawn };
     }
 
     /** Known, de-duplicated candidate indexes in preference order. */

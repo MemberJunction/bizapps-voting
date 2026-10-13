@@ -19,6 +19,7 @@
  *   WT13  weight classes count at the CLASS MEAN weight, not the individual weight
  *   WT14  results audiences: who sees the final result of each audience (admin, inspector, voter, non-voting eligible, guest, outsiders)
  *   WT15  results timing: AfterVoting, AdministratorsOnly and Live explain themselves while voting is open
+ *   WT16  Scottish STV ties: a lot that cannot change who is elected is noted but not flagged; a decisive one is flagged
  */
 import { Assert, AssertEqual, IntegrationCheckRegistry, type NamedCheck } from '@memberjunction/testing-integration/registry';
 import type { VotingContestSpec, VotingCreateElectionInput } from '@mj-biz-apps/voting-entities';
@@ -540,6 +541,34 @@ const checks: NamedCheck[] = [
             AssertEqual(early.Visible, false, 'Live: one ballot is below the minimum of three');
             Assert((early.Reason ?? '').toLowerCase().includes('at least 3 ballots'), `Live reason (got "${early.Reason}")`);
             AssertEqual(early.Contests, 0, 'Live: no counts below the minimum');
+        },
+    },
+    {
+        Id: `${BUNDLE}.WT16`,
+        Name: 'WT16 - Scottish STV: TieBroken only when the lot decided who was elected (one quiet tie, one decisive tie)',
+        Fn: async () => {
+            // Two one-seat STV contests on the same 7 ballots, Droop quota floor(7/2)+1 = 4 in both.
+            // Quiet:    3 x A, 2 x D, 1 x B, 1 x C.  Stage 1: nobody at quota; B and C tie for the exclusion with no earlier
+            //           stage, so a lot excludes one (its ballot exhausts), then the other, then D: A wins every way. Not flagged.
+            // Decisive: 3 x C, 2 x A>B, 2 x B>A.     Stage 1: C3 A2 B2; A and B tie for the exclusion. Excluding A gives B 4
+            //           (elected), excluding B gives A 4 (elected): the lot decides the seat. Flagged.
+            const e = await Fixture('Wire STV ties', 'organization-election', [Office('Quiet', 'stv', 1, ['A', 'B', 'C', 'D']), Office('Decisive', 'stv', 1, ['A', 'B', 'C'])], Roster(7));
+            const plans: BallotPlan[] = [
+                ...Times(3, { Quiet: ['A'], Decisive: ['C'] }),
+                ...Times(2, { Quiet: ['D'], Decisive: ['A', 'B'] }),
+                { Quiet: ['B'], Decisive: ['B', 'A'] },
+                { Quiet: ['C'], Decisive: ['B', 'A'] },
+            ];
+            await CastAll(e, plans);
+            const t = await Tally(e, 'stv-tie-seed');
+            const quiet = Contest(t, 'Quiet');
+            AssertOutcomeSet(quiet, 'Elected', ['A']);
+            Assert(quiet.Notes.some((n) => /Tie by lot \(exclusion\)/.test(n)), `the quiet contest notes its lot (got ${JSON.stringify(quiet.Notes)})`);
+            AssertEqual(quiet.TieBroken, false, 'a lot that could not change the winner is not reported as a tie-break');
+            const decisive = Contest(t, 'Decisive');
+            AssertEqual(decisive.TieBroken, true, 'the lot that decided the seat is reported');
+            const winner = Object.entries(decisive.Options).filter(([, o]) => o.Outcome === 'Elected').map(([l]) => l);
+            Assert(winner.length === 1 && (winner[0] === 'A' || winner[0] === 'B'), `the decisive seat goes to A or B (got ${winner.join(',')})`);
         },
     },
 ];

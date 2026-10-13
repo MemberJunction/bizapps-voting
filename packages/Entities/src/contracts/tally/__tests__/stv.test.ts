@@ -150,6 +150,54 @@ describe('StvTallyMethod', () => {
         expect(a1.Notes.some(n => n.startsWith('Tie by lot'))).toBe(true);
     });
 
+    describe('TieBroken is set only when a lot decided who was elected', () => {
+        it('a lot that only sequences two candidates who are both elected is noted but not flagged', () => {
+            // 2 seats, 9 valid, quota floor(9/3)+1 = 4. A=4 and B=4 both reach it at stage 1 with no earlier stage:
+            // the order of election is drawn by lot, but A and B are elected whichever way it falls.
+            const b = [...ballots(4, ['A']), ...ballots(4, ['B']), ...ballots(1, ['C'])];
+            for (const seed of ['s1', 's2', 's3', 's4']) {
+                const r = stv.Tally(contest(2, ['A', 'B', 'C'], b, seed));
+                expect(new Set(electedIds(r))).toEqual(new Set(['A', 'B']));
+                expect(r.Notes.some(n => n.startsWith('Tie by lot (order of election)'))).toBe(true);
+                expect(r.Notes).toContain('Ties were broken by lot, but no lot changed which candidates were elected.');
+                expect(r.TieBroken).toBe(false);
+            }
+        });
+
+        it('an exclusion drawn by lot that cannot change the winner is not flagged', () => {
+            // 1 seat, 7 valid, quota floor(7/2)+1 = 4. Stage 1: A3 D2 B1 C1, nobody at quota. B and C tie for the
+            // exclusion with no earlier stage, so a lot excludes one; their ballots exhaust. The other is excluded next,
+            // then D, and A wins every way the lot falls.
+            const b = [...ballots(3, ['A']), ...ballots(2, ['D']), ...ballots(1, ['B']), ...ballots(1, ['C'])];
+            for (const seed of ['s1', 's2', 's3', 's4']) {
+                const r = stv.Tally(contest(1, ['A', 'B', 'C', 'D'], b, seed));
+                expect(electedIds(r)).toEqual(['A']);
+                expect(r.Notes.some(n => n.startsWith('Tie by lot (exclusion)'))).toBe(true);
+                expect(r.TieBroken).toBe(false);
+            }
+        });
+
+        it('an exclusion drawn by lot that decides the seat is flagged', () => {
+            // 1 seat, 7 valid, quota 4. Stage 1: C3 A2 B2. A and B tie for the exclusion (no earlier stage): excluding A
+            // sends A>B ballots to B (B=4, elected); excluding B sends B>A ballots to A (A=4, elected). The lot decides.
+            const b = [...ballots(3, ['C']), ...ballots(2, ['A', 'B']), ...ballots(2, ['B', 'A'])];
+            const winners = new Set<string>();
+            for (let i = 0; i < 20; i++) {
+                const r = stv.Tally(contest(1, ['A', 'B', 'C'], b, `s${i}`));
+                expect(r.TieBroken).toBe(true);
+                expect(r.Notes).not.toContain('Ties were broken by lot, but no lot changed which candidates were elected.');
+                winners.add(electedIds(r)[0]);
+            }
+            expect(winners).toEqual(new Set(['A', 'B']));
+        });
+
+        it('a count without any lot is never flagged', () => {
+            const r = stv.Tally(contest(1, ['A', 'B'], [...ballots(3, ['A']), ...ballots(1, ['B'])]));
+            expect(r.TieBroken).toBe(false);
+            expect(r.Notes.some(n => n.includes('lot'))).toBe(false);
+        });
+    });
+
     it('different seeds can break the same tie differently, and both outcomes occur', () => {
         const b = [...ballots(1, ['A']), ...ballots(1, ['B'])];
         const winners = new Set<string>();
