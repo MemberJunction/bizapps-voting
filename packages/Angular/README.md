@@ -1,82 +1,31 @@
 # @mj-biz-apps/voting-ng
 
-Admin dashboards for MJ Explorer (L3 — Explorer-specific UI).
+The Explorer UI (layer L3) for BizApps Voting, plus the generated entity forms. `LoadBizAppsVotingClient()` is the client
+`startupExport` named in `mj-app.json`; it keeps every `@RegisterClass` alive.
 
 ## Dashboards
 
-- **Elections Management**: create, edit, open, close, and cancel elections
-- **Voter Roll Management**: freeze, amend, and challenge voter rolls
-- **Credentials**: issue and revoke voter credentials
-- **Turnout**: real-time voting statistics
-- **Results**: view and publish results (live or final)
-- **Certification**: certify results with multi-certifier workflow
-- **Trustee Management**: manage trustee keys and tally ceremonies (Tier B)
-- **Audit Log**: view election audit trail
+They are the nav items of the **BizApps Voting** application (`metadata/applications`); each is a resource component
+registered under the `DriverClass` shown.
 
-Each dashboard:
-- Uses `BaseResourceComponent` for layout and routing
-- Integrates with the navigation service for deep links
-- Handles MJ entity updates and displays
-- Calls engines via Remote Operations
+| Nav item | `DriverClass` | What it does |
+|---|---|---|
+| Elections | `VotingElectionsResource` | List, creation wizard (Type, Details, Contests & options, Eligibility, Linked records, Review) and per-election tabs: Overview (open/close/cancel), Roll (freeze, amend, challenge), Credentials (issue emailed links, issuance log), Turnout (counts only, refreshes every 30 s while Open), Close & Tally (close, tally with optional seed), Certification |
+| My Ballot | `VotingBallotResource` | The signed-in user's ballot via `GetMyBallot` / `CastBallot` / `GetResults`; lists open elections without `?electionId=` |
+| Election Types | `VotingElectionTypesResource` | Read-only catalog of types (with resolved defaults), tally methods, eligibility sources, sign-in methods |
+| Results & Certification | `VotingResultsResource` | Results for administrators and inspectors, certify, printable report, receipt verification |
+| Settings | `VotingSettingsResource` | Ballot distributions (create, edit, retire; allowed origins, methods, host public key), embed snippets, credential issuance |
 
-## Key Components
+Tabs and wizard steps are assembled through `@mj-biz-apps/voting-ng-widgets` so election types and other apps can add to
+them. There is no UI for trustee ceremonies, nominations, comment resolution, paper ballots or proxies (use the Remote
+Operations). Dashboards call the server only through Remote Operations (`VotingApiService`) and entity forms.
 
-- **`ElectionListComponent`**: list all elections with filters
-- **`ElectionDetailComponent`**: full election editor
-- **`RollComponent`**: manage voter roll
-- **`CredentialsComponent`**: credential distribution
-- **`TurnoutComponent`**: voting statistics
-- **`ResultsComponent`**: view/publish results
-- **`CertificationComponent`**: certification workflow
-- **`TrusteeComponent`**: key ceremony management
-
-## Dependencies
-
-- `@angular/*`: core, forms, common, router
-- `@memberjunction/ng-*`: UI components, base classes
-- `@mj-biz-apps/voting-entities`: entity types, operation types
-- `@mj-biz-apps/voting-server`: engines (via Remote Operations, not direct imports)
-
-## Routing
-
-Dashboards register in the Explorer navigation:
-
-```
-/explorer/app/voting
-  /elections (list)
-  /elections/:id (detail)
-  /roll/:id
-  /credentials/:id
-  /turnout/:id
-  /results/:id
-  /certify/:id
-```
-
-Deep links are supported; state is preserved on navigation.
-
-## Development
-
-Dashboards follow MJ Angular conventions:
-
-- L3 (Explorer-only): full Router access, entity updates, navigation service
-- No server imports directly (use Remote Operations)
-- Responsive layout with sidebar/main area
-- Type-safe entity binding via generated classes
-
-Build:
+Layer rules: this package may use the Router and Explorer services; nothing below it imports it. See the
+[UI layering guide](https://github.com/MemberJunction/MJ/blob/next/guides/UI_LAYERING_GUIDE.md).
 
 ```bash
-pnpm run build
-```
-
-Test:
-
-```bash
+pnpm run build      # from this directory, or: pnpm --filter @mj-biz-apps/voting-ng run build  (from the workspace root)
 pnpm test
 ```
 
-## See Also
-
-- [Architecture docs](../../docs/voting/architecture.md) for entity relationships
-- [Operations reference](../../docs/voting/operations.md) for Remote Operation signatures
-- [MJ UI Layering guide](https://github.com/MemberJunction/MJ/blob/next/guides/UI_LAYERING_GUIDE.md) for L3 patterns
+See [Operations reference](../../docs/voting/operations.md) and [Architecture](../../docs/voting/architecture.md).

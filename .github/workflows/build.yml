@@ -77,6 +77,9 @@ jobs:
       - name: CI guard specs
         run: node --test .github/scripts/__tests__/*.spec.mjs
 
+      - name: Consumer-blindness check
+        run: node .github/scripts/check-consumer-blindness.mjs
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 

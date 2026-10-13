@@ -9,223 +9,174 @@
 <h1 align="center">BizApps Voting</h1>
 
 <p align="center">
-  <strong>Secret, verifiable, embeddable voting — motions, elections, referendums and polls — for the <a href="https://github.com/MemberJunction/MJ">MemberJunction</a> platform</strong>
+  <strong>Secret, embeddable voting (motions, elections, referendums, polls) for the <a href="https://github.com/MemberJunction/MJ">MemberJunction</a> platform</strong>
 </p>
 
 <p align="center">
-  <a href="#what-this-is--and-is-not">What this is</a> &middot;
+  <a href="#what-this-is-and-is-not">What this is</a> &middot;
   <a href="#how-a-secret-ballot-works-here">Secret ballots</a> &middot;
-  <a href="#results-on-your-terms">Results timing</a> &middot;
-  <a href="#election-types-are-plug-ins">Plug-ins</a> &middot;
-  <a href="#the-ballot-widget">Ballot widget</a> &middot;
-  <a href="#using-bizapps-voting-in-your-code">Code</a> &middot;
-  <a href="#roadmap">Roadmap</a> &middot;
-  <a href="plans/bizapps-voting-design.md">Design</a>
-</p>
-
-<p align="center">
-  <img alt="Status" src="https://img.shields.io/badge/Status-Design%20approved%2C%20build%20starting-orange?style=flat-square" />
-  <img alt="MJ Version" src="https://img.shields.io/badge/MemberJunction-6.1.5%2B-blue?style=flat-square" />
-  <img alt="Angular" src="https://img.shields.io/badge/Angular-21-DD0031?style=flat-square&logo=angular&logoColor=white" />
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white" />
-  <img alt="SQL Server" src="https://img.shields.io/badge/SQL%20Server-2019%2B-CC2927?style=flat-square&logo=microsoftsqlserver&logoColor=white" />
-  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-from%20first%20release-4169E1?style=flat-square&logo=postgresql&logoColor=white" />
+  <a href="#results-on-your-terms">Results</a> &middot;
+  <a href="#plug-ins">Plug-ins</a> &middot;
+  <a href="#the-ballot-widget">Widget</a> &middot;
+  <a href="#using-it-from-code">Code</a> &middot;
+  <a href="#running-it">Running it</a> &middot;
+  <a href="docs/voting/known-limitations.md">Limitations</a>
 </p>
 
 ---
 
-> **Status: design approved, build starting.** This README describes the system the
-> [design](plans/bizapps-voting-design.md) commits to. Code samples show the target API. Nothing
-> here is shipped yet; the [roadmap](#roadmap) says what lands when.
+> **Status: implemented; pre-release (`0.0.0`).** Server engines, 24 Remote Operations, the public ballot edge, the
+> `<mj-ballot>` element, Explorer dashboards and a 27-test database-backed integration tier exist. It depends on two
+> MemberJunction changes that are not released yet (see [Running it](#running-it)). Assurance tier C (ElectionGuard) is
+> not implemented. Everything below describes what the code does today; gaps are in
+> [known limitations](docs/voting/known-limitations.md). The original [design](plans/bizapps-voting-design.md) is the
+> intent, not the reference.
 
-Organizations vote all the time, and in many shapes:
-- A board passes a motion.
-- Members elect a slate of directors.
-- A union ratifies a contract.
-- A co-op approves a bylaw amendment.
-- A standards body ballots a draft and resolves the comments.
-- A team runs a quick poll and watches the results come in.
+Organizations vote in many shapes: a board passes a motion, members elect directors, a co-op ratifies a bylaw, a
+standards body ballots a draft. Each needs the same guarantees: only eligible people vote, each votes once, nobody can see
+how anyone else voted (unless the vote is a roll call), and the count can be reproduced and certified.
 
-Each of these needs the same guarantees:
-- only eligible people vote;
-- each votes once;
-- nobody can see how anyone else voted, unless the vote is a roll call;
-- the count can be reproduced and certified.
+**BizApps Voting** is one voting engine for every app built on MemberJunction. It is a MemberJunction Open App
+(schema `__mj_BizAppsVoting`). Other apps hold a vote by anchoring an election to one of their records and dropping a
+ballot on a page.
 
-**BizApps Voting** is one voting engine for every app built on MemberJunction. It is a **MemberJunction Open App**: install it into any MJ environment and every other app (Committees, Collaboration, your own) can hold a vote by anchoring an election to its records and dropping a ballot onto any page.
+Three ideas hold it together:
 
-The design stands on three ideas:
+1. **The server decides everything.** Eligibility, casting, tallying and certification run in server engines behind typed
+   [Remote Operations](https://github.com/MemberJunction/MJ/blob/next/guides/REMOTE_OPERATIONS_GUIDE.md). The ballot renders and submits; it decides nothing.
+2. **Secret by construction, not by permission.** *Who voted* and *what was voted* live in separate tables with no link
+   between them, including the timestamps, row order and audit trails a database adds by default.
+3. **Configuration is data; types are plug-ins.** Election types, eligibility sources and sign-in methods are metadata
+   rows naming registered driver classes.
 
-1. **The server decides everything.** Eligibility, casting, tallying and certification run in server engines exposed through typed [Remote Operations](https://github.com/MemberJunction/MJ/blob/next/guides/REMOTE_OPERATIONS_GUIDE.md). The ballot renders and submits; it decides nothing.
-2. **Secret by construction, not by permission.** *Who voted* and *what was voted* live in separate stores with no link between them. That includes the timestamps, row ordering and audit trails a database adds by default.
-3. **Configuration is data, and every type is a plug-in.** Election types, tally methods, eligibility sources and sign-in methods are metadata rows naming registered driver classes, the same model as BizApps Collaboration's space types.
+## What this is, and is not
 
----
-
-## What This Is — and Is Not
-
-| ✅ This is | ❌ This is not |
+| This is | This is not |
 |---|---|
-| A voting engine for motions, board and organization-wide elections, amendments, referendums, ratifications, polls and standards ballots | A survey tool. Surveys belong in [BizApps Forms](https://github.com/MemberJunction/bizapps-forms), which links responses to respondents on purpose |
-| **Secret ballots by construction**: separate poll book and ballot box, MJ's side channels closed | A judging or scoring tool (awards, abstracts): that's rubric scoring, not voting |
-| **Open** (roll call), **Confidential** (sealed until close) and **Secret** modes, chosen per election | A government or public-company proxy-voting system |
-| An embeddable `<mj-ballot>` widget with several sign-in methods, for any page | A membership, HR or student system. Voter rolls come from whichever system of record you already run |
-| Plurality, majority with thresholds, approval, ranked-choice (IRV/STV), weighted and representative voting | Coercion-resistant remote voting. No remote system can promise that, and we don't claim it |
-| Pluggable: types, tally methods, eligibility sources and sign-in methods are driver classes | Tied to any one vertical: nothing in the engine names a host app |
+| A voting engine for motions, elections, amendments, referendums, ratifications, polls and standards ballots | A survey tool (responses linked to respondents belong in BizApps Forms) |
+| Secret ballots with a separate poll book and ballot box; Open (roll call), Confidential and Secret modes per election | A judging or scoring tool |
+| An embeddable `<mj-ballot>` element for any page | A proxy-voting system for public companies |
+| Plurality, majority with thresholds, approval, IRV and STV; weighted ballots | Coercion-resistant remote voting (no remote system can promise that) |
+| Pluggable election types, eligibility sources and sign-in methods | Tied to any host app: nothing in the engine names one |
 
----
+## How a secret ballot works here
 
-## How a Secret Ballot Works Here
-
-Real elections keep two records apart: the **poll book** (who voted) and the **ballot box** (what was voted). One server operation writes both, in one transaction:
+One server operation writes the poll book and the ballot box in one transaction, as MJ's **system user** rather than the
+voter:
 
 ```mermaid
 sequenceDiagram
-    participant W as <mj-ballot>
+    participant W as mj-ballot / Explorer
     participant RO as Voting.CastBallot
     participant CE as CastEngine
     participant DB as Database (one transaction)
-    W->>RO: selections + election-scoped session
-    RO->>RO: Authorize: session scope, voter on the roll
-    RO->>CE: Cast(election, voter, selections)
-    CE->>CE: validate against the ballot style
-    CE->>DB: INSERT Participation  — UNIQUE(election, voter)
-    CE->>DB: INSERT CastBallot     — random ID, no voter, no time
+    W->>RO: selections + ballot style hash
+    RO->>RO: Authorize (session scope / roll)
+    RO->>CE: Cast(election, voter, submission)
+    CE->>CE: window, hash, validation, driver check
+    CE->>DB: INSERT Participation (UNIQUE election+voter)
+    CE->>DB: INSERT CastBallot (random id, ciphertext, no voter, no time)
+    CE->>DB: INSERT BallotAttribution (Open / Confidential only)
+    CE->>DB: UPDATE ContestRunningTally (Standard tier, ResultsTiming not AfterClose)
     DB-->>CE: commit, or "already voted"
     CE-->>W: receipt code
 ```
 
-**Guarantees this gives:**
-- A voter can't vote without being marked as having voted, and can't be marked without voting.
-- A second attempt fails on the unique constraint, whichever sign-in method or channel it came through: online, paper or proxy.
+A voter cannot be marked as having voted without a ballot, or vote twice (the unique constraint holds whatever the
+sign-in method or channel). The foreign key is the easy part; secrecy is usually lost through side channels, so each is
+closed explicitly:
 
-The foreign key is the easy part. Secrecy is usually lost through the **side channels**, so the design closes each one explicitly:
-
-| Side channel | Control |
+| Side channel | Control (all verified in code/metadata) |
 |---|---|
-| Automatic `__mj_CreatedAt` / `__mj_UpdatedAt` columns | `TrackRecordChanges = 0` on ballot entities: no timestamp columns, no Record Changes rows naming the user |
-| Sequential IDs that sort ballots in insert order | Random `NEWID()` keys |
-| Rows saved under the voter's own session | Ballots are written by the system user; the voter's identity stops at the poll book |
-| Generated GraphQL access | `IncludeInAPI = 0`; no role reads ballot tables; only the tally engine does, and only after close |
-| Request and audit logs | The cast operation never logs its input |
-| Unique vote weights | Weights stay off the ballot; tallies are per weight class with a minimum class size |
-| Operators and DBAs during voting | Assurance tier B: selections are encrypted under an election key that trustees split and the server never holds |
+| `__mj_CreatedAt` / `__mj_UpdatedAt` columns and Record Changes rows | `TrackRecordChanges = false` on `CastBallot`, `BallotSelection`, `ContestRunningTally`, so CodeGen adds no timestamp columns ([`codegen/additional-schema-info.json`](codegen/additional-schema-info.json)); `CastBallot` carries no time |
+| Insert order readable from ids or physical row order | Random `NEWID()` primary keys, declared `CLUSTERED`, on `CastBallot`, `BallotSelection`, `ContestRunningTally`: rows are stored in key order, which is random, so neither key nor physical order follows cast order |
+| Anyone reading the tables through MJ | The ballot-box entities are created with **no role permissions** (`AutoAddPermissions: false`). The only grants are read/create/update (never delete) for the `Voting Ballot Engine` role, held only by MJ's system user. Deletes, user search and all-rows API access are off; no delete procedures exist |
+| Writes that bypass the engines | Entity-server write guards (`BallotBoxWriteGuard`, `TallyWriteGuard`) refuse ballot-box and result writes outside the cast/tally engines; ballot selections and participations are immutable |
+| Ballots saved under the voter's session | Ballots are written as the system user; the voter's identity stops at `Participation` |
+| Reading votes at rest | `CastBallot.Selections` is ciphertext: `v1:a:...` (AES-256-GCM, key from `VOTING_SELECTIONS_KEY`) or `v1:b:...` (tier B, RSA-OAEP-wrapped data key) |
+| A voter-to-ballot link | `BallotAttribution` rows exist only for Open and Confidential elections; a Secret election never has any |
+| Logs | Casting never logs submissions or selections; errors carry codes, not ballot content |
+| Unique vote weights | Ballots store a weight *class* (`1`, `1-2`, `2-5`, `5-10`, `10-100`, `100+`); the tally uses the class's mean weight; when an electorate has several weight classes and any has fewer than `WeightClassMinSize` (default 5) ballots, running totals are withheld entirely |
+| Tally order | Ballots are shuffled with a CSPRNG before decryption, and the shuffled `BallotSelection` rows are written only after close |
+
+`AllowCreateAPI` / `AllowUpdateAPI` are deliberately left **on**, and `IncludeInAPI` is left **on**: in MJ, turning either
+off makes CodeGen omit the create/update procedures (and the base view) and generate a `Save()` that always throws, even
+for the system user, so the cast engine could never write a ballot. Permissions, not those flags, keep the API closed.
 
 ### Secrecy modes and assurance tiers
 
-| Mode | For | What's stored |
+| Mode | Stored |
+|---|---|
+| **Open** | Each ballot linked to its voter (`BallotAttribution`); revotes allowed if enabled; standards-ballot comments stored |
+| **Confidential** | Linked to the voter like Open; for sealed-until-close committee votes |
+| **Secret** | Poll book and ballot box, unlinkable; revotes never allowed |
+
+| Tier | Status |
+|---|---|
+| **A: Standard** | Implemented. AES-256-GCM under `VOTING_SELECTIONS_KEY`; all controls above |
+| **B: High assurance** | Implemented. Per-election RSA-3072 key pair; the private key is split k-of-n (Shamir over GF(256)) among named trustees and exists only in memory during creation and during the tally ceremony. Requires a single MJAPI instance |
+| **C: Verifiable** | **Not implemented.** Refused (`TierNotSupported`) at open, cast and tally unless a `BaseVerifiableTallyProvider` is registered under the key `ElectionGuard`; none ships |
+
+## Results on your terms
+
+Each election sets `ResultsTiming` and `ResultsAudience` (`Voters`, `Eligible`, `HostMembers`, `Public`, `Administrators`).
+
+| ResultsTiming | Behaviour |
+|---|---|
+| `AfterClose` (default) | Nothing until the election is Tallied or Certified; then the audience sees final results |
+| `AfterVoting` | A voter sees running results once they have voted (after `ResultsMinCast` ballots) |
+| `Live` | The audience sees running results while Open (after `ResultsMinCast` ballots) |
+| `AdministratorsOnly` | Administrators see running results while Open (each view audited); everyone sees final results after the tally |
+
+Administrators and Election Inspectors always see final results once the election is Tallied or Certified, whatever the
+audience. Running results are available for Standard-tier elections only (database constraint and engine check).
+
+Guards against inferring a vote from moving totals: running results come only from a **snapshot** published by a
+scheduled job (never computed per request), at most every 5 ballots and 5 minutes by default, only once `ResultsMinCast`
+(default 5) ballots exist, withheld while any weight class is smaller than `WeightClassMinSize`, and ranked contests limited to first preferences. The
+certification records a disclosure of the timing and audience used. `HostMembers` is approximated as "a signed-in,
+non-guest MJ user" because Voting has no host-membership concept of its own.
+
+## Plug-ins
+
+| Plug-in point | Base class | Ships with Voting |
 |---|---|---|
-| **Open** | Roll-call votes, standards ballots | Each vote linked to the voter, visible per policy |
-| **Confidential** | Committee votes that need a record but stay sealed until close | Each vote linked to the voter, readable only by them until close |
-| **Secret** | Organization-wide elections, sensitive motions, anonymous polls | Poll book and ballot box, unlinkable |
+| Election type (server) | `BaseElectionTypeServerDriver` (`@mj-biz-apps/voting-core-entities-server`) | Types: Motion, Board Election, Organization-wide Election, Charter/Bylaw Amendment, Referendum, Ratification, Poll, Standards Ballot. Only the default (no-op) driver is used, except Standards Ballot, which names a driver class that is **not yet shipped** |
+| Election type (UI) | `BaseElectionTypeUIDriver` + contribution bases (`@mj-biz-apps/voting-ng-widgets`) | Defaults; contributions may add admin tabs, wizard steps and results views |
+| Tally method | `BaseTallyMethodContract` (pure, deterministic) | Plurality, Majority (with thresholds), Approval, IRV, STV. The registry is a fixed record in `@mj-biz-apps/voting-entities`; adding a method means changing that package |
+| Eligibility source | `BaseEligibilitySource` (`@mj-biz-apps/voting-server`) | Entity Query, CSV |
+| Sign-in method | `BaseVoterCredentialMethod` (`@mj-biz-apps/voting-server`) | Emailed link, host assertion, MJ session, second factor (roster key + PIN), SSO (not accepted at the public edge) |
 
-| Tier | Protects against | How |
-|---|---|---|
-| **A — Standard** | Other voters, staff, the generic API | The controls above, plus field encryption at rest |
-| **B — High assurance** | Operators and DBAs during the vote | A per-election key pair; the private key is split among trustees (*k*-of-*n*) and combined only in a tally ceremony; ballots are shuffled before decryption |
-| **C — Verifiable** | Anyone who doubts the count | [ElectionGuard](https://github.com/microsoft/electionguard) integration: homomorphic tally, voter tracking codes, published verification artifacts |
+Details and examples: [docs/voting/extending.md](docs/voting/extending.md).
 
----
+## The ballot widget
 
-## Results, On Your Terms
-
-Each election chooses when results appear (`ResultsTiming`) and who sees them (`ResultsAudience`):
-
-| ResultsTiming | Who sees running results | Typical use |
-|---|---|---|
-| `AfterClose` (default) | Nobody; turnout only | Elections, motions, amendments |
-| `AfterVoting` | Each voter, once they've voted | Polls where early results would sway the undecided |
-| `Live` | The results audience, throughout | Open polls, straw votes |
-| `AdministratorsOnly` | Administrators, for monitoring; every view is audited | Rarely; disclosed on the certification |
-
-Running totals don't touch ballot secrecy. But if you know who just voted and see the totals move, you learn their vote, so live results come with guards:
-- a minimum number of ballots before anything shows;
-- updates published in batches, never per ballot;
-- the poll book is never shown to the same audience;
-- first preferences only for ranked contests until close;
-- disclosure on the certification.
-
-Live results are a Tier A feature, because higher tiers can't read a ballot before the ceremony.
-
----
-
-## Election Types Are Plug-ins
-
-An `ElectionType` is a metadata row that can name code your app ships. It follows the same model as [BizApps Collaboration's space types](https://github.com/MemberJunction/bizapps-collaboration/blob/next/docs/EXTENSIBILITY_PLAN.md):
-
-```mermaid
-flowchart LR
-  ET["ElectionType row"] -- ServerDriverClass --> SD["BaseElectionTypeServerDriver<br/>validate & react"]
-  ET -- UIDriverClass --> UD["BaseElectionTypeUIDriver<br/>tabs, setup steps, results views"]
-  ET -- ElectionExtensionEntity --> XE["IsA child of Election<br/>the type's own fields"]
-  ET -- Configuration --> CF["defaults + what an election may override"]
-  EL["Election"] -- ElectionTypeID --> ET
-  EL -- ElectionAnchor --> R["any record: a motion, a space, a project"]
-```
-
-| Plug-in point | Base class | Ships with Voting | Others add |
-|---|---|---|---|
-| Election type | `BaseElectionTypeServerDriver` / `BaseElectionTypeUIDriver` | Motion, Board Election, Organization-wide Election, Charter/Bylaw Amendment, Referendum, Ratification, Poll, Standards Ballot | Committees ships *Committee Motion*, which writes the outcome back to the motion |
-| Tally method | `BaseTallyMethod` (pure, deterministic) | Plurality, Majority with threshold, Approval, IRV, STV | Any counting rule your governing documents name |
-| Eligibility source | `BaseEligibilitySource` | Entity query (any synced roster), CSV | Committees: voting members; Collaboration: space seats |
-| Sign-in method | `BaseVoterCredentialMethod` | Emailed link, host assertion, SSO, MJ session, second factor | Your identity provider |
-
-The engine never names a host app, and a CI check enforces that.
-
----
-
-## The Ballot Widget
-
-`<mj-ballot>` puts a ballot on any page. Examples: an organization's public site, a member or employee portal, a landing page from an emailed link, a Collaboration space, or MJ Explorer.
-
-**Packaging:**
-- It's an Angular custom element with **no MemberJunction core code in its bundle**; a CI guard keeps it that way.
-- Styles are isolated with real Shadow DOM.
-- MJAPI serves the bundle and a first-party ballot page with a strict CSP.
+`<mj-ballot>` is an Angular custom element with no MemberJunction core code in its bundle (a build guard enforces it),
+rendered in a shadow root. MJAPI serves the bundle and a first-party ballot page with a strict CSP.
 
 ```html
-<!-- On any site whose origin the ballot's distribution allows -->
 <script type="module" src="https://api.example.org/vote/element/main.js"></script>
 <mj-ballot slug="2027-board-election" api-root="https://api.example.org/vote"></mj-ballot>
-```
-
-```html
-<!-- Or as an iframe, for sites that can't run scripts -->
+<!-- or, where scripts cannot run -->
 <iframe src="https://api.example.org/vote/2027-board-election" title="Ballot"></iframe>
 ```
 
-### How voters sign in
+The widget exchanges one credential at `POST /vote/session` for a short-lived (30 minutes by default), election-scoped
+guest session; the token stays in memory. Sign-in the **public edge** accepts:
 
-The widget exchanges one credential at `POST /vote/session` for a **short-lived session that can do one thing: vote in this election**. The token lives only in memory: not in the page HTML, not in `localStorage`, not in a cookie, so third-party cookie blocking doesn't matter.
-
-| Method | The voter proves who they are by… |
+| Method | How |
 |---|---|
-| **Emailed link** | A single-use, election-scoped token in the URL *fragment*, so it never reaches server logs |
-| **Host assertion** | Your portal, where they're already signed in, signs a short-lived assertion with a key an administrator registered. Verified by MJ's `HostIdentityProvider` |
-| **SSO** | WorkOS or Auth0 brokering your identity provider (SAML or OIDC) |
-| **MJ session** | Already signed in to Explorer or Collaboration |
-| **Second factor** (optional, on top of any method) | A roster identifier plus a PIN, with lockout |
+| **Emailed link** | Single-use token in the URL fragment (`/vote/<slug>#t=<token>`), so it never reaches server logs; the widget reads it and clears the fragment |
+| **Host assertion** | The host page passes an RS256 assertion in the `host-assertion` attribute, signed by a key whose public half an administrator registered on the distribution |
+| **Roster key + PIN** (`second-factor`) | The voter types a roster identifier and PIN, with durable lockout |
 
-However many sessions a voter opens, the poll book allows one ballot.
+SSO and `mj-session` are refused at the edge (voters with an MJ login use the Explorer "My Ballot" page). The `email`
+attribute is accepted but has no effect. Attributes, events and the iframe protocol: [docs/voting/embedding.md](docs/voting/embedding.md).
 
-### Events for the host page
+## Using it from code
 
-| Event | When | `detail` |
-|---|---|---|
-| `ballot-state-change` | Loading, ready, reviewing, casting, cast, closed, error | `{ state }` |
-| `ballot-cast` | The ballot was recorded | `{ electionId, receiptCode }` |
-| `ballot-error` | A step failed | `{ message }` |
-| `ballot-close` | The voter dismissed the widget | `{}` |
-
-Every script on the host page can read these events, so no event ever carries a name, an email or a choice.
-
----
-
-## Using BizApps Voting in Your Code
-
-> Target API from the [design](plans/bizapps-voting-design.md#7-architecture). Every operation is a typed Remote Operation: the same call works in the browser and on the server.
-
-### Hold a vote on a record your app owns
+Every operation is a typed Remote Operation: the same call works in the browser and on the server. `Execute` returns a
+transport result (`Success`, `Output`, `ResultCode`, `ErrorMessage`); the operation's own outcome is in `Output`.
 
 ```typescript
 import { VotingCreateElectionOperation, VotingOpenElectionOperation } from '@mj-biz-apps/voting-entities';
@@ -234,117 +185,117 @@ const created = await new VotingCreateElectionOperation().Execute({
     ElectionTypeCode: 'motion',
     Name: 'Approve the 2027 budget',
     Anchors: [{ EntityName: 'Committees: Motions', RecordID: motion.ID, Role: 'Subject', IsPrimary: true }],
-    EligibilitySource: { Code: 'committee-voting-members', Settings: { CommitteeID: committee.ID } },
-    Contests: [{ Kind: 'Motion', TallyMethodCode: 'majority', Threshold: 'TwoThirds', AllowAbstain: true }],
+    EligibilitySource: { Code: 'entity-query', Settings: { EntityName: 'Committees: Members', PersonIDField: 'PersonID' } },
+    Contests: [{ Name: 'Budget', Kind: 'Motion', TallyMethodCode: 'majority', Threshold: 'TwoThirds', AllowAbstain: true }],
     SecrecyMode: 'Confidential',
     ClosesAt: '2027-01-15T17:00:00Z',
 });
-if (!created.Success) throw new Error(created.ErrorMessage);
+if (!created.Success || !created.Output?.Success) throw new Error(created.ErrorMessage ?? created.Output?.Message);
 
-await new VotingOpenElectionOperation().Execute({ ElectionID: created.Output!.ElectionID });
+await new VotingOpenElectionOperation().Execute({ ElectionID: created.Output.ElectionID! });
 ```
 
-### React when the result is in, from your election type's server driver
+A type driver can react to a result; `OnResultsTallied` / `OnResultsCertified` run **inside** the tally/certify
+transaction, so a throw rolls the tally back:
 
 ```typescript
 @RegisterClass(BaseElectionTypeServerDriver, 'CommitteeMotionDriver')
 export class CommitteeMotionDriver extends BaseElectionTypeServerDriver {
     public override async OnResultsTallied(ctx: ElectionResultsContext): Promise<void> {
-        // outside the vote's own transaction, once it commits
-        ctx.Provider.RunAfterCommit(() => recordMotionOutcome(ctx.PrimaryAnchor.RecordID, ctx.Results, ctx.Provider, ctx.User));
+        if (ctx.PrimaryAnchor) await recordMotionOutcome(ctx.PrimaryAnchor.RecordID, ctx.Results, ctx.Provider, ctx.ContextUser);
     }
 }
 ```
 
-### Read results the audience is allowed to see
+The 24 operations, their audiences and fields: [docs/voting/operations.md](docs/voting/operations.md).
+Six Actions (Create Motion Vote, Open/Close Election, Get Turnout, Get Election Results, Tally Election) wrap the
+operations for agents and workflows; there is no reminder action (reminders run as a scheduled job).
 
-```typescript
-const results = await new VotingGetResultsOperation().Execute({ ElectionID: id });
-// Running or final, depending on ResultsTiming / ResultsAudience; threshold and batching already applied.
+## Explorer dashboards
+
+The **BizApps Voting** app in MJ Explorer has five pages: **Elections** (list, creation wizard, and per-election tabs:
+Overview, Roll, Credentials, Turnout, Close & Tally, Certification), **My Ballot** (the signed-in user's ballot),
+**Election Types** (read-only catalog of types, tally methods, eligibility sources and sign-in methods),
+**Results & Certification** (results, certify, printable report, receipt check) and **Settings** (ballot distributions,
+embed snippets, credential issuing). Trustee ceremonies, nominations, comment resolution, paper-ballot entry and proxies
+are Remote Operations only; there is no UI for them yet.
+
+## Repository structure
+
+```
+packages/
+  Entities/             @mj-biz-apps/voting-entities       generated entities, 24 operation bases, ./contracts (pure rules, tally methods)
+  EngineBase/           @mj-biz-apps/voting-engine-base    VotingEngineBase cache of types, methods, sources, sign-in methods
+  CoreEntitiesServer/   @mj-biz-apps/voting-core-entities-server   entity server classes, driver base + registry, write guards
+  Server/               @mj-biz-apps/voting-server         engines, operations, ballot edge, sign-in methods, jobs, crypto, bootstrap
+  Actions/              @mj-biz-apps/voting-actions        six Actions calling Remote Operations
+  AngularWidgets/       @mj-biz-apps/voting-ng-widgets     UI driver base, contribution bases, <mj-ballot> element
+  Angular/              @mj-biz-apps/voting-ng             Explorer dashboards (L3) + generated forms
+  IntegrationTests/     (private)                          27 database-backed tests
+migrations/  metadata/  codegen/  docs/voting/  plans/
 ```
 
----
+## Running it
 
-## Integration with the Family
+There is no MJAPI or MJExplorer in this repo; it loads into a host MJ (on the M5 workspace, MJ's own shells).
 
-| App | How it uses Voting |
+**Prerequisites**
+- **Unreleased MemberJunction changes** (pending in an MJ PR; until released, run against that MJ branch):
+  1. *CodeGen applies per-table `Entities` config at entity creation, including `AutoAddPermissions`*
+     (`resolveCreationTimeEntityConfig` / `resolveCreationTimeAutoAddPermissions` in `CodeGenLib`). Without it the ballot
+     tables get timestamp columns and default permissions.
+  2. *New `@memberjunction/server` exports*: `BuildSessionClaims`, `MagicLinkKeyManager`, `MagicLinkService`, `HashToken`,
+     `GenerateRawToken`, `VerifyHostAssertion`, `IsScopeLimitedPrincipal`. The ballot edge cannot mint sessions without them.
+- `bizapps-common` installed (elections reference its `Person` / `Organization` tables).
+- MJ `>=6.2.0-edge.2 <7.0.0` (`mj-app.json`).
+
+**Install** (full recipe: [docs/template-docs/linking-to-mj.md](docs/template-docs/linking-to-mj.md))
+1. Server: in the MJ root `mj.config.cjs` add a `dynamicPackages.server` entry
+   `{ PackageName: '@mj-biz-apps/voting-server', StartupExport: 'LoadBizAppsVotingServer', AppName: 'mj-bizapps-voting', Enabled: true }`
+   and add the package to `packages/MJAPI/package.json`. The public edge needs no host config: the package exports
+   `MJ_SERVER_EXTENSIONS` and declares `memberjunction.serverExtensions` (`VotingBallotEdge`, root `/vote`) in its own `package.json`.
+2. Explorer: add `@mj-biz-apps/voting-ng` to `packages/MJExplorer/package.json` and import it in the generated open-app bootstrap.
+3. Run `pnpm install` **at the workspace root** (`M5/`), never in a package.
+4. Database: `pnpm run mj:migrate`, then `mj sync push` for `metadata/` (types, methods, sources, roles, the Voting Ballot Engine role and its grants, scheduled jobs), then `pnpm run mj:codegen` from this repo's root.
+5. `pnpm run build:packages`, then start MJAPI.
+
+**Configuration**
+
+| Setting | Purpose |
 |---|---|
-| [BizApps Committees](https://github.com/MemberJunction/bizapps-committees) | Motions vote through Voting; Committees' own ballot tables retire. Ships the *Committee Motion* type and the "voting members" source |
-| [BizApps Collaboration](https://github.com/MemberJunction/bizapps-collaboration) | Any space can anchor an election; open ballots appear in *Needs you*; space seats can be a roll |
-| [BizApps Common](https://github.com/MemberJunction/bizapps-common) | Voters and candidates are `Person` / `Organization` records |
-| Your system of record | Rolls come from the roster you already sync into MJ: membership, HR, owners, units or students |
+| `VOTING_SELECTIONS_KEY` | Base64 of exactly 32 bytes (`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`). Encrypts tier A selections. **Production fails closed** (no ballots recorded) if missing or malformed; outside production a derived development key is used with a logged warning |
+| MJ `magicLink.enabled: true` | Required for ballot guest sessions; the edge returns 503 when it is off. Also uses `magicLink.audience`, `widget.anonymousEmail` and the role `magicLink.restrictedRoleName` (override with the edge setting `GuestRoleName`) |
+| An MJ Communication email provider | Emailed links: the `emailed-link` method's `Configuration` needs `FromAddress` (optional `ProviderName`, `FromName`, `Subject`) |
+| `VOTING_EMAIL_PROVIDER`, `VOTING_EMAIL_FROM` | Reminders only (or `ProviderName` / `From` in the reminder job's Configuration). The reminder job ships **Disabled** |
+| Edge extension `Settings` | `SessionTtlMinutes` (30; 1-240), `RateLimitWindowMs` (60000), `RateLimitMax` (20 per IP+slug), `RateLimitMaxGlobal` (90 per IP), `TrustedProxyHops` (0), `ApplicationName` (`BizApps Voting`), `GuestRoleName` |
+| Roles | Assign `Voting Administrator` / `Election Inspector` to users. MJ `Developer` and `Integration` roles also administer |
 
----
+**Scheduled jobs** (shipped in `metadata/scheduled-jobs`): *Election Scheduler* (opens Ready elections at `OpensAt`, closes Open ones at `ClosesAt`) and *Result Snapshot Publisher*, both Active every 5 minutes; *Reminder Sender* hourly, Disabled until an email provider is configured. Nothing tallies automatically.
 
-## Roadmap
-
-| Phase | Ships | Unlocks |
-|---|---|---|
-| **P0 — Motions** | Elections, contests and options; the plug-in model; Open and Confidential modes; yes/no/abstain with thresholds; rolls from committees and spaces; voting with an MJ session in Explorer and Collaboration | Committees drops its own ballot code |
-| **P1 — Secret elections (Tier A)** | Poll book and ballot box with every side channel closed; bulk credentials; plurality and multi-seat; referendums; reminders to non-voters; turnout; results timing; certification; the public `<mj-ballot>` with emailed links and host assertions | Officer and director elections, amendments, ratifications |
-| **P2 — Full election management** | Nominations and petitions, IRV/STV, weighted and representative voting, SSO and second factor, proxy and paper entry, inspectors, multiple languages | Replacing an election vendor outright |
-| **P3 — High assurance + standards** | Trustee keys and tally ceremonies, receipt verification; standards ballots with comments, resolution and recirculation | High-stakes elections; standards bodies |
-| **P4 — Verifiable** | ElectionGuard | Independent verification |
-
----
-
-## Repository Structure (target)
-
+**Develop** (M5: `pnpm install` at `M5/` only):
+```bash
+cd bizapps-voting
+pnpm run build:packages
+pnpm test                                   # unit tests (turbo)
+cd packages/IntegrationTests && pnpm test:integration   # database-backed tier
 ```
-bizapps-voting/
-├── mj-app.json                 # MJ Open App manifest (schema __mj_BizAppsVoting)
-├── mj.config.cjs               # CodeGen config
-├── packages/
-│   ├── Entities/               # @mj-biz-apps/voting-entities — generated entities, contracts (tally methods,
-│   │                           #   ballot-style validation), generated Remote Operation bases. Browser-safe.
-│   ├── EngineBase/             # @mj-biz-apps/voting-engine-base — VotingEngineBase cache
-│   ├── CoreEntitiesServer/     # @mj-biz-apps/voting-core-entities-server — invariants in entity server classes
-│   ├── Server/                 # @mj-biz-apps/voting-server — engines, operations, public ballot edge, bootstrap
-│   ├── Actions/                # @mj-biz-apps/voting-actions — thin Actions for agents and workflows
-│   ├── AngularWidgets/         # @mj-biz-apps/voting-ng-widgets — UI driver base, contributions, <mj-ballot>
-│   └── Angular/                # @mj-biz-apps/voting-ng — admin dashboards in MJ Explorer
-├── migrations/                 # T-SQL migrations with their CodeGen output
-├── metadata/                   # declarative seed: election types, tally methods, sources, sign-in methods
-└── plans/
-    └── bizapps-voting-design.md
-```
-
-Like the other BizApps, this repo will have no MJAPI or Explorer of its own: you host it in an MJ instance, and develop it in an `mj dev workspace` next to MJ and its sibling apps.
-
----
+The integration tier connects to a database named `MJ_Voting_Dev` (pinned in the suite) using `DB_HOST`, `DB_PORT`,
+`DB_USERNAME`, `DB_PASSWORD` (and optionally `DB_TRUST_SERVER_CERTIFICATE`) from this repo's `.env`, which must hold your
+own credentials and never be committed. The database needs the migration, metadata and CodeGen applied. If the database
+cannot be reached the tests print `SKIPPED` rather than fail, so check the output.
 
 ## Documentation
 
-| Document | Description |
+| Document | Content |
 |---|---|
-| [Design](plans/bizapps-voting-design.md) | The approved design: secrecy model, domain model, plug-ins, widget, phasing, open questions |
-| [Remote Operations guide](https://github.com/MemberJunction/MJ/blob/next/guides/REMOTE_OPERATIONS_GUIDE.md) | The typed operation model every Voting API uses |
-| [Collaboration extensibility](https://github.com/MemberJunction/bizapps-collaboration/blob/next/docs/EXTENSIBILITY_PLAN.md) | The plug-in model `ElectionType` follows |
-| [Orders checkout widget](https://github.com/MemberJunction/bizapps-orders/blob/next/docs/checkout-widget-and-session-architecture.md) | The embedding pattern `<mj-ballot>` follows |
-| [Magic link guide](https://github.com/MemberJunction/MJ/blob/next/guides/MAGIC_LINK_GUIDE.md) | MJ's guest sessions, which voter sessions build on |
-
----
-
-## Tech Stack
-
-| Layer | Technology | Version |
-|---|---|---|
-| **Platform** | [MemberJunction](https://github.com/MemberJunction/MJ) | 6.1.5+ (below 7) |
-| **Runtime** | Node.js | 22 |
-| **Language** | TypeScript | 5.9 (strict) |
-| **Database** | SQL Server / Azure SQL; PostgreSQL via MJ's release-time conversion | SQL Server 2019+ |
-| **API** | GraphQL Remote Operations | -- |
-| **UI** | Angular, with an Angular custom element for the ballot | 21 |
-| **Build** | pnpm workspace + Turborepo | pnpm 10 |
-
----
+| [Architecture](docs/voting/architecture.md) | Packages, cast transaction, engines, secrecy controls, tiers |
+| [Operations reference](docs/voting/operations.md) | The 24 Remote Operations, audiences, fields; Actions |
+| [Embedding](docs/voting/embedding.md) | `<mj-ballot>` attributes, events, sign-in, edge routes and gates |
+| [Extending](docs/voting/extending.md) | Drivers, tally methods, sources, sign-in methods, UI contributions |
+| [Runbook](docs/voting/operations-runbook.md) | Keys, trustee ceremony, rate limits, certification, recovery |
+| [Known limitations](docs/voting/known-limitations.md) | What does not work yet |
+| [Design](plans/bizapps-voting-design.md) | Original design |
 
 ## License
 
-To be added before the first release, in line with the rest of the BizApps family.
-
----
-
-<p align="center">
-  Built on <a href="https://github.com/MemberJunction/MJ">MemberJunction</a> — the metadata-driven application platform.
-</p>
+BUSL-1.1 (see `LICENSE`).
