@@ -1,0 +1,20 @@
+[
+  {
+    "fields": {
+      "Name": "Voting Administrator",
+      "Description": "Administer elections: create, configure, open, close, tally and certify votes. Issue credentials and manage voter rolls."
+    },
+    "primaryKey": {
+      "ID": "EDA2BC1F-52A2-4E26-AC66-359759CF3F6E"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Election Inspector",
+      "Description": "Observe election administration: view turnout and results after close, verify receipts and participate in ballot reconciliation and certification."
+    },
+    "primaryKey": {
+      "ID": "F64DACF3-0A57-4B79-83D4-FBB9DCF9C7D4"
+    }
+  }
+]

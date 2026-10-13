@@ -19,3 +19,4 @@
  */
 export * from './generated/entity_subclasses';
 export * from './contracts/index.js';
+export { ElectionSubtypeDirectory, ElectionSubtypeResolver, LoadElectionSubtypeResolver } from './election-subtype-resolver.js';
