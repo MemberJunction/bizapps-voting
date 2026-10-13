@@ -350,3 +350,23 @@ describe('privacy.ts', () => {
     });
   });
 });
+
+describe('ResultsVisible — final results for administrators', () => {
+  const base = {
+    Timing: 'AfterClose' as const, Audience: 'Voters' as const, ViewerHasVoted: false, ViewerIsEligible: false,
+    ViewerIsHostMember: false, BallotCount: 10, MinCast: 5, SecrecyMode: 'Secret' as const,
+  };
+  it('shows final results to an administrator who is not on the roll', () => {
+    const r = ResultsVisible({ ...base, Status: 'Tallied', ViewerIsAdministrator: true });
+    expect(r.Visible).toBe(true);
+    expect(r.RunningResults).toBe(false);
+  });
+  it('still hides results from an administrator before the tally', () => {
+    expect(ResultsVisible({ ...base, Status: 'Closed', ViewerIsAdministrator: true }).Visible).toBe(false);
+    expect(ResultsVisible({ ...base, Status: 'Open', ViewerIsAdministrator: true }).Visible).toBe(false);
+  });
+  it('does not widen the audience for non-administrators', () => {
+    expect(ResultsVisible({ ...base, Status: 'Certified', ViewerIsAdministrator: false }).Visible).toBe(false);
+  });
+});
+

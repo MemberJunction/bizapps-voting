@@ -21,7 +21,7 @@ export interface ResultsVisibilityParams {
   ViewerHasVoted: boolean;
   /** Whether the requesting viewer is eligible to vote in this election. */
   ViewerIsEligible: boolean;
-  /** Whether the requesting viewer is a member of the host (Collaboration space, committee, etc.). */
+  /** Whether the requesting viewer is a member of the record the election is anchored to (the host app's group, space or body). */
   ViewerIsHostMember: boolean;
   /** Total number of ballots cast in the election. */
   BallotCount: number;
@@ -69,6 +69,17 @@ export function ResultsVisible(params: ResultsVisibilityParams): ResultsVisibili
     MinCast,
     SecrecyMode,
   } = params;
+
+  // ---- Final results for administrators and inspectors, whatever the audience ----
+  // They tally and certify the election, so they see the result of record once it exists.
+  // Running results (before the tally) still follow ResultsTiming below.
+  if (ViewerIsAdministrator && (Status === 'Tallied' || Status === 'Certified')) {
+    return {
+      Visible: true,
+      Reason: 'Final results are visible to election administrators and inspectors.',
+      RunningResults: false,
+    };
+  }
 
   // ---- AfterClose: results only after the election is Closed or later ----
   if (Timing === 'AfterClose') {

@@ -40,7 +40,8 @@ export class GetResultsOperation extends VotingGetResultsOperationBase {
                 hasVoted = !IsFailure(participation) && participation.Value.HasVoted;
             }
             const viewer = BuildResultsViewer({
-                IsAdministrator: VotingAuthorization.IsAdministrator(user),
+                // Inspectors see what administrators see: they observe the count and co-sign the certification.
+                IsAdministrator: VotingAuthorization.IsAdministrator(user) || VotingAuthorization.IsInspector(user),
                 IsGuest: IsGuestPrincipal(user),
                 HasUserID: !!user?.ID,
                 Identity: identity,

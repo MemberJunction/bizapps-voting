@@ -24,9 +24,11 @@
 --   its host records with the polymorphic ElectionAnchor (EntityID + RecordID).
 --
 -- SECRECY CONTROLS THAT LIVE IN THE SCHEMA (design §4.2)
---   * CastBallot and BallotSelection carry no voter reference and no time, and use NEWID()
---     keys (non-sequential) with NONCLUSTERED primary keys, so neither key order nor physical
---     row order follows insert order. ContestRunningTally likewise.
+--   * CastBallot and BallotSelection carry no voter reference and no time, and are keyed by
+--     random NEWID() values with a CLUSTERED primary key: rows are stored in random key order,
+--     so neither key order nor physical row order follows insert order. (A heap would append
+--     rows in cast order, which someone with database access could line up with the poll
+--     book's CastAt; the integration tier checks this.) ContestRunningTally likewise.
 --   * The voter's identity stops at Participation (poll book), UNIQUE(ElectionID,
 --     EligibleVoterID). BallotAttribution links a ballot to its voter for Open and
 --     Confidential elections only; a Secret election never has rows there.
@@ -441,7 +443,7 @@ CREATE TABLE [${flyway:defaultSchema}].[CastBallot] (
     VotingClass NVARCHAR(100) NULL,
     WeightClass NVARCHAR(50) NULL,
     Status NVARCHAR(20) NOT NULL DEFAULT N'Counted',
-    CONSTRAINT PK_CastBallot PRIMARY KEY NONCLUSTERED (ID),
+    CONSTRAINT PK_CastBallot PRIMARY KEY CLUSTERED (ID),
     CONSTRAINT FK_CastBallot_Election FOREIGN KEY (ElectionID) REFERENCES [${flyway:defaultSchema}].[Election](ID),
     CONSTRAINT UQ_CastBallot_ReceiptCode UNIQUE (ReceiptCode),
     CONSTRAINT CK_CastBallot_Status CHECK (Status IN (N'Counted', N'Superseded', N'Spoiled'))
@@ -473,7 +475,7 @@ CREATE TABLE [${flyway:defaultSchema}].[BallotSelection] (
     Rank INT NULL,
     WriteInText NVARCHAR(MAX) NULL,
     IsAbstain BIT NOT NULL DEFAULT 0,
-    CONSTRAINT PK_BallotSelection PRIMARY KEY NONCLUSTERED (ID),
+    CONSTRAINT PK_BallotSelection PRIMARY KEY CLUSTERED (ID),
     CONSTRAINT FK_BallotSelection_CastBallot FOREIGN KEY (CastBallotID) REFERENCES [${flyway:defaultSchema}].[CastBallot](ID),
     CONSTRAINT FK_BallotSelection_Contest FOREIGN KEY (ContestID) REFERENCES [${flyway:defaultSchema}].[Contest](ID),
     CONSTRAINT FK_BallotSelection_ContestOption FOREIGN KEY (ContestOptionID) REFERENCES [${flyway:defaultSchema}].[ContestOption](ID),
@@ -490,7 +492,7 @@ CREATE TABLE [${flyway:defaultSchema}].[ContestRunningTally] (
     ContestID UNIQUEIDENTIFIER NOT NULL,
     ContestOptionID UNIQUEIDENTIFIER NULL,
     VoteCount DECIMAL(18,6) NOT NULL DEFAULT 0,
-    CONSTRAINT PK_ContestRunningTally PRIMARY KEY NONCLUSTERED (ID),
+    CONSTRAINT PK_ContestRunningTally PRIMARY KEY CLUSTERED (ID),
     CONSTRAINT FK_ContestRunningTally_Contest FOREIGN KEY (ContestID) REFERENCES [${flyway:defaultSchema}].[Contest](ID),
     CONSTRAINT FK_ContestRunningTally_ContestOption FOREIGN KEY (ContestOptionID) REFERENCES [${flyway:defaultSchema}].[ContestOption](ID),
     CONSTRAINT UQ_ContestRunningTally UNIQUE (ContestID, ContestOptionID)
