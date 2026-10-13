@@ -29,6 +29,13 @@ export class EnterPaperBallotOperation extends VotingEnterPaperBallotOperationBa
             return { Success: false, Message: 'ElectionID, ControlNumber, and Submission are required.' };
         }
 
+        if (input.Channel === 'Proxy' && !input.ProxyDesignationID) {
+            return { Success: false, Message: 'A proxy ballot needs the ProxyDesignationID of an Accepted designation.' };
+        }
+        if (input.Channel !== 'Proxy' && input.ProxyDesignationID) {
+            return { Success: false, Message: 'A proxy designation can be given only for a Proxy ballot.' };
+        }
+
         const ctx: VotingContext = { ContextUser: user, Provider: provider };
 
         try {
@@ -57,6 +64,7 @@ export class EnterPaperBallotOperation extends VotingEnterPaperBallotOperationBa
                     BallotStyleHash: style.Hash,
                     Submission: input.Submission,
                     Channel: input.Channel,
+                    ProxyDesignationID: input.ProxyDesignationID,
                     EnteredByUserID: user.ID,
                     Language: DEFAULT_BALLOT_LANGUAGE,
                 },

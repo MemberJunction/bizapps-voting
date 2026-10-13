@@ -98,6 +98,22 @@ export function OpenReadinessProblems(p: {
     return problems;
 }
 
+/**
+ * What blocks opening nominations (beyond the status rule). Nominations are for office contests, and a window that has
+ * already closed could never accept one. A window that has not opened yet is fine: submissions wait for NominationsOpenAt.
+ */
+export function NominationOpenProblems(
+    p: { OfficeContestCount: number; NominationsCloseAt: Date | string | null },
+    now: Date
+): string[] {
+    const problems: string[] = [];
+    if (p.OfficeContestCount === 0) problems.push('The election has no office contest to take nominations for.');
+    if (p.NominationsCloseAt && new Date(p.NominationsCloseAt).getTime() <= now.getTime()) {
+        problems.push('The nomination window has already closed; move NominationsCloseAt later first.');
+    }
+    return problems;
+}
+
 function toDate(value: string | undefined): Date | null {
     return value ? new Date(value) : null;
 }
@@ -256,6 +272,28 @@ export class ElectionAdministrationEngine extends BaseSingleton<ElectionAdminist
             if (IsFailure(ready)) return ready;
         }
         return this.transition(election, 'Open', 'Opened', ctx);
+    }
+
+    /** Draft -> Nominations. Needs an office contest and a nomination window that has not already closed. */
+    public async OpenNominations(electionID: string, ctx: VotingContext): Promise<EngineResult<{ Status: string }>> {
+        const graphRes = await LoadElectionGraph(electionID, ctx);
+        if (IsFailure(graphRes)) return PassFailure(graphRes);
+        const election = graphRes.Value.Election;
+        if (!CanTransition(election.Status, 'Nominations')) return Fail('InvalidTransition', `An election in ${election.Status} status cannot open nominations.`);
+        const problems = NominationOpenProblems(
+            { OfficeContestCount: graphRes.Value.Contests.filter((c) => c.Kind === 'Office').length, NominationsCloseAt: election.NominationsCloseAt },
+            new Date()
+        );
+        if (problems.length > 0) return Fail('NotReady', problems.join(' '));
+        return this.transition(election, 'Nominations', 'NominationsOpened', ctx);
+    }
+
+    /** Nominations -> Ready. */
+    public async CloseNominations(electionID: string, ctx: VotingContext): Promise<EngineResult<{ Status: string }>> {
+        const election = await ctx.Provider.GetEntityObject<mjBizAppsVotingElectionEntity>(ELECTIONS, ctx.ContextUser);
+        if (!(await election.Load(electionID))) return Fail('ElectionNotFound', 'The election was not found.');
+        if (election.Status !== 'Nominations') return Fail('InvalidTransition', `Nominations are not open (the election is ${election.Status}).`);
+        return this.transition(election, 'Ready', 'NominationsClosed', ctx);
     }
 
     /** Open -> Closed. */

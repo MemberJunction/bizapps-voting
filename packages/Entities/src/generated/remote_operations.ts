@@ -195,6 +195,28 @@ export interface VotingCloseElectionOutput {
 }
 
 /**
+ * Input for `Voting.CloseNominations`.
+ *
+ * NO import statements — definitions are emitted verbatim.
+ */
+export interface VotingCloseNominationsInput {
+  /** The election. */
+  ElectionID: string;
+}
+
+/**
+ * Output for `Voting.CloseNominations`.
+ *
+ * NO import statements — definitions are emitted verbatim.
+ */
+export interface VotingCloseNominationsOutput {
+  Success: boolean;
+  Message?: string;
+  /** The election's status after the change. */
+  Status?: string;
+}
+
+/**
  * Input for `Voting.CreateElection`.
  *
  * NO import statements — definitions are emitted verbatim.
@@ -336,6 +358,32 @@ export interface VotingDecideNominationOutput {
   ContestOptionID?: string;
 }
 
+/**
+ * Input for `Voting.DecideProxy`.
+ *
+ * NO import statements — definitions are emitted verbatim.
+ */
+export interface VotingDecideProxyInput {
+  /** The proxy designation to decide. */
+  ProxyDesignationID: string;
+  /** Accept or reject the designation. */
+  Decision: 'Accepted' | 'Rejected';
+  /** Optional notes, recorded in the election audit trail. */
+  Notes?: string;
+}
+
+/**
+ * Output for `Voting.DecideProxy`.
+ *
+ * NO import statements — definitions are emitted verbatim.
+ */
+export interface VotingDecideProxyOutput {
+  Success: boolean;
+  Message?: string;
+  /** The designation's status after the decision. */
+  Status?: string;
+}
+
 export interface VotingEnterPaperBallotInput {
   /** The election. */
   ElectionID: string;
@@ -345,6 +393,8 @@ export interface VotingEnterPaperBallotInput {
   Submission: VotingBallotSubmission;
   /** The channel: 'Paper', 'Proxy', or 'InPerson'. */
   Channel: 'Paper' | 'Proxy' | 'InPerson';
+  /** Required when Channel is 'Proxy': the Accepted proxy designation of the voter the control number belongs to. It is marked Used. */
+  ProxyDesignationID?: string;
 }
 
 /**
@@ -548,6 +598,39 @@ export interface VotingGetTurnoutOutput {
 }
 
 /**
+ * Input for `Voting.IssueControlNumbers`.
+ *
+ * NO import statements — definitions are emitted verbatim.
+ */
+export interface VotingIssueControlNumbersInput {
+  /** The election the control numbers are for. */
+  ElectionID: string;
+  /** Voters to issue to; if omitted, every Eligible voter on the roll. */
+  EligibleVoterIDs?: string[];
+  /** Credential method the numbers are filed under (default 'emailed-link'). */
+  MethodCode?: string;
+}
+
+/**
+ * Output for `Voting.IssueControlNumbers`.
+ *
+ * NO import statements — definitions are emitted verbatim.
+ */
+export interface VotingIssuedControlNumber {
+  EligibleVoterID: string;
+  /** The plain control number. Returned once; only its SHA-256 is stored. */
+  ControlNumber: string;
+}
+
+export interface VotingIssueControlNumbersOutput {
+  Success: boolean;
+  Message?: string;
+  Issued?: VotingIssuedControlNumber[];
+  /** Requested voters that received no number (not on the roll, or not Eligible). */
+  Skipped?: number;
+}
+
+/**
  * Input for `Voting.IssueCredentials`.
  *
  * NO import statements — definitions are emitted verbatim.
@@ -576,6 +659,39 @@ export interface VotingIssueCredentialsOutput {
 }
 
 /**
+ * Input for `Voting.IssueSecondFactorPins`.
+ *
+ * NO import statements — definitions are emitted verbatim.
+ */
+export interface VotingIssueSecondFactorPinsInput {
+  /** The election the PINs are for. */
+  ElectionID: string;
+  /** Voters to issue to; if omitted, every Eligible voter on the roll. */
+  EligibleVoterIDs?: string[];
+}
+
+/**
+ * Output for `Voting.IssueSecondFactorPins`.
+ *
+ * NO import statements — definitions are emitted verbatim.
+ */
+export interface VotingIssuedSecondFactorPin {
+  EligibleVoterID: string;
+  /** The roster key the voter presents together with the PIN. */
+  SourceKey: string | null;
+  /** The plain PIN. Returned once; only a salted scrypt hash is stored. */
+  Pin: string;
+}
+
+export interface VotingIssueSecondFactorPinsOutput {
+  Success: boolean;
+  Message?: string;
+  Issued?: VotingIssuedSecondFactorPin[];
+  /** Requested voters that received no PIN (no roster key, not on the roll, or not Eligible). */
+  Skipped?: number;
+}
+
+/**
  * Input for `Voting.OpenElection`.
  *
  * NO import statements — definitions are emitted verbatim.
@@ -593,6 +709,28 @@ export interface VotingOpenElectionInput {
 export interface VotingOpenElectionOutput {
   Success: boolean;
   Message?: string;
+  Status?: string;
+}
+
+/**
+ * Input for `Voting.OpenNominations`.
+ *
+ * NO import statements — definitions are emitted verbatim.
+ */
+export interface VotingOpenNominationsInput {
+  /** The election. */
+  ElectionID: string;
+}
+
+/**
+ * Output for `Voting.OpenNominations`.
+ *
+ * NO import statements — definitions are emitted verbatim.
+ */
+export interface VotingOpenNominationsOutput {
+  Success: boolean;
+  Message?: string;
+  /** The election's status after the change. */
   Status?: string;
 }
 
@@ -876,6 +1014,22 @@ export class VotingCloseElectionOperation extends BaseRemotableOperation<VotingC
 }
 
 // ============================================================
+// Voting.CloseNominations — Close Nominations
+// ============================================================
+/**
+ * Close Nominations
+ * Move an election from Nominations to Ready, ending the nomination period.
+ * GenerationType=Manual — the server body is supplied by a hand-authored subclass registered
+ * under 'Voting.CloseNominations'. This generated base provides the typed contract only (client-safe).
+ */
+export class VotingCloseNominationsOperation extends BaseRemotableOperation<VotingCloseNominationsInput, VotingCloseNominationsOutput> {
+    public readonly OperationKey = "Voting.CloseNominations";
+    public readonly ExecutionMode = 'Sync' as const;
+    public readonly RequiredScope = "voting:admin";
+    public readonly RequiresSystemUser = false;
+}
+
+// ============================================================
 // Voting.CreateElection — Create Election
 // ============================================================
 /**
@@ -918,6 +1072,22 @@ export class VotingCreateTrusteeKeysOperation extends BaseRemotableOperation<Vot
  */
 export class VotingDecideNominationOperation extends BaseRemotableOperation<VotingDecideNominationInput, VotingDecideNominationOutput> {
     public readonly OperationKey = "Voting.DecideNomination";
+    public readonly ExecutionMode = 'Sync' as const;
+    public readonly RequiredScope = "voting:admin";
+    public readonly RequiresSystemUser = false;
+}
+
+// ============================================================
+// Voting.DecideProxy — Decide Proxy
+// ============================================================
+/**
+ * Decide Proxy
+ * Accept or reject a Pending proxy designation, any time before the election closes. Notes are recorded in the audit trail.
+ * GenerationType=Manual — the server body is supplied by a hand-authored subclass registered
+ * under 'Voting.DecideProxy'. This generated base provides the typed contract only (client-safe).
+ */
+export class VotingDecideProxyOperation extends BaseRemotableOperation<VotingDecideProxyInput, VotingDecideProxyOutput> {
+    public readonly OperationKey = "Voting.DecideProxy";
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
@@ -1020,6 +1190,22 @@ export class VotingGetTurnoutOperation extends BaseRemotableOperation<VotingGetT
 }
 
 // ============================================================
+// Voting.IssueControlNumbers — Issue Control Numbers
+// ============================================================
+/**
+ * Issue Control Numbers
+ * Generate control numbers for paper and proxy ballots. Only each number's SHA-256 is stored; the plain numbers are returned once and cannot be shown again.
+ * GenerationType=Manual — the server body is supplied by a hand-authored subclass registered
+ * under 'Voting.IssueControlNumbers'. This generated base provides the typed contract only (client-safe).
+ */
+export class VotingIssueControlNumbersOperation extends BaseRemotableOperation<VotingIssueControlNumbersInput, VotingIssueControlNumbersOutput> {
+    public readonly OperationKey = "Voting.IssueControlNumbers";
+    public readonly ExecutionMode = 'Sync' as const;
+    public readonly RequiredScope = "voting:admin";
+    public readonly RequiresSystemUser = false;
+}
+
+// ============================================================
 // Voting.IssueCredentials — Issue Credentials
 // ============================================================
 /**
@@ -1036,6 +1222,22 @@ export class VotingIssueCredentialsOperation extends BaseRemotableOperation<Voti
 }
 
 // ============================================================
+// Voting.IssueSecondFactorPins — Issue Second Factor PINs
+// ============================================================
+/**
+ * Issue Second Factor PINs
+ * Generate a PIN for each voter for the second-factor credential method. Only a salted hash is stored; the plain PINs are returned once for out-of-band delivery.
+ * GenerationType=Manual — the server body is supplied by a hand-authored subclass registered
+ * under 'Voting.IssueSecondFactorPins'. This generated base provides the typed contract only (client-safe).
+ */
+export class VotingIssueSecondFactorPinsOperation extends BaseRemotableOperation<VotingIssueSecondFactorPinsInput, VotingIssueSecondFactorPinsOutput> {
+    public readonly OperationKey = "Voting.IssueSecondFactorPins";
+    public readonly ExecutionMode = 'Sync' as const;
+    public readonly RequiredScope = "voting:admin";
+    public readonly RequiresSystemUser = false;
+}
+
+// ============================================================
 // Voting.OpenElection — Open Election
 // ============================================================
 /**
@@ -1046,6 +1248,22 @@ export class VotingIssueCredentialsOperation extends BaseRemotableOperation<Voti
  */
 export class VotingOpenElectionOperation extends BaseRemotableOperation<VotingOpenElectionInput, VotingOpenElectionOutput> {
     public readonly OperationKey = "Voting.OpenElection";
+    public readonly ExecutionMode = 'Sync' as const;
+    public readonly RequiredScope = "voting:admin";
+    public readonly RequiresSystemUser = false;
+}
+
+// ============================================================
+// Voting.OpenNominations — Open Nominations
+// ============================================================
+/**
+ * Open Nominations
+ * Move a Draft election into Nominations so nominations can be submitted. Refused when the election has no office contest or the nomination window has already closed.
+ * GenerationType=Manual — the server body is supplied by a hand-authored subclass registered
+ * under 'Voting.OpenNominations'. This generated base provides the typed contract only (client-safe).
+ */
+export class VotingOpenNominationsOperation extends BaseRemotableOperation<VotingOpenNominationsInput, VotingOpenNominationsOutput> {
+    public readonly OperationKey = "Voting.OpenNominations";
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;

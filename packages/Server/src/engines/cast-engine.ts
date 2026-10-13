@@ -36,6 +36,7 @@ import {
     type mjBizAppsVotingContestRunningTallyEntity,
     type mjBizAppsVotingEligibleVoterEntity,
     type mjBizAppsVotingParticipationEntity,
+    type mjBizAppsVotingProxyDesignationEntity,
 } from '@mj-biz-apps/voting-entities';
 import { DecryptSelections, EncryptSelections, SelectionCryptoError } from '../crypto/selection-crypto.js';
 import { type ElectionGraph, LoadElectionGraph } from '../shared/election-graph.js';
@@ -50,6 +51,7 @@ const ATTRIBUTIONS = 'MJ_BizApps_Voting: Ballot Attributions';
 const RUNNING_TALLIES = 'MJ_BizApps_Voting: Contest Running Tallies';
 const COMMENTS = 'MJ_BizApps_Voting: Ballot Comments';
 const ELIGIBLE_VOTERS = 'MJ_BizApps_Voting: Eligible Voters';
+const PROXY_DESIGNATIONS = 'MJ_BizApps_Voting: Proxy Designations';
 
 // === Pure decision helpers ===
 
@@ -145,6 +147,29 @@ export function IsUniqueViolation(message: string | undefined | null): boolean {
     return !!message && /UQ_|unique|duplicate/i.test(message);
 }
 
+/** The facts of a proxy designation that decide whether it can back a cast. */
+export interface ProxyFacts {
+    Status: string;
+    ElectionID: string;
+    GrantorEligibleVoterID: string;
+}
+
+/**
+ * Whether the channel and designation agree and the designation may back this cast. A 'Proxy' cast needs an Accepted
+ * designation of this election whose grantor is the voter the ballot is cast for; no other channel takes a designation.
+ */
+export function CheckProxyForCast(channel: ParticipationChannel, designation: ProxyFacts | null, electionID: string, voterID: string): RuleFailure | null {
+    if (channel !== 'Proxy') {
+        return designation ? { Code: 'ProxyChannelMismatch', Message: 'A proxy designation can back only a Proxy ballot.' } : null;
+    }
+    if (!designation) return { Code: 'ProxyRequired', Message: 'A proxy ballot needs an Accepted proxy designation.' };
+    if (!UUIDsEqual(designation.ElectionID, electionID) || !UUIDsEqual(designation.GrantorEligibleVoterID, voterID)) {
+        return { Code: 'ProxyMismatch', Message: 'The proxy designation is not for this voter in this election.' };
+    }
+    if (designation.Status !== 'Accepted') return { Code: 'ProxyNotAccepted', Message: `The proxy designation is ${designation.Status}; only an Accepted designation can be used.` };
+    return null;
+}
+
 // === Engine ===
 
 export interface CastParams {
@@ -222,6 +247,11 @@ export class CastEngine extends BaseSingleton<CastEngine> {
             });
             if (driverMessage) return Fail('CastRejected', driverMessage);
 
+            const proxy = p.ProxyDesignationID ? await this.loadProxy(p.ProxyDesignationID, sys) : null;
+            if (p.ProxyDesignationID && !proxy) return Fail('ProxyMismatch', 'The proxy designation is not for this voter in this election.');
+            const proxyFailure = CheckProxyForCast(p.Channel, proxy, election.ID, voter.ID);
+            if (proxyFailure) return Fail(proxyFailure.Code, proxyFailure.Message);
+
             const existing = await this.findParticipation(election.ID, voter.ID, sys);
             const decision = DecideCastKind({ HasParticipation: !!existing, AllowRevote: election.AllowRevote, SecrecyMode: election.SecrecyMode });
             if (decision.Kind === 'AlreadyVoted') return Fail('AlreadyVoted', 'You have already voted in this election.');
@@ -278,6 +308,21 @@ export class CastEngine extends BaseSingleton<CastEngine> {
     private async loadVoter(id: string, sys: VotingContext): Promise<mjBizAppsVotingEligibleVoterEntity | null> {
         const voter = await sys.Provider.GetEntityObject<mjBizAppsVotingEligibleVoterEntity>(ELIGIBLE_VOTERS, sys.ContextUser);
         return (await voter.Load(id)) ? voter : null;
+    }
+
+    private async loadProxy(id: string, sys: VotingContext): Promise<mjBizAppsVotingProxyDesignationEntity | null> {
+        const row = await sys.Provider.GetEntityObject<mjBizAppsVotingProxyDesignationEntity>(PROXY_DESIGNATIONS, sys.ContextUser);
+        return (await row.Load(id)) ? row : null;
+    }
+
+    /** Inside the cast transaction: re-reads the designation and burns it, so a second ballot cannot reuse it. */
+    private async markProxyUsed(p: CastParams, voter: mjBizAppsVotingEligibleVoterEntity, sys: VotingContext): Promise<void> {
+        if (!p.ProxyDesignationID) return;
+        const row = await this.loadProxy(p.ProxyDesignationID, sys);
+        const failure = CheckProxyForCast(p.Channel, row, p.ElectionID, voter.ID);
+        if (failure || !row) throw new CastAbort(failure?.Code ?? 'ProxyMismatch', failure?.Message ?? 'The proxy designation could not be used.');
+        row.Status = 'Used';
+        if (!(await row.Save())) throw new CastAbort('CastFailed', 'The proxy designation could not be marked used.');
     }
 
     private async findParticipation(electionID: string, voterID: string, sys: VotingContext): Promise<mjBizAppsVotingParticipationEntity | null> {
@@ -345,6 +390,7 @@ export class CastEngine extends BaseSingleton<CastEngine> {
                     await this.deleteComments(participationID, sys);
                 } else {
                     participationID = await this.insertParticipation(p, voter, sys);
+                    await this.markProxyUsed(p, voter, sys);
                 }
 
                 const ballot = await sys.Provider.GetEntityObject<mjBizAppsVotingCastBallotEntity>(CAST_BALLOTS, sys.ContextUser);

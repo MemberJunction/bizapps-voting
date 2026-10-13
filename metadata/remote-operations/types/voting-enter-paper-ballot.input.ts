@@ -29,4 +29,6 @@ export interface VotingEnterPaperBallotInput {
   Submission: VotingBallotSubmission;
   /** The channel: 'Paper', 'Proxy', or 'InPerson'. */
   Channel: 'Paper' | 'Proxy' | 'InPerson';
+  /** Required when Channel is 'Proxy': the Accepted proxy designation of the voter the control number belongs to. It is marked Used. */
+  ProxyDesignationID?: string;
 }

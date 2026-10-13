@@ -62,6 +62,20 @@ export interface VerifyCredentialValue {
     MethodID: string;
 }
 
+/** Control numbers and PINs are handed out for voting, so only while the election is Ready or Open. */
+const OFFLINE_ISSUE_STATUSES: ReadonlyArray<string> = ['Ready', 'Open'];
+
+/** Whether control numbers / second-factor PINs may be issued in this election status. */
+export function CanIssueOfflineCredentials(status: string): boolean {
+    return OFFLINE_ISSUE_STATUSES.includes(status);
+}
+
+/** How many requested voters received nothing: requested (distinct) minus issued. With no explicit request nothing is "requested", so nothing is skipped. */
+export function CountSkipped(requested: ReadonlyArray<string> | undefined, issued: number): number {
+    if (!requested || requested.length === 0) return 0;
+    return Math.max(0, new Set(requested.map((id) => id.toLowerCase())).size - issued);
+}
+
 function chunk<T>(items: T[], size: number): T[][] {
     const out: T[][] = [];
     for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
@@ -129,9 +143,10 @@ export class CredentialEngine extends BaseSingleton<CredentialEngine> {
     public async IssueControlNumbers(
         input: { ElectionID: string; EligibleVoterIDs?: string[]; MethodCode?: string },
         ctx: VotingContext
-    ): Promise<EngineResult<{ Numbers: ControlNumberIssue[] }>> {
+    ): Promise<EngineResult<{ Numbers: ControlNumberIssue[]; Skipped: number }>> {
         const loaded = await LoadElectionEntity(input.ElectionID, ctx);
         if (IsFailure(loaded)) return PassFailure(loaded);
+        if (!CanIssueOfflineCredentials(loaded.Value.Status)) return Fail('InvalidStatus', `Control numbers are issued once the election is Ready or Open; it is ${loaded.Value.Status}.`);
         const method = await this.resolveMethod(input.MethodCode ?? 'emailed-link', ctx);
         if (IsFailure(method)) return PassFailure(method);
         try {
@@ -147,7 +162,7 @@ export class CredentialEngine extends BaseSingleton<CredentialEngine> {
                 numbers.push({ EligibleVoterID: voter.ID, ControlNumber: controlNumber });
             }
             await ElectionAudit.Record(ctx, loaded.Value.ID, 'ControlNumbersIssued', { Count: numbers.length });
-            return Ok({ Numbers: numbers });
+            return Ok({ Numbers: numbers, Skipped: CountSkipped(input.EligibleVoterIDs, numbers.length) });
         } catch (e) {
             return Fail('IssueFailed', e instanceof Error ? e.message : String(e));
         }
@@ -186,16 +201,22 @@ export class CredentialEngine extends BaseSingleton<CredentialEngine> {
     public async IssueSecondFactorPins(
         input: { ElectionID: string; EligibleVoterIDs?: string[]; PinDigits?: number },
         ctx: VotingContext
-    ): Promise<EngineResult<{ Pins: PinIssue[] }>> {
+    ): Promise<EngineResult<{ Pins: PinIssue[]; Skipped: number }>> {
         const loaded = await LoadElectionEntity(input.ElectionID, ctx);
         if (IsFailure(loaded)) return PassFailure(loaded);
+        if (!CanIssueOfflineCredentials(loaded.Value.Status)) return Fail('InvalidStatus', `PINs are issued once the election is Ready or Open; it is ${loaded.Value.Status}.`);
         const method = await this.resolveMethod(SECOND_FACTOR_CODE, ctx);
         if (IsFailure(method)) return PassFailure(method);
         try {
             const voters = await this.loadTargets(loaded.Value.ID, input.EligibleVoterIDs, ctx);
             const pins: PinIssue[] = [];
+            let withoutKey = 0;
             for (const voter of voters) {
-                if (!voter.SourceKey) continue; // the PIN is presented together with the roster id; without one it could not be used
+                // The PIN is presented together with the roster id; without one it could not be used.
+                if (!voter.SourceKey) {
+                    withoutKey++;
+                    continue;
+                }
                 const pin = GeneratePin(input.PinDigits ?? 8);
                 await RevokeLiveCredentials(voter.ID, method.Value.ID, ctx);
                 await InsertCredential(
@@ -205,7 +226,9 @@ export class CredentialEngine extends BaseSingleton<CredentialEngine> {
                 pins.push({ EligibleVoterID: voter.ID, SourceKey: voter.SourceKey, Pin: pin });
             }
             await ElectionAudit.Record(ctx, loaded.Value.ID, 'SecondFactorPinsIssued', { Count: pins.length });
-            return Ok({ Pins: pins });
+            // Skipped = requested but not on the roll / not Eligible, plus those eligible voters with no roster key.
+            const notFound = input.EligibleVoterIDs && input.EligibleVoterIDs.length > 0 ? CountSkipped(input.EligibleVoterIDs, voters.length) : 0;
+            return Ok({ Pins: pins, Skipped: notFound + withoutKey });
         } catch (e) {
             return Fail('IssueFailed', e instanceof Error ? e.message : String(e));
         }

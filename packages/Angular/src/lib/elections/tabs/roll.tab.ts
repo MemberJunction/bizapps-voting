@@ -25,6 +25,20 @@ interface VoterRow {
     AddedAfterFreeze: boolean;
 }
 
+interface ProxyRow {
+    ID: string;
+    GrantorEligibleVoterID: string;
+    ProxyPerson: string;
+    Scope: string;
+    Instructions: string | null;
+    ReceivedAt: string;
+    Status: 'Pending' | 'Accepted' | 'Rejected' | 'Revoked' | 'Used';
+}
+
+interface ProxyView extends ProxyRow {
+    Grantor: string;
+}
+
 interface PersonHit {
     ID: string;
     DisplayName: string;
@@ -130,6 +144,63 @@ const PEOPLE_ENTITY = 'MJ_BizApps_Common: People';
                             <button type="button" mjButton variant="secondary" size="sm" (click)="Picked = null" [disabled]="IsBusy">Cancel</button>
                         </div>
                     </form>
+                }
+            </section>
+        }
+
+        @if (ProxiesVisible) {
+            <section class="panel" aria-labelledby="roll-proxies">
+                <h3 id="roll-proxies"><i class="fa-solid fa-people-arrows"></i> Proxy designations <span class="muted">({{ Proxies.length }})</span></h3>
+                <p class="hint">
+                    A voter names another person to vote for them. Accept a designation to allow staff to enter a proxy ballot for the voter;
+                    it becomes Used once that ballot is recorded. Designations can be decided until the election closes.
+                </p>
+                @if (ProxyError) {
+                    <div class="banner banner-error" role="alert"><i class="fa-solid fa-circle-exclamation"></i><span>{{ ProxyError }}</span></div>
+                }
+                @if (Proxies.length === 0) {
+                    <p class="muted">No proxy designations have been received.</p>
+                } @else {
+                    <div class="table-wrap">
+                        <table class="grid">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Voter</th>
+                                    <th scope="col">Proxy</th>
+                                    <th scope="col">Scope</th>
+                                    <th scope="col">Received</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col"><span class="sr-only">Actions</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (p of Proxies; track p.ID) {
+                                    <tr>
+                                        <th scope="row">{{ p.Grantor }}</th>
+                                        <td>{{ p.ProxyPerson }}</td>
+                                        <td>
+                                            {{ p.Scope }}
+                                            @if (p.Instructions) {
+                                                <div class="muted small">{{ p.Instructions }}</div>
+                                            }
+                                        </td>
+                                        <td>{{ p.ReceivedAt | date: 'medium' }}</td>
+                                        <td>
+                                            <span class="chip" [class.chip-ok]="p.Status === 'Accepted' || p.Status === 'Used'" [class.chip-info]="p.Status === 'Pending'" [class.chip-bad]="p.Status === 'Rejected' || p.Status === 'Revoked'">{{ p.Status }}</span>
+                                        </td>
+                                        <td>
+                                            @if (IsAdministrator && CanDecideProxies && p.Status === 'Pending') {
+                                                <div class="row-actions">
+                                                    <button type="button" mjButton variant="primary" size="sm" (click)="DecideProxy(p, 'Accepted')" [disabled]="IsBusy" [attr.aria-label]="'Accept proxy for ' + p.Grantor">Accept</button>
+                                                    <button type="button" mjButton variant="secondary" size="sm" (click)="DecideProxy(p, 'Rejected')" [disabled]="IsBusy" [attr.aria-label]="'Reject proxy for ' + p.Grantor">Reject</button>
+                                                </div>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 }
             </section>
         }
@@ -292,6 +363,8 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
     public PeopleSearched = false;
     public PeopleError: string | null = null;
     public IsSearching = false;
+    public Proxies: ProxyView[] = [];
+    public ProxyError: string | null = null;
     public Picked: PersonHit | null = null;
     public AddClass = '';
     public AddWeight = 1;
@@ -312,7 +385,70 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
     }
 
     public async LoadAll(): Promise<void> {
-        await Promise.all([this.LoadRollState(), this.LoadPage()]);
+        await Promise.all([this.LoadRollState(), this.LoadPage(), this.LoadProxies()]);
+    }
+
+    private async LoadProxies(): Promise<void> {
+        if (!this.ElectionID) {
+            return;
+        }
+        this.ProxyError = null;
+        const rv = RunView.FromMetadataProvider(this.ProviderToUse);
+        const res = await rv.RunView<ProxyRow>({
+            EntityName: 'MJ_BizApps_Voting: Proxy Designations',
+            ExtraFilter: `ElectionID='${this.ElectionID}'`,
+            OrderBy: 'ReceivedAt',
+            ResultType: 'simple',
+            Fields: ['ID', 'GrantorEligibleVoterID', 'ProxyPerson', 'Scope', 'Instructions', 'ReceivedAt', 'Status'],
+        });
+        if (!res.Success) {
+            this.ProxyError = res.ErrorMessage || 'Proxy designations could not be loaded.';
+            this.Proxies = [];
+            return;
+        }
+        const names = await this.LoadGrantorNames(res.Results.map((r) => r.GrantorEligibleVoterID));
+        this.Proxies = res.Results.map((r) => ({ ...r, Grantor: names.get(r.GrantorEligibleVoterID.toLowerCase()) ?? 'Unknown voter' }));
+    }
+
+    private async LoadGrantorNames(ids: string[]): Promise<Map<string, string>> {
+        const names = new Map<string, string>();
+        const unique = Array.from(new Set(ids));
+        if (unique.length === 0) {
+            return names;
+        }
+        const rv = RunView.FromMetadataProvider(this.ProviderToUse);
+        const res = await rv.RunView<{ ID: string; Person: string }>({
+            EntityName: 'MJ_BizApps_Voting: Eligible Voters',
+            ExtraFilter: `ID IN (${unique.map((id) => `'${id}'`).join(',')})`,
+            ResultType: 'simple',
+            Fields: ['ID', 'Person'],
+        });
+        if (res.Success) {
+            for (const v of res.Results) {
+                names.set(v.ID.toLowerCase(), v.Person);
+            }
+        }
+        return names;
+    }
+
+    public async DecideProxy(p: ProxyView, decision: 'Accepted' | 'Rejected'): Promise<void> {
+        await this.Run(async () => {
+            const r = await this.api.DecideProxy({ ProxyDesignationID: p.ID, Decision: decision });
+            if (r.Success) {
+                this.ActionMessage = `The proxy designation by ${p.Grantor} was ${decision === 'Accepted' ? 'accepted' : 'rejected'}.`;
+            }
+            return r;
+        });
+    }
+
+    /** Proxies exist only once designations are possible, so the panel appears after the roll is set up or any were received. */
+    public get ProxiesVisible(): boolean {
+        return this.Proxies.length > 0 || ['Nominations', 'Ready', 'Open'].includes(this.ElectionStatus);
+    }
+
+    /** Designations can be decided until the election closes. */
+    public get CanDecideProxies(): boolean {
+        return ['Draft', 'Nominations', 'Ready', 'Open'].includes(this.ElectionStatus);
     }
 
     public ApplyFilters(): void {

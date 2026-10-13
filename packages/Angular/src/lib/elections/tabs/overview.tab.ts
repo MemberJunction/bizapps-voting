@@ -45,6 +45,25 @@ interface ContestRow {
     Threshold: string;
 }
 
+interface NominationRow {
+    ID: string;
+    ContestID: string;
+    Contest: string;
+    NomineePerson: string;
+    NominatedByPerson: string | null;
+    Status: string;
+    Statement: string | null;
+    SubmittedAt: string | null;
+    DecidedAt: string | null;
+    DecisionNotes: string | null;
+}
+
+interface NominationGroup {
+    ContestID: string;
+    Contest: string;
+    Rows: NominationRow[];
+}
+
 interface AnchorRow {
     ID: string;
     Entity: string;
@@ -53,7 +72,21 @@ interface AnchorRow {
     IsPrimary: boolean;
 }
 
+type LifecycleAction = 'open' | 'close' | 'cancel' | 'openNominations' | 'closeNominations';
+
+const LIFECYCLE_DONE: Record<LifecycleAction, string> = {
+    open: 'Voting is now open.',
+    close: 'Voting is closed.',
+    cancel: 'The election was cancelled.',
+    openNominations: 'Nominations are now open.',
+    closeNominations: 'Nominations are closed; the election is Ready.',
+};
+
 const EDITABLE_STATUSES: ElectionStatus[] = ['Draft', 'Nominations', 'Ready'];
+/** Nominations can be decided until voting opens (matches the server rule). */
+const NOMINATION_DECIDABLE_STATUSES: ElectionStatus[] = ['Draft', 'Nominations', 'Ready'];
+/** A nomination awaiting a decision. */
+const UNDECIDED_NOMINATION_STATUSES = ['Submitted', 'Accepted'];
 
 @Component({
     selector: 'election-overview-tab',
@@ -82,6 +115,16 @@ const EDITABLE_STATUSES: ElectionStatus[] = ['Draft', 'Nominations', 'Ready'];
                 <p class="hint">Current status: <voting-status-chip [Status]="Election.Status"></voting-status-chip></p>
                 @if (IsAdministrator) {
                     <div class="actions">
+                        @if (Can('Nominations')) {
+                            <button type="button" mjButton variant="secondary" size="sm" (click)="Ask('openNominations')" [disabled]="IsBusy">
+                                <i class="fa-solid fa-user-plus"></i> Open nominations
+                            </button>
+                        }
+                        @if (Election.Status === 'Nominations' && Can('Ready')) {
+                            <button type="button" mjButton variant="secondary" size="sm" (click)="Ask('closeNominations')" [disabled]="IsBusy">
+                                <i class="fa-solid fa-user-lock"></i> Close nominations
+                            </button>
+                        }
                         @if (Can('Open')) {
                             <button type="button" mjButton variant="primary" size="sm" (click)="Ask('open')" [disabled]="IsBusy">
                                 <i class="fa-solid fa-play"></i> Open voting
@@ -204,6 +247,73 @@ const EDITABLE_STATUSES: ElectionStatus[] = ['Draft', 'Nominations', 'Ready'];
                 }
             </section>
 
+            @if (ShowNominations) {
+                <section class="panel" aria-labelledby="ov-noms">
+                    <h3 id="ov-noms"><i class="fa-solid fa-user-tie"></i> Nominations</h3>
+                    @if (NominationError) {
+                        <div class="banner banner-error" role="alert"><i class="fa-solid fa-circle-exclamation"></i><span>{{ NominationError }}</span></div>
+                    }
+                    @if (NominationGroups.length === 0) {
+                        <p class="muted">No nominations have been submitted yet.</p>
+                    }
+                    @for (g of NominationGroups; track g.ContestID) {
+                        <h4>{{ g.Contest }}</h4>
+                        <div class="table-wrap">
+                            <table class="grid">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Nominee</th>
+                                        <th scope="col">Nominated by</th>
+                                        <th scope="col">Statement</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col"><span class="sr-only">Actions</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (n of g.Rows; track n.ID) {
+                                        <tr>
+                                            <th scope="row">{{ n.NomineePerson }}</th>
+                                            <td>{{ n.NominatedByPerson || '' }}</td>
+                                            <td>{{ n.Statement || '' }}</td>
+                                            <td>
+                                                <span class="chip" [class.chip-ok]="n.Status === 'Approved'" [class.chip-bad]="n.Status === 'Rejected'" [class.chip-info]="IsUndecided(n)">{{ n.Status }}</span>
+                                                @if (n.DecisionNotes) {
+                                                    <div class="muted small">{{ n.DecisionNotes }}</div>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (IsAdministrator && CanDecideNominations && IsUndecided(n)) {
+                                                    <div class="row-actions">
+                                                        <button type="button" mjButton variant="primary" size="sm" (click)="BeginDecision(n, 'Approved')" [attr.aria-label]="'Approve ' + n.NomineePerson">Approve</button>
+                                                        <button type="button" mjButton variant="secondary" size="sm" (click)="BeginDecision(n, 'Rejected')" [attr.aria-label]="'Reject ' + n.NomineePerson">Reject</button>
+                                                    </div>
+                                                }
+                                            </td>
+                                        </tr>
+                                        @if (Deciding && Deciding.ID === n.ID) {
+                                            <tr class="action-row">
+                                                <td colspan="5">
+                                                    <div class="field">
+                                                        <label [for]="'nom-notes-' + n.ID">Notes for the {{ DecidingKind === 'Approved' ? 'approval' : 'rejection' }} (optional)</label>
+                                                        <textarea [id]="'nom-notes-' + n.ID" class="input" rows="2" [(ngModel)]="DecisionNotes"></textarea>
+                                                    </div>
+                                                    <div class="actions">
+                                                        <button type="button" mjButton variant="primary" size="sm" (click)="ConfirmDecision()" [disabled]="IsBusy">
+                                                            <i class="fa-solid fa-check"></i> {{ DecidingKind === 'Approved' ? 'Approve nominee' : 'Reject nomination' }}
+                                                        </button>
+                                                        <button type="button" mjButton variant="secondary" size="sm" (click)="Deciding = null" [disabled]="IsBusy">Cancel</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </section>
+            }
+
             @if (Anchors.length > 0) {
                 <section class="panel" aria-labelledby="ov-anchors">
                     <h3 id="ov-anchors"><i class="fa-solid fa-anchor"></i> Linked records</h3>
@@ -228,6 +338,7 @@ const EDITABLE_STATUSES: ElectionStatus[] = ['Draft', 'Nominations', 'Ready'];
             .confirm { margin-top: 0.75rem; padding: 0.75rem; border: 1px solid var(--mj-status-warning-border); background: color-mix(in srgb, var(--mj-status-warning) 8%, var(--mj-bg-surface)); border-radius: 8px; }
             .anchor-list { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.35rem; }
             .actions.wide { grid-column: 1 / -1; }
+            .action-row td { background: var(--mj-bg-surface-card); }
         `,
     ],
 })
@@ -246,8 +357,14 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
     public IsBusy = false;
     public ActionError: string | null = null;
     public ActionMessage: string | null = null;
-    public Pending: 'open' | 'close' | 'cancel' | null = null;
+    public Pending: LifecycleAction | null = null;
     public CancelReason = '';
+
+    public Nominations: NominationRow[] = [];
+    public NominationError: string | null = null;
+    public Deciding: NominationRow | null = null;
+    public DecidingKind: 'Approved' | 'Rejected' = 'Approved';
+    public DecisionNotes = '';
 
     public Editing = false;
     public Form = { Name: '', Description: '', OpensAt: '', ClosesAt: '' };
@@ -262,8 +379,37 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
         return !!this.Election && EDITABLE_STATUSES.includes(this.Election.Status);
     }
 
+    /** Nominations are shown once they can exist: a nomination period, or any nomination already on file. */
+    public get ShowNominations(): boolean {
+        return !!this.Election && (this.Election.Status === 'Nominations' || this.Nominations.length > 0);
+    }
+
+    public get CanDecideNominations(): boolean {
+        return !!this.Election && NOMINATION_DECIDABLE_STATUSES.includes(this.Election.Status);
+    }
+
+    /** Nominations grouped by office contest, in contest order. */
+    public get NominationGroups(): NominationGroup[] {
+        const groups = new Map<string, NominationGroup>();
+        for (const n of this.Nominations) {
+            const key = n.ContestID.toLowerCase();
+            const group = groups.get(key) ?? { ContestID: n.ContestID, Contest: n.Contest, Rows: [] };
+            group.Rows.push(n);
+            groups.set(key, group);
+        }
+        return Array.from(groups.values());
+    }
+
+    public IsUndecided(n: NominationRow): boolean {
+        return UNDECIDED_NOMINATION_STATUSES.includes(n.Status);
+    }
+
     public get ConfirmText(): string {
         switch (this.Pending) {
+            case 'openNominations':
+                return 'Opening nominations lets voters and administrators nominate candidates for the office contests. Continue?';
+            case 'closeNominations':
+                return 'Closing nominations ends the nomination period and makes the election Ready. Approve or reject pending nominations first. Continue?';
             case 'open':
                 return 'Opening voting lets eligible voters cast ballots. Continue?';
             case 'close':
@@ -276,11 +422,11 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
     }
 
     /** Whether the state machine allows moving to the target; 'Open' is the voting-open status. */
-    public Can(target: 'Open' | 'Closed' | 'Cancelled'): boolean {
+    public Can(target: 'Nominations' | 'Ready' | 'Open' | 'Closed' | 'Cancelled'): boolean {
         return !!this.Election && CanTransition(this.Election.Status, target);
     }
 
-    public Ask(action: 'open' | 'close' | 'cancel'): void {
+    public Ask(action: LifecycleAction): void {
         this.ActionError = null;
         this.ActionMessage = null;
         this.CancelReason = '';
@@ -331,11 +477,67 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
             }
             this.Contests = c.Results as ContestRow[];
             this.Anchors = a.Results as AnchorRow[];
+            await this.LoadNominations();
         } catch (error) {
             LogError('[VotingElections] Overview load failed', undefined, error);
             this.LoadError = error instanceof Error ? error.message : 'The election could not be loaded.';
         } finally {
             this.IsLoading = false;
+        }
+    }
+
+    /** Nominations of the election's office contests. A failure shows in the panel and does not block the overview. */
+    private async LoadNominations(): Promise<void> {
+        this.NominationError = null;
+        const officeIds = this.Contests.filter((c) => c.Kind === 'Office').map((c) => c.ID);
+        if (officeIds.length === 0) {
+            this.Nominations = [];
+            return;
+        }
+        const rv = RunView.FromMetadataProvider(this.ProviderToUse);
+        const res = await rv.RunView<NominationRow>({
+            EntityName: 'MJ_BizApps_Voting: Nominations',
+            ExtraFilter: `ContestID IN (${officeIds.map((id) => `'${id}'`).join(',')})`,
+            OrderBy: 'SubmittedAt',
+            ResultType: 'simple',
+            Fields: ['ID', 'ContestID', 'Contest', 'NomineePerson', 'NominatedByPerson', 'Status', 'Statement', 'SubmittedAt', 'DecidedAt', 'DecisionNotes'],
+        });
+        if (!res.Success) {
+            this.NominationError = res.ErrorMessage || 'Nominations could not be loaded.';
+            this.Nominations = [];
+            return;
+        }
+        // Keep contests in election order rather than the order nominations arrived in.
+        const order = new Map(this.Contests.map((c, i) => [c.ID.toLowerCase(), i]));
+        this.Nominations = [...res.Results].sort((x, y) => (order.get(x.ContestID.toLowerCase()) ?? 0) - (order.get(y.ContestID.toLowerCase()) ?? 0));
+    }
+
+    public BeginDecision(n: NominationRow, kind: 'Approved' | 'Rejected'): void {
+        this.NominationError = null;
+        this.DecisionNotes = '';
+        this.DecidingKind = kind;
+        this.Deciding = n;
+    }
+
+    public async ConfirmDecision(): Promise<void> {
+        const n = this.Deciding;
+        if (!n) {
+            return;
+        }
+        this.IsBusy = true;
+        this.NominationError = null;
+        try {
+            const result = await this.api.DecideNomination({ NominationID: n.ID, Decision: this.DecidingKind, Notes: this.DecisionNotes.trim() || undefined });
+            if (!result.Success) {
+                this.NominationError = result.Message ?? 'The nomination could not be decided.';
+                return;
+            }
+            this.ActionMessage = this.DecidingKind === 'Approved' ? `${n.NomineePerson} was approved and added to the contest.` : `The nomination of ${n.NomineePerson} was rejected.`;
+            this.Deciding = null;
+            await this.Load();
+            this.Changed.emit();
+        } finally {
+            this.IsBusy = false;
         }
     }
 
@@ -349,22 +551,32 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
         this.ActionMessage = null;
         try {
             const id = this.Election.ID;
-            const result =
-                action === 'open'
-                    ? await this.api.OpenElection({ ElectionID: id })
-                    : action === 'close'
-                      ? await this.api.CloseElection({ ElectionID: id })
-                      : await this.api.CancelElection({ ElectionID: id, Reason: this.CancelReason.trim() });
+            const result = await this.RunLifecycle(action, id);
             if (!result.Success) {
                 this.ActionError = result.Message ?? 'The action failed.';
                 return;
             }
-            this.ActionMessage = action === 'open' ? 'Voting is now open.' : action === 'close' ? 'Voting is closed.' : 'The election was cancelled.';
+            this.ActionMessage = LIFECYCLE_DONE[action];
             this.Pending = null;
             await this.Load();
             this.Changed.emit();
         } finally {
             this.IsBusy = false;
+        }
+    }
+
+    private RunLifecycle(action: LifecycleAction, id: string): Promise<{ Success: boolean; Message?: string }> {
+        switch (action) {
+            case 'open':
+                return this.api.OpenElection({ ElectionID: id });
+            case 'close':
+                return this.api.CloseElection({ ElectionID: id });
+            case 'openNominations':
+                return this.api.OpenNominations({ ElectionID: id });
+            case 'closeNominations':
+                return this.api.CloseNominations({ ElectionID: id });
+            case 'cancel':
+                return this.api.CancelElection({ ElectionID: id, Reason: this.CancelReason.trim() });
         }
     }
 

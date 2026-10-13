@@ -550,5 +550,120 @@
     "primaryKey": {
       "ID": "D84BEBE1-F182-4EC6-9A18-4EA4800E99C6"
     }
+  },
+  {
+    "fields": {
+      "Name": "Issue Control Numbers",
+      "OperationKey": "Voting.IssueControlNumbers",
+      "Description": "Generate control numbers for paper and proxy ballots. Only each number's SHA-256 is stored; the plain numbers are returned once and cannot be shown again.",
+      "InputTypeName": "VotingIssueControlNumbersInput",
+      "InputTypeDefinition": "@file:types/voting-issue-control-numbers.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingIssueControlNumbersOutput",
+      "OutputTypeDefinition": "@file:types/voting-issue-control-numbers.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "A21E82F4-5F19-4F2F-99E5-2647A029447B"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Issue Second Factor PINs",
+      "OperationKey": "Voting.IssueSecondFactorPins",
+      "Description": "Generate a PIN for each voter for the second-factor credential method. Only a salted hash is stored; the plain PINs are returned once for out-of-band delivery.",
+      "InputTypeName": "VotingIssueSecondFactorPinsInput",
+      "InputTypeDefinition": "@file:types/voting-issue-second-factor-pins.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingIssueSecondFactorPinsOutput",
+      "OutputTypeDefinition": "@file:types/voting-issue-second-factor-pins.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "54EF54E6-E3FE-4F72-8973-8FEE3AF81C82"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Open Nominations",
+      "OperationKey": "Voting.OpenNominations",
+      "Description": "Move a Draft election into Nominations so nominations can be submitted. Refused when the election has no office contest or the nomination window has already closed.",
+      "InputTypeName": "VotingOpenNominationsInput",
+      "InputTypeDefinition": "@file:types/voting-open-nominations.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingOpenNominationsOutput",
+      "OutputTypeDefinition": "@file:types/voting-open-nominations.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "3AA3A0FC-04A3-409C-B268-673A77CB05B7"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Close Nominations",
+      "OperationKey": "Voting.CloseNominations",
+      "Description": "Move an election from Nominations to Ready, ending the nomination period.",
+      "InputTypeName": "VotingCloseNominationsInput",
+      "InputTypeDefinition": "@file:types/voting-close-nominations.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingCloseNominationsOutput",
+      "OutputTypeDefinition": "@file:types/voting-close-nominations.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "2A0ED65D-04BE-4723-8A9D-34384A6FD54F"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Decide Proxy",
+      "OperationKey": "Voting.DecideProxy",
+      "Description": "Accept or reject a Pending proxy designation, any time before the election closes. Notes are recorded in the audit trail.",
+      "InputTypeName": "VotingDecideProxyInput",
+      "InputTypeDefinition": "@file:types/voting-decide-proxy.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingDecideProxyOutput",
+      "OutputTypeDefinition": "@file:types/voting-decide-proxy.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "761F1A40-F0B1-48E3-BFBF-587AD3C7C6BB"
+    }
   }
 ]

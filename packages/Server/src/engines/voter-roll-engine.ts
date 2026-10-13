@@ -11,6 +11,7 @@ import {
     type mjBizAppsVotingProxyDesignationEntity,
     type VotingAmendRollInput,
     type VotingChallengeVoterInput,
+    type VotingDecideProxyInput,
     type VotingSubmitProxyInput,
 } from '@mj-biz-apps/voting-entities';
 import { VotingEngineBase } from '@mj-biz-apps/voting-engine-base';
@@ -52,6 +53,21 @@ interface ExistingVoterRow {
     Weight: number;
     SourceKey: string | null;
     Status: string;
+}
+
+/**
+ * Why a proxy designation cannot be decided, or null when it can. Only a Pending designation is decided, and only
+ * while the election has not closed.
+ */
+export function ProxyDecisionProblem(
+    designationStatus: string,
+    electionStatus: string,
+    decision: string
+): { Code: string; Message: string } | null {
+    if (decision !== 'Accepted' && decision !== 'Rejected') return { Code: 'InvalidDecision', Message: 'The decision must be Accepted or Rejected.' };
+    if (!ROLL_EDITABLE_STATUSES.has(electionStatus)) return { Code: 'InvalidStatus', Message: `Proxies can be decided only before the election closes; it is ${electionStatus}.` };
+    if (designationStatus !== 'Pending') return { Code: 'AlreadyDecided', Message: `The proxy designation is ${designationStatus} and can no longer be decided.` };
+    return null;
 }
 
 export class VoterRollEngine extends BaseSingleton<VoterRollEngine> {
@@ -314,6 +330,27 @@ export class VoterRollEngine extends BaseSingleton<VoterRollEngine> {
         if (!(await row.Save())) return Fail('ProxyFailed', `Could not record the proxy designation: ${row.LatestResult?.CompleteMessage ?? 'unknown error'}`);
         await ElectionAudit.Record(ctx, election.ID, 'ProxyDesignated', { ProxyDesignationID: row.ID, Scope: scope });
         return Ok({ ProxyDesignationID: row.ID });
+    }
+
+    /**
+     * An administrator accepts or rejects a Pending proxy designation. Allowed only before the election closes. The
+     * decision (and any notes) is written to the audit trail; the designation row has no notes column of its own.
+     */
+    public async DecideProxy(input: VotingDecideProxyInput, ctx: VotingContext): Promise<EngineResult<{ Status: string }>> {
+        const row = await ctx.Provider.GetEntityObject<mjBizAppsVotingProxyDesignationEntity>(PROXIES_ENTITY, ctx.ContextUser);
+        if (!(await row.Load(input.ProxyDesignationID))) return Fail('ProxyNotFound', 'The proxy designation was not found.');
+        const loaded = await LoadElectionEntity(row.ElectionID, ctx);
+        if (IsFailure(loaded)) return PassFailure(loaded);
+        const problem = ProxyDecisionProblem(row.Status, loaded.Value.Status, input.Decision);
+        if (problem) return Fail(problem.Code, problem.Message);
+        row.Status = input.Decision;
+        if (!(await row.Save())) return Fail('ProxyDecisionFailed', `Could not record the decision: ${row.LatestResult?.CompleteMessage ?? 'unknown error'}`);
+        await ElectionAudit.Record(ctx, row.ElectionID, 'ProxyDecided', {
+            ProxyDesignationID: row.ID,
+            Decision: input.Decision,
+            ...(input.Notes?.trim() ? { Notes: input.Notes.trim() } : {}),
+        });
+        return Ok({ Status: row.Status });
     }
 
     // ─── Reads ─────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 # Remote Operations and Actions
 
-Voting exposes **24 Remote Operations**. Typed bases (client-safe) are generated into
+Voting exposes **29 Remote Operations**. Typed bases (client-safe) are generated into
 `packages/Entities/src/generated/remote_operations.ts`; the bodies are in `packages/Server/src/operations/`, each a thin
 wrapper over an engine. Operation keys are `Voting.<Name>`; the classes are `Voting<Name>Operation`.
 
@@ -59,10 +59,15 @@ operations, `voting:trustee` for `SubmitKeyShare`. Then each operation's `Author
 | `Voting.CloseElection` | `ElectionID` | `Status?` | Open -> Closed |
 | `Voting.CancelElection` | `ElectionID`, `Reason` | `Status?` | Any non-final state -> Cancelled; reason is audited |
 | `Voting.GetTurnout` | `ElectionID` | `Eligible?`, `Voted?`, `TurnoutPercent?`, `QuorumMet?`, `ByChannel?`, `ByMethod?` | Counts `Participation` rows only; never results. Administrator or inspector |
-| `Voting.EnterPaperBallot` | `ElectionID`, `ControlNumber`, `Submission`, `Channel` (`Paper`, `Proxy`, `InPerson`) | `ReceiptCode?` | Identifies the voter by a one-time control number, casts through the cast engine with `EnteredByUserID`, then redeems the number. **No operation or UI issues control numbers yet** (`CredentialEngine.IssueControlNumbers` exists) |
+| `Voting.EnterPaperBallot` | `ElectionID`, `ControlNumber`, `Submission`, `Channel` (`Paper`, `Proxy`, `InPerson`) | `ReceiptCode?` | Identifies the voter by a one-time control number, casts through the cast engine with `EnteredByUserID`, then redeems the number. For `Proxy`, `ProxyDesignationID` of an Accepted designation of that voter is required; it is marked Used in the cast transaction. Control numbers come from `Voting.IssueControlNumbers` |
 | `Voting.Tally` | `ElectionID`, `TieBreakSeed?` | `Status?`, `Contests?` (outcome, options, rounds, `TieBroken`, `Notes`) | Closed (or Tallied, to re-tally before certification). Tier B needs enough trustee shares submitted to this instance first |
 | `Voting.Certify` | `ElectionID`, `Notes?` | `CertificationID?`, `Status?` | Tallied and past `ChallengeWindowEndsAt`; the caller needs a linked `Person`. One call = one signature; `Status` becomes `Certified` after `RequiredCertifiers` (default 1) signatures. Administrator or inspector |
 | `Voting.DecideNomination` | `NominationID`, `Decision` (`Approved`/`Rejected`), `Notes?` | `Status?`, `ContestOptionID?` | Before voting opens. Approval creates the contest option (label = the nominee's display name) |
+| `Voting.IssueControlNumbers` | `ElectionID`, `EligibleVoterIDs?`, `MethodCode?` | `Issued?` (`EligibleVoterID`, `ControlNumber`), `Skipped?` | Administrator. Election must be Ready or Open. The plain numbers are returned once; only a SHA-256 is stored. Issuing again revokes the voter's earlier unused number |
+| `Voting.IssueSecondFactorPins` | `ElectionID`, `EligibleVoterIDs?` | `Issued?` (`EligibleVoterID`, `SourceKey`, `Pin`), `Skipped?` | Administrator. Election must be Ready or Open. The plain PINs are returned once; only a salted scrypt hash is stored. Voters with no roster key are skipped |
+| `Voting.OpenNominations` | `ElectionID` | `Status?` | Administrator. Draft to Nominations. Needs an office contest and a nomination window that has not already closed |
+| `Voting.CloseNominations` | `ElectionID` | `Status?` | Administrator. Nominations to Ready |
+| `Voting.DecideProxy` | `ProxyDesignationID`, `Decision` (`Accepted`/`Rejected`), `Notes?` | `Status?` | Administrator. Pending designations only, and only before the election closes. Notes go to the audit trail. An Accepted designation is consumed (Used) by `EnterPaperBallot` with `Channel: 'Proxy'` and its `ProxyDesignationID` |
 | `Voting.ResolveComment` | `BallotCommentID`, `Disposition`, `Response?` | `CommentResolutionID?` | Disposition is one of `Accepted`, `AcceptedInPrinciple`, `Rejected`, `Withdrawn`, `Deferred` |
 | `Voting.CreateTrusteeKeys` | `ElectionID`, `TrusteePersonIDs[]`, `Threshold` | `PublicKey?`, `Shares?` (`TrusteePersonID`, `ShareIndex`, `Share`) | Tier B elections in Draft/Ready; 2 or more distinct trustees, threshold 2..n; once only. Shares are returned **once** and never stored |
 

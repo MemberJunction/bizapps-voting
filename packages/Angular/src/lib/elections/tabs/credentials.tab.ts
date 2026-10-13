@@ -3,7 +3,7 @@
  * the issuance log. The log never carries secrets: it lists method, timing and state only (the
  * stored control-number and secret hashes are not even requested).
  */
-import { Component, EventEmitter, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, EventEmitter, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LogError, RunView } from '@memberjunction/core';
@@ -14,6 +14,7 @@ import { VotingEngineBase } from '@mj-biz-apps/voting-engine-base';
 import { ResolveApiOrigin } from '../../shared/api-origin';
 import { VotingApiService } from '../../shared/voting-api.service';
 import { ELECTION_COMMON_STYLES } from '../election-styles';
+import { ControlNumbersCsv, PinsCsv, type IssuedSecretRow } from '../../shared/one-time-secrets';
 
 interface MethodView {
     Code: string;
@@ -42,6 +43,14 @@ interface LogRow extends CredentialRow {
 interface VoterName {
     ID: string;
     Person: string;
+}
+
+type SecretKind = 'control' | 'pin';
+
+interface IssuedSecrets {
+    Kind: SecretKind;
+    Rows: IssuedSecretRow[];
+    Skipped: number;
 }
 
 interface DistributionSlug {
@@ -121,6 +130,95 @@ const VOTER_ENTITY = 'MJ_BizApps_Voting: Eligible Voters';
             }
         </section>
 
+        @if (IsAdministrator) {
+            <section class="panel" aria-labelledby="cred-secrets">
+                <h3 id="cred-secrets"><i class="fa-solid fa-hashtag"></i> Control numbers and PINs</h3>
+                <p class="hint">
+                    Control numbers identify a voter for paper and proxy ballots; second-factor PINs are delivered to voters by you (print,
+                    letter or phone). They are generated for the voters you select, or for every eligible voter. Only a hash is stored, so
+                    each value is shown <strong>once</strong>, right after it is issued. Issuing again replaces a voter's earlier one.
+                </p>
+                <div aria-live="polite">
+                    @if (SecretsError) {
+                        <div class="banner banner-error" role="alert"><i class="fa-solid fa-circle-exclamation"></i><span>{{ SecretsError }}</span></div>
+                    }
+                </div>
+                @if (!CanIssueSecrets) {
+                    <p class="muted small">Control numbers and PINs are issued once the election is Ready or Open.</p>
+                } @else if (Secrets) {
+                    <div class="banner banner-warn" role="alert">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>
+                            These {{ Secrets.Kind === 'control' ? 'control numbers' : 'PINs' }} cannot be shown again. Copy or download them now,
+                            then store them securely. Skipped voters: {{ Secrets.Skipped }}.
+                        </span>
+                    </div>
+                    <div class="actions">
+                        <button type="button" mjButton variant="primary" size="sm" (click)="CopySecrets()">
+                            <i class="fa-solid fa-copy"></i> Copy CSV
+                        </button>
+                        <button type="button" mjButton variant="secondary" size="sm" (click)="DownloadSecrets()">
+                            <i class="fa-solid fa-download"></i> Download CSV
+                        </button>
+                        <button type="button" mjButton variant="secondary" size="sm" (click)="DismissSecrets()">
+                            <i class="fa-solid fa-check"></i> I have saved them, clear
+                        </button>
+                    </div>
+                    @if (CopyNote) {
+                        <p class="muted small" role="status">{{ CopyNote }}</p>
+                    }
+                    <div class="table-wrap">
+                        <table class="grid">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Voter</th>
+                                    @if (Secrets.Kind === 'pin') {
+                                        <th scope="col">Roster key</th>
+                                    }
+                                    <th scope="col">{{ Secrets.Kind === 'control' ? 'Control number' : 'PIN' }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (r of Secrets.Rows; track r.Secret) {
+                                    <tr>
+                                        <th scope="row">{{ r.Voter }}</th>
+                                        @if (Secrets.Kind === 'pin') {
+                                            <td>{{ r.SourceKey }}</td>
+                                        }
+                                        <td><code>{{ r.Secret }}</code></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                } @else {
+                    <ul class="method-list">
+                        @for (k of SecretKinds; track k.Kind) {
+                            <li>
+                                <div>
+                                    <strong>{{ k.Name }}</strong>
+                                    <div class="muted small">{{ k.Description }}</div>
+                                </div>
+                                @if (SecretConfirm === k.Kind) {
+                                    <div class="actions">
+                                        <span class="confirm-text">Issue to all eligible voters? Earlier ones stop working and the new values are shown only once.</span>
+                                        <button type="button" mjButton variant="primary" size="sm" (click)="IssueSecrets(k.Kind)" [disabled]="IssuingSecrets">
+                                            <i class="fa-solid" [class.fa-check]="!IssuingSecrets" [class.fa-spinner]="IssuingSecrets" [class.fa-spin]="IssuingSecrets"></i> Yes, issue
+                                        </button>
+                                        <button type="button" mjButton variant="secondary" size="sm" (click)="SecretConfirm = null" [disabled]="IssuingSecrets">Cancel</button>
+                                    </div>
+                                } @else {
+                                    <button type="button" mjButton variant="secondary" size="sm" (click)="AskSecrets(k.Kind)" [disabled]="IssuingSecrets" [attr.aria-label]="'Issue ' + k.Name">
+                                        <i class="fa-solid fa-paper-plane"></i> Issue
+                                    </button>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+        }
+
         <section aria-labelledby="cred-log">
             <div class="log-head">
                 <h3 id="cred-log">Issuance log <span class="muted">({{ Total }})</span></h3>
@@ -185,7 +283,7 @@ const VOTER_ENTITY = 'MJ_BizApps_Voting: Eligible Voters';
         `,
     ],
 })
-export class CredentialsTabComponent extends BaseElectionAdminTab implements OnChanges {
+export class CredentialsTabComponent extends BaseElectionAdminTab implements OnChanges, OnDestroy {
     private readonly api = inject(VotingApiService);
 
     @Output() Changed = new EventEmitter<void>();
@@ -199,6 +297,17 @@ export class CredentialsTabComponent extends BaseElectionAdminTab implements OnC
     public IssueError: string | null = null;
     public IssueMessage: string | null = null;
 
+    public readonly SecretKinds: ReadonlyArray<{ Kind: SecretKind; Name: string; Description: string }> = [
+        { Kind: 'control', Name: 'Control numbers', Description: 'One per voter, for paper and proxy ballots entered by staff.' },
+        { Kind: 'pin', Name: 'Second-factor PINs', Description: 'One per voter with a roster key, presented together with that key at sign-in.' },
+    ];
+    public SecretConfirm: SecretKind | null = null;
+    public IssuingSecrets = false;
+    public SecretsError: string | null = null;
+    /** The just-issued values. Held only here, in memory; cleared on dismiss, election change and destroy. */
+    public Secrets: IssuedSecrets | null = null;
+    public CopyNote = '';
+
     public Log: LogRow[] = [];
     public Total = 0;
     public Page = 1;
@@ -207,9 +316,19 @@ export class CredentialsTabComponent extends BaseElectionAdminTab implements OnC
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['ElectionID']) {
+            this.DismissSecrets();
             this.Page = 1;
             void this.Init();
         }
+    }
+
+    ngOnDestroy(): void {
+        this.DismissSecrets();
+    }
+
+    /** Offline credentials are issued for a Ready or Open election, matching the server rule. */
+    public get CanIssueSecrets(): boolean {
+        return this.ElectionStatus === 'Ready' || this.ElectionStatus === 'Open';
     }
 
     public get PageCount(): number {
@@ -352,5 +471,70 @@ export class CredentialsTabComponent extends BaseElectionAdminTab implements OnC
         } finally {
             this.IssuingCode = null;
         }
+    }
+    public AskSecrets(kind: SecretKind): void {
+        this.SecretsError = null;
+        this.SecretConfirm = kind;
+    }
+
+    /** Issues control numbers or PINs for every eligible voter and keeps the returned values in memory for the one-time view. */
+    public async IssueSecrets(kind: SecretKind): Promise<void> {
+        this.IssuingSecrets = true;
+        this.SecretsError = null;
+        try {
+            const result =
+                kind === 'control'
+                    ? await this.api.IssueControlNumbers({ ElectionID: this.ElectionID })
+                    : await this.api.IssueSecondFactorPins({ ElectionID: this.ElectionID });
+            if (!result.Success || !result.Output) {
+                this.SecretsError = result.Message ?? 'The values could not be issued.';
+                return;
+            }
+            const issued = result.Output.Issued ?? [];
+            const names = await this.LoadVoterNames(issued.map((i) => i.EligibleVoterID));
+            const rows: IssuedSecretRow[] = issued.map((i) => ({
+                Voter: names.get(i.EligibleVoterID.toLowerCase()) ?? 'Unknown voter',
+                SourceKey: 'SourceKey' in i ? (i.SourceKey ?? '') : '',
+                Secret: 'Pin' in i ? i.Pin : i.ControlNumber,
+            }));
+            this.Secrets = { Kind: kind, Rows: rows, Skipped: result.Output.Skipped ?? 0 };
+            this.SecretConfirm = null;
+            this.CopyNote = '';
+            await this.LoadLog();
+            this.Changed.emit();
+        } finally {
+            this.IssuingSecrets = false;
+        }
+    }
+
+    private SecretsCsv(): string {
+        if (!this.Secrets) return '';
+        return this.Secrets.Kind === 'control' ? ControlNumbersCsv(this.Secrets.Rows) : PinsCsv(this.Secrets.Rows);
+    }
+
+    public async CopySecrets(): Promise<void> {
+        try {
+            await navigator.clipboard.writeText(this.SecretsCsv());
+            this.CopyNote = 'Copied to the clipboard.';
+        } catch {
+            this.CopyNote = 'Copying was blocked by the browser. Use Download CSV instead.';
+        }
+    }
+
+    /** Hands the CSV to the browser as a file. The text is built here and never leaves the page. */
+    public DownloadSecrets(): void {
+        if (!this.Secrets) return;
+        const url = URL.createObjectURL(new Blob([this.SecretsCsv()], { type: 'text/csv;charset=utf-8' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = this.Secrets.Kind === 'control' ? 'control-numbers.csv' : 'second-factor-pins.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+
+    public DismissSecrets(): void {
+        this.Secrets = null;
+        this.CopyNote = '';
+        this.SecretConfirm = null;
     }
 }

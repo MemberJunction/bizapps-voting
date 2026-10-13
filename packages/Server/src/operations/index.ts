@@ -1,7 +1,7 @@
 /**
  * @mj-biz-apps/voting-server — Remote Operations barrel
  *
- * All 24 Remote Operations: 7 voter (guest-scoped), 16 administrator, 1 trustee.
+ * All 29 Remote Operations: 7 voter (guest-scoped), 21 administrator, 1 trustee.
  */
 
 // Voter operations (AllowScopedPrincipal: true)
@@ -30,6 +30,11 @@ export { CertifyOperation } from './CertifyOperation.js';
 export { DecideNominationOperation } from './DecideNominationOperation.js';
 export { ResolveCommentOperation } from './ResolveCommentOperation.js';
 export { CreateTrusteeKeysOperation } from './CreateTrusteeKeysOperation.js';
+export { IssueControlNumbersOperation } from './IssueControlNumbersOperation.js';
+export { IssueSecondFactorPinsOperation } from './IssueSecondFactorPinsOperation.js';
+export { OpenNominationsOperation } from './OpenNominationsOperation.js';
+export { CloseNominationsOperation } from './CloseNominationsOperation.js';
+export { DecideProxyOperation } from './DecideProxyOperation.js';
 
 // Trustee operation
 export { SubmitKeyShareOperation } from './SubmitKeyShareOperation.js';
@@ -58,6 +63,11 @@ import { LoadCertifyOperation } from './CertifyOperation.js';
 import { LoadDecideNominationOperation } from './DecideNominationOperation.js';
 import { LoadResolveCommentOperation } from './ResolveCommentOperation.js';
 import { LoadCreateTrusteeKeysOperation } from './CreateTrusteeKeysOperation.js';
+import { LoadIssueControlNumbersOperation } from './IssueControlNumbersOperation.js';
+import { LoadIssueSecondFactorPinsOperation } from './IssueSecondFactorPinsOperation.js';
+import { LoadOpenNominationsOperation } from './OpenNominationsOperation.js';
+import { LoadCloseNominationsOperation } from './CloseNominationsOperation.js';
+import { LoadDecideProxyOperation } from './DecideProxyOperation.js';
 import { LoadSubmitKeyShareOperation } from './SubmitKeyShareOperation.js';
 
 /** Tree-shaking anchor: call from server bootstrap to retain all @RegisterClass decorators. */
@@ -88,6 +98,11 @@ export function LoadVotingOperations(): void {
     LoadDecideNominationOperation();
     LoadResolveCommentOperation();
     LoadCreateTrusteeKeysOperation();
+    LoadIssueControlNumbersOperation();
+    LoadIssueSecondFactorPinsOperation();
+    LoadOpenNominationsOperation();
+    LoadCloseNominationsOperation();
+    LoadDecideProxyOperation();
 
     // Trustee operation
     LoadSubmitKeyShareOperation();

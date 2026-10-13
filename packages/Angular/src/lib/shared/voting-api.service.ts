@@ -19,6 +19,12 @@ import {
     VotingIssueCredentialsOperation,
     VotingOpenElectionOperation,
     VotingTallyOperation,
+    VotingCloseNominationsOperation,
+    VotingDecideNominationOperation,
+    VotingDecideProxyOperation,
+    VotingIssueControlNumbersOperation,
+    VotingIssueSecondFactorPinsOperation,
+    VotingOpenNominationsOperation,
     VotingUpdateElectionOperation,
     type VotingAmendRollInput,
     type VotingAmendRollOutput,
@@ -41,6 +47,18 @@ import {
     type VotingOpenElectionInput,
     type VotingOpenElectionOutput,
     type VotingTallyInput,
+    type VotingCloseNominationsInput,
+    type VotingCloseNominationsOutput,
+    type VotingDecideNominationInput,
+    type VotingDecideNominationOutput,
+    type VotingDecideProxyInput,
+    type VotingDecideProxyOutput,
+    type VotingIssueControlNumbersInput,
+    type VotingIssueControlNumbersOutput,
+    type VotingIssueSecondFactorPinsInput,
+    type VotingIssueSecondFactorPinsOutput,
+    type VotingOpenNominationsInput,
+    type VotingOpenNominationsOutput,
     type VotingTallyOutput,
     type VotingUpdateElectionInput,
     type VotingUpdateElectionOutput,
@@ -102,6 +120,30 @@ export class VotingApiService {
 
     public GetTurnout(input: VotingGetTurnoutInput): Promise<OperationResult<VotingGetTurnoutOutput>> {
         return this.Run(new VotingGetTurnoutOperation(), input, 'Turnout could not be retrieved.');
+    }
+
+    public CloseNominations(input: VotingCloseNominationsInput): Promise<OperationResult<VotingCloseNominationsOutput>> {
+        return this.Run(new VotingCloseNominationsOperation(), input, 'Nominations could not be closed.');
+    }
+
+    public DecideNomination(input: VotingDecideNominationInput): Promise<OperationResult<VotingDecideNominationOutput>> {
+        return this.Run(new VotingDecideNominationOperation(), input, 'The nomination could not be decided.');
+    }
+
+    public DecideProxy(input: VotingDecideProxyInput): Promise<OperationResult<VotingDecideProxyOutput>> {
+        return this.Run(new VotingDecideProxyOperation(), input, 'The proxy designation could not be decided.');
+    }
+
+    public IssueControlNumbers(input: VotingIssueControlNumbersInput): Promise<OperationResult<VotingIssueControlNumbersOutput>> {
+        return this.Run(new VotingIssueControlNumbersOperation(), input, 'Control numbers could not be issued.');
+    }
+
+    public IssueSecondFactorPins(input: VotingIssueSecondFactorPinsInput): Promise<OperationResult<VotingIssueSecondFactorPinsOutput>> {
+        return this.Run(new VotingIssueSecondFactorPinsOperation(), input, 'PINs could not be issued.');
+    }
+
+    public OpenNominations(input: VotingOpenNominationsInput): Promise<OperationResult<VotingOpenNominationsOutput>> {
+        return this.Run(new VotingOpenNominationsOperation(), input, 'Nominations could not be opened.');
     }
 
     private async Run<TInput, TOutput extends { Success: boolean; Message?: string }>(
