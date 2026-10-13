@@ -1,7 +1,7 @@
 /**
  * ElectionSubtypeResolver
  * Resolves which IsA child entity an Election belongs to, based on its ElectionTypeID.
- * Mirrors the pattern from bizapps-collaboration's SpaceSubtypeResolver.
+ * The standard MJ subtype-resolver pattern: a directory filled from cached type metadata answers load hints from memory.
  * § 6 of the design document.
  */
 

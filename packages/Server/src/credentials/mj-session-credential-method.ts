@@ -1,6 +1,6 @@
 /**
- * MjSessionCredentialMethod: the voter is already signed in to Explorer or Collaboration. There is no guest mint; the
- * context user is a normal MJ user matched to the roll through their Person record (VoterIdentityResolver).
+ * MjSessionCredentialMethod: the voter is already signed in to MJ (Explorer or any app built on it).
+ * There is no guest mint; the context user is a normal MJ user matched to the roll through their Person record (VoterIdentityResolver).
  */
 
 import { RegisterClass } from '@memberjunction/global';

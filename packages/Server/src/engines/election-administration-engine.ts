@@ -213,7 +213,10 @@ export class ElectionAdministrationEngine extends BaseSingleton<ElectionAdminist
         let graphRes = await LoadElectionGraph(electionID, ctx);
         if (IsFailure(graphRes)) return PassFailure(graphRes);
         const status = graphRes.Value.Election.Status;
-        if (!CanTransition(status, 'Open')) return Fail('InvalidTransition', `An election in ${status} status cannot be opened.`);
+        // The state machine has no Draft/Nominations -> Open edge; those elections pass through Ready (below).
+        if (!CanTransition(status, 'Open') && !(CanTransition(status, 'Ready') && CanTransition('Ready', 'Open'))) {
+            return Fail('InvalidTransition', `An election in ${status} status cannot be opened.`);
+        }
 
         if (!graphRes.Value.Election.RollFrozenAt) {
             const frozen = await VoterRollEngine.Instance.FreezeRoll(electionID, ctx);
@@ -248,6 +251,10 @@ export class ElectionAdministrationEngine extends BaseSingleton<ElectionAdminist
         });
         if (styleProblem) return Fail('InvalidBallotStyle', styleProblem);
 
+        if (election.Status !== 'Ready') {
+            const ready = await this.transition(election, 'Ready', 'Ready', ctx);
+            if (IsFailure(ready)) return ready;
+        }
         return this.transition(election, 'Open', 'Opened', ctx);
     }
 

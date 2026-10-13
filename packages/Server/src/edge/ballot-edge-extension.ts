@@ -1,9 +1,10 @@
 /**
  * The public, pre-auth ballot edge: `GET /vote/:slug` (first-party page), `GET /vote/:slug/info`, `POST /vote/session`
- * and `GET /vote/element/main.js`. It mounts the way Orders' checkout edge does: a `BaseServerExtension` registered under
- * the key 'VotingBallotEdge' and declared in `MJ_SERVER_EXTENSIONS` (see `server-extensions-manifest.ts`), so MJAPI loads
- * it from `dynamicPackages.server[]` with no host config to copy. It runs before MJServer's auth middleware: a voter has
- * no bearer token yet, and the distribution slug plus a credential are what gate access.
+ * and `GET /vote/element/main.js`. It mounts as a standard pre-auth MJ server extension:
+ * a `BaseServerExtension` registered under the key 'VotingBallotEdge' and declared in `MJ_SERVER_EXTENSIONS`
+ * (see `server-extensions-manifest.ts`), so MJAPI loads it from `dynamicPackages.server[]` with no host config to copy.
+ * It runs before MJServer's auth middleware: a voter has no bearer token yet, and the distribution slug plus a credential
+ * are what gate access.
  *
  * The decisions live in `edge-core.ts` (gate order, error contract); this file is Express wiring and the data loaders.
  */
