@@ -34,9 +34,12 @@
 --     Confidential elections only; a Secret election never has rows there.
 --   * A Secret election cannot allow revotes (CK_Election_SecretIsFinal), and only tier A
 --     (Standard) may show results before close (CK_Election_RunningResultsTierA).
---   * TrackRecordChanges = 0 and IncludeInAPI = 0 on the ballot-box entities, and the
---     field-encryption flags, are ENTITY METADATA, set when CodeGen registers the entities
---     - not here.
+--   * Access to the ballot-box entities is ENTITY METADATA, set when CodeGen registers them
+--     (codegen/additional-schema-info.json) and by metadata/ - not here: TrackRecordChanges = 0
+--     (no __mj_ timestamps, no change records), no delete procedure, and no role permissions
+--     except the 'Voting Ballot Engine' role held only by MJ's system user. IncludeInAPI and
+--     AllowCreateAPI/AllowUpdateAPI stay on: turning them off removes the views/procedures
+--     the engines need. Selections are stored encrypted by the cast engine.
 --
 -- AUTHORING NOTES
 --   * No __mj_CreatedAt / __mj_UpdatedAt columns and no FK indexes - CodeGen adds both.

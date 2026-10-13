@@ -15,6 +15,12 @@
   },
   "repository": "https://github.com/MemberJunction/bizapps-voting",
   "mjVersionRange": ">=6.2.0-edge.2 <7.0.0",
+  "dependencies": {
+    "mj-bizapps-common": {
+      "version": ">=5.46.1 <6.0.0",
+      "repository": "https://github.com/MemberJunction/bizapps-common"
+    }
+  },
   "schema": {
     "name": "__mj_BizAppsVoting",
     "createIfNotExists": true
