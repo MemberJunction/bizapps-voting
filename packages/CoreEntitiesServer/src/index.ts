@@ -37,6 +37,18 @@ export { BallotBoxWriteGuard, TallyWriteGuard } from './write-guards.js';
 
 // Drivers
 export { BaseElectionTypeServerDriver } from './drivers/base-election-type-server-driver.js';
+export type {
+    DriverValidationResult,
+    DriverBaseContext,
+    ElectionChangeAction,
+    ElectionChangeContext,
+    RollChangeAction,
+    RollChangeContext,
+    BallotStyleContext,
+    CastValidationContext,
+    ContestResultSummary,
+    ElectionResultsContext,
+} from './drivers/base-election-type-server-driver.js';
 export { ElectionTypeDriverRegistry } from './drivers/election-type-driver-registry.js';
 
 // Invariant helpers (the state machine and lock rule themselves live in @mj-biz-apps/voting-entities)
