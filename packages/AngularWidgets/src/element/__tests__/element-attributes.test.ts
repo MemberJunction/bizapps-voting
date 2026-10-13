@@ -19,7 +19,14 @@ describe('element-attributes', () => {
       const config = configFromAttributes(() => null);
 
       expect(config.apiRoot).toBe('/vote');
-      expect(config.language).toBe('en');
+      expect(config.language).toBeUndefined();
+      expect(config.graphqlUrl).toBe('/vote/graphql');
+    });
+
+    it('should honour an explicit graphql-url over the api-root default', () => {
+      const attrs: Record<string, string> = { 'api-root': 'https://edge.example.com/vote', 'graphql-url': 'https://api.example.com/graphql' };
+      const config = configFromAttributes((n) => attrs[n] ?? null);
+      expect(config.graphqlUrl).toBe('https://api.example.com/graphql');
     });
 
     it('should read optional attributes', () => {

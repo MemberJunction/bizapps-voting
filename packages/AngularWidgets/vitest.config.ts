@@ -7,6 +7,7 @@ export default defineConfig({
     dedupe: ['@angular/core', '@angular/common', '@angular/compiler', '@angular/forms', '@angular/platform-browser', '@angular/animations', 'rxjs'],
   },
   test: {
+    typecheck: { enabled: true, include: ['src/**/__tests__/**/*.test-d.ts'], tsconfig: './tsconfig.typecheck.json' },
     server: { deps: { inline: [/@memberjunction\/ng-/, /@angular\//] } },
   },
 });

@@ -34,6 +34,9 @@ import {
   effect,
   ChangeDetectionStrategy,
   ElementRef,
+  OnChanges,
+  SimpleChanges,
+  inject,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -41,13 +44,29 @@ import { FormsModule } from '@angular/forms';
 import {
   ValidateSubmission,
   type BallotStyle,
+  type BallotStyleContest,
+  type BallotStyleOption,
+  type CommentType,
   type BallotSubmission,
   type ContestSubmission,
   type OptionSelection,
 } from '@mj-biz-apps/voting-entities/contracts';
-import { BallotApiClient } from './api/ballot-api.client';
+import { BallotApiError, GENERIC_ERROR_MESSAGE } from './api/ballot-api.client';
+import type { VotingContestOutcome, VotingTallyOptionResult } from './api/ballot-api.types';
+import {
+  BallotFlow,
+  BuildContestComments,
+  CommentDraftKey,
+  EmptyCommentDraft,
+  GENERAL_COMMENT_KEY,
+  RequiredCommentOptionIDs,
+  resolveLanguage,
+  type CommentDraft,
+  type ResultsView,
+} from './api/ballot-flow';
+import { BALLOT_CONFIG } from './widget-providers';
 
-type BallotState = 'init' | 'login' | 'ready' | 'reviewing' | 'casting' | 'cast' | 'closed' | 'error';
+type BallotState = 'init' | 'login' | 'ready' | 'reviewing' | 'casting' | 'cast' | 'voted' | 'closed' | 'error';
 
 interface BallotStrings {
   loading: string;
@@ -79,6 +98,19 @@ interface BallotStrings {
   pleaseFixIssues: string;
   cancel: string;
   reviewAndCast: string;
+  generalComment: string;
+  commentType: string;
+  documentReference: string;
+  commentText: string;
+  proposedChange: string;
+  alreadyVoted: string;
+  alreadyVotedBody: string;
+  previousReceipt: string;
+  resultsNotAvailable: string;
+  finalResults: string;
+  votesCast: string;
+  ballotsCounted: string;
+  votesLabel: string;
 }
 
 const DEFAULT_STRINGS: BallotStrings = {
@@ -111,6 +143,19 @@ const DEFAULT_STRINGS: BallotStrings = {
   pleaseFixIssues: 'Please fix the following issues:',
   cancel: 'Cancel',
   reviewAndCast: 'Review & Cast Ballot',
+  generalComment: 'General comment (optional)',
+  commentType: 'Comment type',
+  documentReference: 'Document reference (optional)',
+  commentText: 'Comment',
+  proposedChange: 'Proposed change (optional)',
+  alreadyVoted: 'You Have Already Voted',
+  alreadyVotedBody: 'Your ballot has been recorded. Thank you for voting.',
+  previousReceipt: 'Your previous receipt code (you may vote again to replace your ballot):',
+  resultsNotAvailable: 'Results are not available yet.',
+  finalResults: 'Final Results',
+  votesCast: 'Votes cast',
+  ballotsCounted: 'Ballots counted',
+  votesLabel: 'votes',
 };
 
 @Component({
@@ -132,6 +177,7 @@ const DEFAULT_STRINGS: BallotStrings = {
           <p *ngIf="showHostAssertion" class="host-assertion-notice">
             {{ strings.hostAssertion }}
           </p>
+          <p *ngIf="loginError()" class="login-error" role="alert">{{ loginError() }}</p>
           <div *ngIf="showSecondFactor" class="second-factor-form">
             <div class="form-group">
               <label for="sourceKey">{{ strings.sourceKey }}</label>
@@ -158,6 +204,8 @@ const DEFAULT_STRINGS: BallotStrings = {
           <h1>{{ ballotStyle()?.ElectionName }}</h1>
           <p *ngIf="ballotStyle()?.Description" class="description">{{ ballotStyle()?.Description }}</p>
         </div>
+
+        <p *ngIf="receiptCode()" class="previous-receipt">{{ strings.previousReceipt }} <code>{{ receiptCode() }}</code></p>
 
         <form (submit)="onSubmit($event)" class="ballot-form">
           <div *ngFor="let contest of ballotStyle()?.Contests" class="contest">
@@ -266,18 +314,13 @@ const DEFAULT_STRINGS: BallotStrings = {
                 <label [for]="'abstain-' + contest.ContestID">{{ strings.abstain }}</label>
               </div>
 
-              <!-- Comments (StandardsItem) -->
-              <div *ngIf="contest.RequireCommentOnOptionIDs?.length" class="comments-section">
-                <div *ngFor="let optionId of contest.RequireCommentOnOptionIDs" class="comment-input">
-                  <label [for]="'comment-' + optionId">
-                    {{ strings.comment }} {{ getOptionLabel(contest, optionId) }}
-                  </label>
-                  <textarea
-                    [id]="'comment-' + optionId"
-                    [value]="getComment(contest.ContestID, optionId)"
-                    (change)="setComment(contest.ContestID, optionId, $event)"
-                    [attr.aria-label]="'Comment on ' + getOptionLabel(contest, optionId)"
-                  ></textarea>
+              <!-- Comments (StandardsItem): one box per selected option that requires a comment, plus an optional general one -->
+              <div class="comments-section">
+                <div *ngFor="let optionId of requiredCommentOptions(contest)" class="comment-input">
+                  <ng-container *ngTemplateOutlet="commentTpl; context: { contest: contest, key: optionId, title: strings.comment + ' ' + getOptionLabel(contest, optionId) }"></ng-container>
+                </div>
+                <div *ngIf="contest.Kind === 'StandardsItem'" class="comment-input">
+                  <ng-container *ngTemplateOutlet="commentTpl; context: { contest: contest, key: generalKey, title: strings.generalComment }"></ng-container>
                 </div>
               </div>
             </fieldset>
@@ -346,21 +389,84 @@ const DEFAULT_STRINGS: BallotStrings = {
       <!-- Cast state: receipt + results -->
       <div *ngIf="state() === 'cast'" class="ballot-receipt">
         <h2>{{ strings.castSuccessfully }}</h2>
-        <div class="receipt-code">
+        <div *ngIf="receiptCode()" class="receipt-code">
           <label>{{ strings.yourReceiptCode }}</label>
           <code>{{ receiptCode() }}</code>
           <button type="button" (click)="copyReceiptCode()" class="btn-copy">{{ strings.copyClipboard }}</button>
         </div>
-        <p class="receipt-info">{{ strings.saveCodeToVerify }}</p>
+        <p *ngIf="receiptCode()" class="receipt-info">{{ strings.saveCodeToVerify }}</p>
+        <ng-container *ngTemplateOutlet="resultsTpl"></ng-container>
+      </div>
 
-        <!-- Results if visible -->
-        <div *ngIf="resultsVisible() && resultsData()" class="results-section">
-          <h3>{{ strings.currentResults }}</h3>
-          <div class="results-content">
-            <!-- Results rendering here (expanded in next iteration) -->
+      <!-- Already voted (and not allowed to revote) -->
+      <div *ngIf="state() === 'voted'" class="ballot-receipt" role="status">
+        <h2>{{ strings.alreadyVoted }}</h2>
+        <p>{{ strings.alreadyVotedBody }}</p>
+        <div *ngIf="receiptCode()" class="receipt-code">
+          <label>{{ strings.yourReceiptCode }}</label>
+          <code>{{ receiptCode() }}</code>
+          <button type="button" (click)="copyReceiptCode()" class="btn-copy">{{ strings.copyClipboard }}</button>
+        </div>
+        <ng-container *ngTemplateOutlet="resultsTpl"></ng-container>
+      </div>
+
+      <ng-template #commentTpl let-contest="contest" let-key="key" let-title="title">
+        <fieldset class="comment-fieldset">
+          <legend>{{ title }}</legend>
+          <label [for]="commentId(contest.ContestID, key, 'type')">{{ strings.commentType }}</label>
+          <select
+            [id]="commentId(contest.ContestID, key, 'type')"
+            [value]="getDraft(contest.ContestID, key).CommentType"
+            (change)="setDraftType(contest.ContestID, key, $event)"
+          >
+            <option value="General">General</option>
+            <option value="Technical">Technical</option>
+            <option value="Editorial">Editorial</option>
+          </select>
+          <label [for]="commentId(contest.ContestID, key, 'ref')">{{ strings.documentReference }}</label>
+          <input
+            type="text"
+            [id]="commentId(contest.ContestID, key, 'ref')"
+            [value]="getDraft(contest.ContestID, key).DocumentReference"
+            (input)="setDraftField(contest.ContestID, key, 'DocumentReference', $event)"
+          />
+          <label [for]="commentId(contest.ContestID, key, 'text')">{{ strings.commentText }}</label>
+          <textarea
+            [id]="commentId(contest.ContestID, key, 'text')"
+            [value]="getDraft(contest.ContestID, key).Comment"
+            (input)="setDraftField(contest.ContestID, key, 'Comment', $event)"
+          ></textarea>
+          <label [for]="commentId(contest.ContestID, key, 'change')">{{ strings.proposedChange }}</label>
+          <textarea
+            [id]="commentId(contest.ContestID, key, 'change')"
+            [value]="getDraft(contest.ContestID, key).ProposedChange"
+            (input)="setDraftField(contest.ContestID, key, 'ProposedChange', $event)"
+          ></textarea>
+        </fieldset>
+      </ng-template>
+
+      <ng-template #resultsTpl>
+        <div *ngIf="resultsView() as rv" class="results-section">
+          <h3>{{ rv.IsFinal ? strings.finalResults : strings.currentResults }}</h3>
+          <p *ngIf="!rv.Visible" class="results-hidden">{{ rv.Reason || strings.resultsNotAvailable }}</p>
+          <div *ngIf="rv.Visible" class="results-content">
+            <p *ngIf="rv.Output.BallotCount !== undefined" class="results-count">
+              {{ strings.ballotsCounted }}: {{ rv.Output.BallotCount }}
+            </p>
+            <div *ngFor="let outcome of rv.Output.Contests" class="result-contest">
+              <h4>{{ contestName(outcome) }}</h4>
+              <p class="result-outcome">{{ outcome.Outcome }}</p>
+              <ul class="result-options">
+                <li *ngFor="let opt of outcome.Options">
+                  {{ resultOptionLabel(outcome, opt) }}: {{ opt.Votes }} {{ strings.votesLabel }}
+                  <span class="result-option-outcome">({{ opt.Outcome }})</span>
+                </li>
+              </ul>
+              <p class="result-votes-cast">{{ strings.votesCast }}: {{ outcome.VotesCast }}</p>
+            </div>
           </div>
         </div>
-      </div>
+      </ng-template>
 
       <!-- Closed state -->
       <div *ngIf="state() === 'closed'" class="ballot-closed" role="alert">
@@ -772,6 +878,14 @@ const DEFAULT_STRINGS: BallotStrings = {
       border-top: 1px solid var(--color-border);
     }
 
+    .login-error {
+      color: var(--color-error);
+    }
+
+    .result-options {
+      padding-left: 1.25rem;
+    }
+
     .login-form {
       max-width: 300px;
       margin: 0 auto;
@@ -822,18 +936,19 @@ const DEFAULT_STRINGS: BallotStrings = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.ShadowDom,
 })
-export class MjBallotComponent implements OnInit, OnDestroy {
-  @Input() slug = signal('');
-  @Input() language = signal('en');
+export class MjBallotComponent implements OnInit, OnChanges, OnDestroy {
+  @Input() slug = '';
+  /** Explicit ballot language. Empty means the distribution's DefaultLanguage (else 'en'). */
+  @Input() language = '';
   @Input() stringOverrides: Partial<BallotStrings> = {};
 
   // State
   state = signal<BallotState>('init');
   errorMessage = signal('');
+  loginError = signal('');
   ballotStyle = signal<BallotStyle | null>(null);
   receiptCode = signal('');
-  resultsVisible = signal(false);
-  resultsData = signal<unknown>(null);
+  resultsView = signal<ResultsView | null>(null);
   formValid = signal<boolean | null>(null);
   validationErrors = signal<Array<{ ContestID?: string; Code: string; Message: string }>>([]);
 
@@ -843,15 +958,19 @@ export class MjBallotComponent implements OnInit, OnDestroy {
   secondFactorSourceKey = '';
   secondFactorPin = '';
 
-  // Resolved strings (item 14: overridable)
-  strings: BallotStrings = { ...DEFAULT_STRINGS, ...this.stringOverrides };
+  /** Resolved strings (item 14: overridable); evaluated on read so inputs set after construction apply. */
+  get strings(): BallotStrings {
+    return { ...DEFAULT_STRINGS, ...this.stringOverrides };
+  }
 
   // Private state
-  private apiClient: BallotApiClient | null = null;
-  private ballotToken = signal<string | null>(null);
-  private electionId = signal('');
+  private readonly config = inject(BALLOT_CONFIG);
+  private flow: BallotFlow | null = null;
+  private resolvedLanguage = 'en';
   private ballotSubmission = signal<BallotSubmission>({ Contests: [] });
-  private comments = new Map<string, Map<string, string>>();
+  private commentDrafts = new Map<string, CommentDraft>();
+  readonly generalKey = GENERAL_COMMENT_KEY;
+  private started = false;
 
   constructor(private elementRef: ElementRef<HTMLElement>) {
     // Watch for changes and validate
@@ -865,7 +984,17 @@ export class MjBallotComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.initializeBallot();
+    this.started = true;
+    void this.initializeBallot();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (!this.started || changes['slug']?.firstChange) return;
+    if (changes['slug']) {
+      void this.initializeBallot();
+    } else if (changes['language'] && this.flow?.ElectionID && this.state() === 'ready') {
+      void this.loadBallot();
+    }
   }
 
   ngOnDestroy(): void {
@@ -873,32 +1002,28 @@ export class MjBallotComponent implements OnInit, OnDestroy {
   }
 
   private async initializeBallot(): Promise<void> {
+    this.state.set('init');
     try {
-      // Extract token from #t=... and remove it (item 12: token in memory only)
-      const token = this.extractTokenFromHash();
+      this.flow = new BallotFlow(this.config, this.slug);
+      const info = await this.flow.LoadInfo();
+      this.resolvedLanguage = resolveLanguage(this.language || this.config.language, info);
 
-      // Check if we need second-factor or host-assertion (item 10)
-      const hostAssertion = this.getHostAssertionFromAttribute();
+      // Extract token from #t=... and remove it (item 12: token in memory only). It is the emailed-link credential.
+      const token = this.extractTokenFromHash();
+      const hostAssertion = this.config.hostAssertion ?? this.getHostAssertionFromAttribute();
 
       if (token) {
-        this.ballotToken.set(token);
-        // TODO: Call /vote/session with token, credential method, etc.
-        // For now, use token directly
-        this.initializeWithToken(token);
+        await this.signInAndLoad('emailed-link', { Token: token });
       } else if (hostAssertion) {
-        this.showHostAssertion = true;
+        await this.signInAndLoad('host-assertion', { Assertion: hostAssertion });
+      } else if (info.AllowedMethods.includes('second-factor')) {
+        this.showSecondFactor = true;
         this.state.set('login');
       } else {
-        this.state.set('error');
-        this.errorMessage.set(this.strings.noCredentials);
-        this.dispatchCustomEvent('ballot-error', { message: this.strings.noCredentials });
+        this.fail(this.strings.noCredentials);
       }
     } catch (error) {
-      this.state.set('error');
-      this.errorMessage.set(error instanceof Error ? error.message : 'Failed to initialize');
-      this.dispatchCustomEvent('ballot-error', {
-        message: error instanceof Error ? error.message : 'Failed to initialize',
-      });
+      this.failFrom(error);
     }
   }
 
@@ -918,47 +1043,79 @@ export class MjBallotComponent implements OnInit, OnDestroy {
     return this.elementRef.nativeElement.getAttribute('host-assertion');
   }
 
-  private initializeWithToken(token: string): void {
-    this.apiClient = new BallotApiClient({
-      apiRoot: `${typeof location !== 'undefined' ? location.origin : ''}/vote`,
-      graphqlUrl: 'http://localhost:4000/graphql',
-      token,
-    });
-
-    // Placeholder: get ballot style
-    const ballot: BallotStyle = {
-      ElectionID: 'election-1',
-      ElectionName: 'Sample Election',
-      Contests: [],
-      Hash: '',
-      SecrecyMode: 'Secret',
-      AllowRevote: false,
-      Language: this.language(),
-    };
-
-    this.ballotStyle.set(ballot);
-    this.electionId.set(ballot.ElectionID);
-    this.ballotSubmission.set({
-      Contests: ballot.Contests.map((c) => ({
-        ContestID: c.ContestID,
-        Selections: [],
-        Comments: [],
-      })),
-    });
-
-    this.state.set('ready');
-    this.dispatchCustomEvent('ballot-state-change', { state: 'ready' });
+  private async signInAndLoad(methodCode: string, credential: { Token?: string; Assertion?: string; SecondFactor?: { SourceKey: string; Pin: string } }): Promise<void> {
+    if (!this.flow) return;
+    await this.flow.SignIn(methodCode, credential);
+    await this.loadBallot();
   }
 
-  submitSecondFactor(): void {
+  /** GetMyBallot -> ballot, or the already-voted state. */
+  private async loadBallot(): Promise<void> {
+    if (!this.flow) return;
+    try {
+      const view = await this.flow.LoadMyBallot(this.resolvedLanguage);
+      if (view.Kind === 'voted') {
+        this.receiptCode.set(view.ReceiptCode ?? '');
+        if (view.Style) this.ballotStyle.set(view.Style);
+        this.state.set('voted');
+        this.dispatchCustomEvent('ballot-state-change', { state: 'voted' });
+        await this.loadResults();
+        return;
+      }
+      const ballot = view.Style;
+      this.receiptCode.set(view.PreviousReceiptCode ?? '');
+      this.ballotStyle.set(ballot);
+      this.commentDrafts.clear();
+      this.ballotSubmission.set({
+        Contests: ballot.Contests.map((c) => ({ ContestID: c.ContestID, Selections: [], Comments: [] })),
+      });
+      this.state.set('ready');
+      this.dispatchCustomEvent('ballot-state-change', { state: 'ready' });
+    } catch (error) {
+      this.failFrom(error);
+    }
+  }
+
+  /** Results are optional chrome: any failure just leaves them hidden. */
+  private async loadResults(): Promise<void> {
+    if (!this.flow) return;
+    try {
+      this.resultsView.set(await this.flow.LoadResults());
+    } catch {
+      this.resultsView.set(null);
+    }
+  }
+
+  async submitSecondFactor(): Promise<void> {
     // Item 10: second-factor sign-in
     if (!this.secondFactorSourceKey || !this.secondFactorPin) {
       return;
     }
-    // TODO: Call /vote/session with MethodCode 'second-factor'
-    // For now, just transition
-    this.showSecondFactor = false;
-    this.initializeWithToken('temp-token');
+    this.loginError.set('');
+    this.state.set('init');
+    try {
+      await this.flow?.SignIn('second-factor', {
+        SecondFactor: { SourceKey: this.secondFactorSourceKey, Pin: this.secondFactorPin },
+      });
+    } catch (error) {
+      // Stay on the sign-in form so the voter can try again; the edge's text is fixed and carries no input.
+      this.secondFactorPin = '';
+      this.loginError.set(error instanceof BallotApiError ? error.message : GENERIC_ERROR_MESSAGE);
+      this.state.set('login');
+      return;
+    }
+    await this.loadBallot();
+  }
+
+  private fail(message: string): void {
+    this.state.set('error');
+    this.errorMessage.set(message);
+    this.dispatchCustomEvent('ballot-error', { message });
+  }
+
+  /** Handled refusals and edge refusals carry safe text; everything else is generic. */
+  private failFrom(error: unknown): void {
+    this.fail(error instanceof BallotApiError ? error.message : GENERIC_ERROR_MESSAGE);
   }
 
   onSubmit(event: Event): void {
@@ -980,33 +1137,36 @@ export class MjBallotComponent implements OnInit, OnDestroy {
       return;
     }
     this.state.set('casting');
-    this.castBallot();
+    void this.castBallot();
   }
 
   private async castBallot(): Promise<void> {
+    const style = this.ballotStyle();
     try {
-      if (!this.apiClient) {
-        throw new Error('API client not initialized');
+      if (!this.flow || !style) {
+        throw new BallotApiError('transport', GENERIC_ERROR_MESSAGE);
       }
-
-      // Placeholder cast
-      const result = { ReceiptCode: 'AAAA-BBBB-CCCC-DDDD-EEEE' };
-      this.receiptCode.set(result.ReceiptCode);
+      const receipt = await this.flow.Cast(style, this.ballotSubmission(), this.resolvedLanguage);
+      this.receiptCode.set(receipt ?? '');
 
       // Item 9: show results after cast if visible
-      const resultsData = { ResultsVisible: false };
-      this.resultsVisible.set(resultsData.ResultsVisible);
-      this.resultsData.set(resultsData);
+      await this.loadResults();
 
       this.state.set('cast');
-      this.dispatchCustomEvent('ballot-cast', { receiptCode: result.ReceiptCode });
+      this.dispatchCustomEvent('ballot-cast', { electionId: this.flow.ElectionID, receiptCode: receipt ?? '' });
     } catch (error) {
-      this.state.set('error');
-      this.errorMessage.set(error instanceof Error ? error.message : 'Failed to cast ballot');
-      this.dispatchCustomEvent('ballot-error', {
-        message: error instanceof Error ? error.message : 'Failed to cast ballot',
-      });
+      this.failFrom(error);
     }
+  }
+
+  // Results rendering helpers
+  contestName(outcome: VotingContestOutcome): string {
+    return this.ballotStyle()?.Contests.find((c) => c.ContestID === outcome.ContestID)?.Name ?? outcome.ContestID;
+  }
+
+  resultOptionLabel(outcome: VotingContestOutcome, option: VotingTallyOptionResult): string {
+    const contest = this.ballotStyle()?.Contests.find((c) => c.ContestID === outcome.ContestID);
+    return contest?.Options.find((o) => o.OptionID === option.OptionID)?.Label ?? option.OptionID;
   }
 
   onCancel(): void {
@@ -1038,7 +1198,7 @@ export class MjBallotComponent implements OnInit, OnDestroy {
     const contest = submission.Contests.find((c) => c.ContestID === contestId);
     if (!contest) return;
     [contest.Selections[i], contest.Selections[j]] = [contest.Selections[j], contest.Selections[i]];
-    this.ballotSubmission.set({ ...submission });
+    this.commitSubmission(submission);
   }
 
   removeSelection(contestId: string, index: number): void {
@@ -1046,7 +1206,7 @@ export class MjBallotComponent implements OnInit, OnDestroy {
     const contest = submission.Contests.find((c) => c.ContestID === contestId);
     if (!contest) return;
     contest.Selections.splice(index, 1);
-    this.ballotSubmission.set({ ...submission });
+    this.commitSubmission(submission);
   }
 
   addSelection(contestId: string, event: Event): void {
@@ -1061,7 +1221,7 @@ export class MjBallotComponent implements OnInit, OnDestroy {
     // Item 2: for ranked, rank is position + 1
     const rank = this.getContestStyle(contestId)?.IsRanked ? contest.Selections.length + 1 : undefined;
     contest.Selections.push({ OptionID: optionId, Rank: rank });
-    this.ballotSubmission.set({ ...submission });
+    this.commitSubmission(submission);
 
     select.value = '';
   }
@@ -1085,7 +1245,7 @@ export class MjBallotComponent implements OnInit, OnDestroy {
       const idx = contest.Selections.findIndex((s) => s.OptionID === optionId);
       if (idx >= 0) contest.Selections.splice(idx, 1);
     }
-    this.ballotSubmission.set({ ...submission });
+    this.commitSubmission(submission);
   }
 
   // Item 4: abstain when AllowAbstain
@@ -1101,7 +1261,7 @@ export class MjBallotComponent implements OnInit, OnDestroy {
     } else {
       contest.Abstain = false;
     }
-    this.ballotSubmission.set({ ...submission });
+    this.commitSubmission(submission);
   }
 
   isAbstaining(contestId: string): boolean {
@@ -1125,20 +1285,44 @@ export class MjBallotComponent implements OnInit, OnDestroy {
 
     const sel = contest.Selections.find((s) => s.OptionID === optionId);
     if (sel) sel.WriteInText = input.value;
-    this.ballotSubmission.set({ ...submission });
+    this.commitSubmission(submission);
   }
 
-  // Item 6: StandardsItem comment fields
-  getComment(contestId: string, optionId: string): string {
-    return this.comments.get(contestId)?.get(optionId) || '';
+  // Item 6: StandardsItem comments
+  requiredCommentOptions(contest: BallotStyleContest): string[] {
+    return RequiredCommentOptionIDs(contest, this.getContestSelections(contest.ContestID));
   }
 
-  setComment(contestId: string, optionId: string, event: Event): void {
-    const textarea = event.target as HTMLTextAreaElement;
-    if (!this.comments.has(contestId)) {
-      this.comments.set(contestId, new Map());
+  commentId(contestId: string, key: string, field: string): string {
+    return `comment-${contestId}-${key || 'general'}-${field}`;
+  }
+
+  getDraft(contestId: string, key: string): CommentDraft {
+    return this.commentDrafts.get(CommentDraftKey(contestId, key)) ?? EmptyCommentDraft();
+  }
+
+  setDraftType(contestId: string, key: string, event: Event): void {
+    const value = (event.target as HTMLSelectElement).value as CommentType;
+    this.updateDraft(contestId, key, { CommentType: value });
+  }
+
+  setDraftField(contestId: string, key: string, field: 'DocumentReference' | 'Comment' | 'ProposedChange', event: Event): void {
+    this.updateDraft(contestId, key, { [field]: (event.target as HTMLInputElement | HTMLTextAreaElement).value });
+  }
+
+  private updateDraft(contestId: string, key: string, patch: Partial<CommentDraft>): void {
+    this.commentDrafts.set(CommentDraftKey(contestId, key), { ...this.getDraft(contestId, key), ...patch });
+    this.commitSubmission(this.ballotSubmission());
+  }
+
+  /** Publish the submission with every contest's Comments recomputed from the current selections and drafts. */
+  private commitSubmission(submission: BallotSubmission): void {
+    const style = this.ballotStyle();
+    for (const contest of submission.Contests) {
+      const styleContest = style?.Contests.find((c) => c.ContestID === contest.ContestID);
+      if (styleContest) contest.Comments = BuildContestComments(styleContest, contest.Selections, this.commentDrafts);
     }
-    this.comments.get(contestId)!.set(optionId, textarea.value);
+    this.ballotSubmission.set({ ...submission });
   }
 
   // Item 7: UX validation via ValidateSubmission
@@ -1162,25 +1346,25 @@ export class MjBallotComponent implements OnInit, OnDestroy {
     return contest?.Selections || [];
   }
 
-  getAvailableOptions(contest: any): any[] {
+  getAvailableOptions(contest: BallotStyleContest): BallotStyleOption[] {
     const selectedIds = new Set(this.getContestSelections(contest.ContestID).map((s) => s.OptionID));
-    return contest.Options.filter((o: any) => !selectedIds.has(o.OptionID));
+    return contest.Options.filter((o: BallotStyleOption) => !selectedIds.has(o.OptionID));
   }
 
-  getOptionLabel(contest: any, optionId: string): string {
-    return contest.Options.find((o: any) => o.OptionID === optionId)?.Label || '';
+  getOptionLabel(contest: BallotStyleContest, optionId: string): string {
+    return contest.Options.find((o: BallotStyleOption) => o.OptionID === optionId)?.Label || '';
   }
 
   isOptionSelected(contestId: string, optionId: string): boolean {
     return this.getContestSelections(contestId).some((s) => s.OptionID === optionId);
   }
 
-  canSelectOption(contest: any, optionId: string): boolean {
+  canSelectOption(contest: BallotStyleContest, optionId: string): boolean {
     const selected = this.getContestSelections(contest.ContestID).length;
     return selected < contest.MaxSelections || this.isOptionSelected(contest.ContestID, optionId);
   }
 
-  private getContestStyle(contestId: string): any {
+  private getContestStyle(contestId: string): BallotStyleContest | undefined {
     return this.ballotStyle()?.Contests.find((c) => c.ContestID === contestId);
   }
 

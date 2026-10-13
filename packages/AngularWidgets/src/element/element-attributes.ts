@@ -11,7 +11,8 @@ export interface BallotApiConfig {
   graphqlUrl: string;
   hostAssertion?: string;
   email?: string;
-  language: string;
+  /** Explicit ballot language; when absent the distribution's DefaultLanguage (else 'en') applies. */
+  language?: string;
 }
 
 /**
@@ -51,13 +52,12 @@ export function inputsFromAttributes(read: (name: string) => string | null): Arr
 
 /** Build the connection config from the element's attributes. */
 export function configFromAttributes(read: (name: string) => string | null): BallotApiConfig {
-  const apiRoot = read('api-root') ?? '';
-  const graphqlUrl = read('graphql-url') ?? apiRoot ? `${apiRoot}/graphql` : '';
+  const apiRoot = read('api-root') || `${typeof location !== 'undefined' ? location.origin : ''}/vote`;
   return {
-    apiRoot: apiRoot || `${typeof location !== 'undefined' ? location.origin : ''}/vote`,
-    graphqlUrl: graphqlUrl || 'http://localhost:4000/graphql',
+    apiRoot,
+    graphqlUrl: read('graphql-url') || `${apiRoot}/graphql`,
     hostAssertion: read('host-assertion') ?? undefined,
     email: read('email') ?? undefined,
-    language: read('language') ?? 'en',
+    language: read('language') || undefined,
   };
 }

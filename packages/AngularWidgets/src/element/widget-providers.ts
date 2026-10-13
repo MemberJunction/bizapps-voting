@@ -5,11 +5,11 @@
  * and settings needed for the ballot element to function.
  */
 
-import { Provider } from '@angular/core';
+import { InjectionToken, Provider } from '@angular/core';
 import type { BallotApiConfig } from './element-attributes';
 
-/** Token for providing the ballot API config. */
-const BALLOT_CONFIG_TOKEN = 'BallotApiConfig';
+/** Token for the ballot API config (read from the element's attributes). */
+export const BALLOT_CONFIG = new InjectionToken<BallotApiConfig>('BallotApiConfig');
 
 /**
  * Create providers for the ballot widget application.
@@ -18,11 +18,5 @@ const BALLOT_CONFIG_TOKEN = 'BallotApiConfig';
  * @returns An array of DI providers
  */
 export function ballotWidgetProviders(config: BallotApiConfig): Provider[] {
-  return [
-    // Provide the config as an injectable singleton
-    {
-      provide: BALLOT_CONFIG_TOKEN,
-      useValue: config,
-    },
-  ];
+  return [{ provide: BALLOT_CONFIG, useValue: config }];
 }
