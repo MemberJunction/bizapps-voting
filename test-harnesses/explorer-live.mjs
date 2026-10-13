@@ -779,12 +779,27 @@ scenario('election-types', 'Election Types: every catalog section loads, configu
     }
 });
 
-scenario('settings', 'Settings: admin creates, edits and retires a ballot distribution; each save proven over the wire', async () => {
-    const m = need(S.board ?? (await earlier('XP board')), 'flow-board');
+scenario('settings', 'Settings: a finished election offers no new distribution (and says why); admin creates, edits and retires one on a draft, each save proven over the wire', async () => {
+    const finished = need(S.board ?? (await earlier('XP board')), 'flow-board');
+    const admin = await as('admin');
+    // A fresh draft: the board election is certified by now, and a finished election accepts no new distribution.
+    const draft = await wire.CreateDraftElection(cast, admin, {
+        TypeCode: 'motion',
+        Name: `XP settings ${RUN}`,
+        Voters: [wire.PersonaVoter(cast, 'member1', 0)],
+        Contests: [wire.MotionSpec('Settings motion')],
+    });
+    const m = { id: draft.ElectionID, name: `XP settings ${RUN}` };
     const page = await signIn('admin');
     try {
         const root = await nav(page, 'Settings', RES.settings);
+        await pickElection(root.locator('#settings-election'), finished.name);
+        await waitText(root.locator('.banner-info'), /no longer accepts ballots/);
+        ok(await button(root, 'New distribution').isDisabled(), 'New distribution is disabled for a finished election');
+        await shot(page, 'settings-finished-election');
+
         await pickElection(root.locator('#settings-election'), m.name);
+        ok(!(await button(root, 'New distribution').isDisabled()), 'New distribution is offered for a draft election');
         await button(root, 'New distribution').click();
         const editor = root.locator('voting-distribution-editor');
         await editor.waitFor();

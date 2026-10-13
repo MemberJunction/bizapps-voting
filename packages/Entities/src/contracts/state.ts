@@ -66,3 +66,18 @@ export function IsConfigurationLocked(status: ElectionStatus): boolean {
 export function IsTerminal(status: ElectionStatus): boolean {
   return status === 'Certified' || status === 'Cancelled';
 }
+
+/**
+ * Statuses after which no ballot can be cast. A ballot distribution created then could only publish a ballot that
+ * refuses everyone, so new distributions are refused (existing ones stay editable: pausing or retiring is still useful).
+ */
+export const DISTRIBUTION_CLOSED_STATUSES: ReadonlyArray<ElectionStatus> = ['Closed', 'Tallied', 'Certified', 'Cancelled'];
+
+/**
+ * Why a ballot distribution cannot be created for (or moved to) an election in `status`, or null when it can.
+ * Shared by the server-side entity rule and the admin UI, so both say the same thing.
+ */
+export function DescribeDistributionCreateRefusal(status: ElectionStatus): string | null {
+  if (!DISTRIBUTION_CLOSED_STATUSES.includes(status)) return null;
+  return `Cannot create a ballot distribution: the election is ${status} and no longer accepts ballots.`;
+}

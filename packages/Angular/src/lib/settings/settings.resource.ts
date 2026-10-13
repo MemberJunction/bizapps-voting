@@ -18,7 +18,7 @@ import {
     MJPageBodyComponent,
     MJButtonDirective,
 } from '@memberjunction/ng-ui-components';
-import type { mjBizAppsVotingBallotDistributionEntity } from '@mj-biz-apps/voting-entities';
+import { DescribeDistributionCreateRefusal, type mjBizAppsVotingBallotDistributionEntity } from '@mj-biz-apps/voting-entities';
 import { VotingEngineBase } from '@mj-biz-apps/voting-engine-base';
 import { ResolveApiOrigin } from '../shared/api-origin';
 import { StatusChipComponent } from '../shared/status-chip.component';
@@ -64,7 +64,7 @@ const ELECTION_ENTITY = 'MJ_BizApps_Voting: Elections';
                         <button type="button" mjButton variant="secondary" size="sm" (click)="Reload()" [disabled]="IsLoading">
                             <i class="fa-solid fa-arrows-rotate" [class.fa-spin]="IsLoading"></i> Refresh
                         </button>
-                        <button type="button" mjButton variant="primary" size="sm" (click)="StartCreate()" [disabled]="!SelectedElection || EditorOpen">
+                        <button type="button" mjButton variant="primary" size="sm" (click)="StartCreate()" [disabled]="!SelectedElection || EditorOpen || !!CreateRefusal" [attr.title]="CreateRefusal">
                             <i class="fa-solid fa-plus"></i> New distribution
                         </button>
                     </div>
@@ -113,6 +113,12 @@ const ELECTION_ENTITY = 'MJ_BizApps_Voting: Elections';
                             <p>Select an election to manage its ballot distributions.</p>
                         </div>
                     } @else {
+                        @if (CreateRefusal) {
+                            <div class="banner banner-info" role="status">
+                                <i class="fa-solid fa-circle-info"></i>
+                                <span>{{ CreateRefusal }} Existing distributions can still be paused or retired.</span>
+                            </div>
+                        }
                         @if (ActionError) {
                             <div class="banner banner-error" role="alert">
                                 <i class="fa-solid fa-circle-exclamation"></i>
@@ -224,6 +230,7 @@ const ELECTION_ENTITY = 'MJ_BizApps_Voting: Elections';
             .banner { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 8px; margin: 0 0 1rem; border: 1px solid transparent; }
             .banner span { flex: 1; }
             .banner-error { background: var(--mj-status-error-bg); color: var(--mj-status-error-text); border-color: var(--mj-status-error-border); }
+            .banner-info { background: var(--mj-status-info-bg); color: var(--mj-status-info-text); border-color: var(--mj-status-info-border); }
             .list { margin: 1rem 0; }
             .list h3 { margin: 0 0 0.5rem; color: var(--mj-text-primary); font-size: 1.05rem; }
             .table-wrap { overflow-x: auto; background: var(--mj-bg-surface); border: 1px solid var(--mj-border-default); border-radius: 10px; }
@@ -310,6 +317,12 @@ export class VotingSettingsResourceComponent extends BaseResourceComponent imple
 
     public get SelectedElection(): ElectionPick | null {
         return this.Elections.find((e) => UUIDsEqual(e.ID, this.SelectedElectionID)) ?? null;
+    }
+
+    /** Why no new distribution can be created for the selected election (the same rule the server enforces), or null. */
+    public get CreateRefusal(): string | null {
+        const election = this.SelectedElection;
+        return election ? DescribeDistributionCreateRefusal(election.Status) : null;
     }
 
     /** Origin of the MJ API serving the ballot edge (/vote), derived from the GraphQL endpoint. */

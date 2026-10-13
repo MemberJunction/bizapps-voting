@@ -11,6 +11,7 @@ import { BaseEntity, EntityPermissionType, LogError, type ValidationResult } fro
 import { RegisterClass } from '@memberjunction/global';
 import {
     CanTransition,
+    DescribeDistributionCreateRefusal,
     IsConfigurationLocked,
     UndeclaredConfigurationKeys,
     ValidateResolvedConfiguration,
@@ -44,7 +45,6 @@ import {
     ComputeVoterRollViolations,
     DeriveElectionChangeAction,
     DescribeConfigurationLockRefusal,
-    DescribeDistributionCreateRefusal,
     DescribeResultWriteRefusal,
     GetDirtyFieldNames,
     GetDirtyOldValues,
