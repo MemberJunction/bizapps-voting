@@ -18,5 +18,6 @@
  * hand-written helpers in src/ (NOT src/generated/ — CodeGen owns that).
  */
 export * from './generated/entity_subclasses';
+export * from './generated/remote_operations';
 export * from './contracts/index.js';
 export { ElectionSubtypeDirectory, ElectionSubtypeResolver, LoadElectionSubtypeResolver } from './election-subtype-resolver.js';
