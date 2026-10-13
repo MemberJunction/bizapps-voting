@@ -1901,7 +1901,7 @@ EXEC sp_addextendedproperty
 GO
 EXEC sp_addextendedproperty
     @name = N'MS_Description',
-    @value = N'The voter''s selections as JSON: field-encrypted with MJ Encryption at tier A, ciphertext under the election public key at tiers B and C.',
+    @value = N'The voter''s selections, encrypted: an opaque ciphertext envelope (v1:a:… under the app selections key at tier A, v1:b:… under the election public key at tiers B and C). Never plaintext; only the tally engine decrypts it, after close.',
     @level0type = N'SCHEMA', @level0name = N'${flyway:defaultSchema}',
     @level1type = N'TABLE',  @level1name = N'CastBallot',
     @level2type = N'COLUMN', @level2name = N'Selections';
@@ -2633,6 +2633,11 @@ GO
 --   DO NOT EDIT BY HAND. If the hand-written DDL above changes, re-run CodeGen
 --   against a database at the previous schema state and replace this entire
 --   generated section.
+--
+--   Hand correction applied: CodeGen's field categorization marked
+--   Cast Ballots.Selections as ExtendedType 'JSON'. The column holds ciphertext, and
+--   MJ JSON-validates fields of that type on save, so every cast would be refused.
+--   That one ExtendedType assignment is removed from the UPDATE below.
 --
 -- =============================================================================
 -- =============================================================================
@@ -22413,7 +22418,7 @@ GO
             (SELECT COALESCE(MAX([Sequence]), 0) + 1 FROM [${mjSchema}].[EntityField] WHERE [EntityID] = '72CEA635-9CC3-4FEF-AA15-DD1BD344F87A'),
             'Selections',
             'Selections',
-            'The voter''s selections as JSON: field-encrypted with MJ Encryption at tier A, ciphertext under the election public key at tiers B and C.',
+            'The voter''s selections, encrypted: an opaque ciphertext envelope (v1:a:… under the app selections key at tier A, v1:b:… under the election public key at tiers B and C). Never plaintext; only the tally engine decrypts it, after close.',
             'nvarchar',
             -1,
             0,
@@ -41173,8 +41178,7 @@ WHERE
 UPDATE [${mjSchema}].[EntityField]
 SET 
    Category = 'Encrypted Selections',
-   GeneratedFormSection = 'Category',
-   ExtendedType = 'JSON'
+   GeneratedFormSection = 'Category'
 WHERE 
    ID = '4395204C-3495-4A4A-964B-BF4440116FEB';
 

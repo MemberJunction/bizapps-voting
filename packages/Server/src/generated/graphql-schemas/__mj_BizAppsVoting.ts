@@ -809,7 +809,7 @@ export class mjBizAppsVotingCastBallot_ {
     @MaxLength(64)
     ReceiptCode?: string;
         
-    @Field({nullable: true, description: "The voter's selections as JSON: field-encrypted with MJ Encryption at tier A, ciphertext under the election public key at tiers B and C."}) 
+    @Field({nullable: true, description: "The voter's selections, encrypted: an opaque ciphertext envelope (v1:a:… under the app selections key at tier A, v1:b:… under the election public key at tiers B and C). Never plaintext; only the tally engine decrypts it, after close."}) 
     Selections?: string;
         
     @Field({nullable: true, description: "The voter's voting class, needed to count class-limited contests. Reported only for classes of at least the election's minimum size."}) 

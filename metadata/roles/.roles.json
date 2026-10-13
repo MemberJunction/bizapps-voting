@@ -16,5 +16,14 @@
     "primaryKey": {
       "ID": "F64DACF3-0A57-4B79-83D4-FBB9DCF9C7D4"
     }
+  },
+  {
+    "fields": {
+      "Name": "Voting Ballot Engine",
+      "Description": "Held ONLY by the MemberJunction system user. Grants the voting engines (which run as the system user) read, create and update on the ballot-box entities: Cast Ballots, Ballot Selections, Contest Running Tallies and Ballot Attributions. No person, API key or other role may hold it: those entities are created with no other role permissions, so this role is what keeps every other principal out of the ballot box."
+    },
+    "primaryKey": {
+      "ID": "EAD218D5-C932-49DA-9A36-140B913FD587"
+    }
   }
 ]

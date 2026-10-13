@@ -5,6 +5,9 @@
   },
   "directoryOrder": [
     "schema-info",
-    "applications"
+    "applications",
+    "roles",
+    "entity-permissions",
+    "user-roles"
   ]
 }

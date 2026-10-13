@@ -18,6 +18,12 @@
           "isDefault": true
         },
         {
+          "Label": "My Ballot",
+          "Icon": "fa-solid fa-person-booth",
+          "ResourceType": "Custom",
+          "DriverClass": "VotingBallotResource"
+        },
+        {
           "Label": "Election Types",
           "Icon": "fa-solid fa-list",
           "ResourceType": "Custom",
@@ -41,7 +47,7 @@
       "MJ: Application Entities": []
     },
     "primaryKey": {
-      "ID": "832B6592-1851-483B-91EE-C7C87FE12C1D"
+      "ID": "4459E087-A883-41DF-99E8-1FE4F648FF8D"
     }
   }
 ]

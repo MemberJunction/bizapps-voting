@@ -276,7 +276,7 @@ export const mjBizAppsVotingCastBallotSchema = z.object({
         * * Field Name: Selections
         * * Display Name: Selections
         * * SQL Data Type: nvarchar(MAX)
-        * * Description: The voter's selections as JSON: field-encrypted with MJ Encryption at tier A, ciphertext under the election public key at tiers B and C.`),
+        * * Description: The voter's selections, encrypted: an opaque ciphertext envelope (v1:a:… under the app selections key at tier A, v1:b:… under the election public key at tiers B and C). Never plaintext; only the tally engine decrypts it, after close.`),
     VotingClass: z.string().nullable().describe(`
         * * Field Name: VotingClass
         * * Display Name: Voting Class
@@ -3178,7 +3178,7 @@ export class mjBizAppsVotingCastBallotEntity extends BaseEntity<mjBizAppsVotingC
     * * Field Name: Selections
     * * Display Name: Selections
     * * SQL Data Type: nvarchar(MAX)
-    * * Description: The voter's selections as JSON: field-encrypted with MJ Encryption at tier A, ciphertext under the election public key at tiers B and C.
+    * * Description: The voter's selections, encrypted: an opaque ciphertext envelope (v1:a:… under the app selections key at tier A, v1:b:… under the election public key at tiers B and C). Never plaintext; only the tally engine decrypts it, after close.
     */
     get Selections(): string {
         return this.Get('Selections');
