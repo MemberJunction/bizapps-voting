@@ -245,3 +245,6 @@ migrations/v*/*__RSU_*.sql
 # explicitly un-ignore this one subtree.
 !/templates/claude-pack/dist/
 !/templates/claude-pack/dist/**
+
+# <mj-ballot> element bundle (built by packages/AngularWidgets/scripts/build-element.mjs)
+dist-element/
