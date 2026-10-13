@@ -1,0 +1,50 @@
+[
+  {
+    "fields": {
+      "Name": "Voting Election Scheduler - every 5 minutes",
+      "Description": "Opens and closes elections on schedule.",
+      "JobTypeID": "@lookup:MJ: Scheduled Job Types.DriverClass=ElectionSchedulerJob",
+      "CronExpression": "0 */5 * * * *",
+      "Timezone": "UTC",
+      "Status": "Active",
+      "Configuration": {}
+    },
+    "primaryKey": {
+      "ID": "D1B7BEB7-0FA6-4742-AD57-471F00CB9289"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Voting Result Snapshot Publisher - every 5 minutes",
+      "Description": "Publishes running-results snapshots when each election's batch policy allows.",
+      "JobTypeID": "@lookup:MJ: Scheduled Job Types.DriverClass=ResultSnapshotPublisherJob",
+      "CronExpression": "0 */5 * * * *",
+      "Timezone": "UTC",
+      "Status": "Active",
+      "Configuration": {}
+    },
+    "primaryKey": {
+      "ID": "5783DCDB-B4FD-4757-A6DC-CE1830CB7893"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Voting Reminder Sender - hourly",
+      "Description": "Reminds non-voters at each election's reminder thresholds. Requires VOTING_EMAIL_PROVIDER and VOTING_EMAIL_FROM (or ProviderName/From in Configuration). Ships Disabled: enable it after configuring an email provider (VOTING_EMAIL_PROVIDER / VOTING_EMAIL_FROM or ProviderName / From in its Configuration).",
+      "JobTypeID": "@lookup:MJ: Scheduled Job Types.DriverClass=ReminderSenderJob",
+      "CronExpression": "0 0 * * * *",
+      "Timezone": "UTC",
+      "Status": "Disabled",
+      "Configuration": {
+        "DaysBeforeClose": [
+          7,
+          3,
+          1
+        ]
+      }
+    },
+    "primaryKey": {
+      "ID": "DF72E3D7-F332-478F-ADCD-2E60516C0413"
+    }
+  }
+]

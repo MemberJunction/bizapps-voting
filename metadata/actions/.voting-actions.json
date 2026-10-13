@@ -1,0 +1,516 @@
+[
+  {
+    "fields": {
+      "Name": "MJ_BizApps_Voting: Create Motion Vote",
+      "Description": "Creates a yes/no motion election with a single Motion contest via the Voting.CreateElection operation.",
+      "Type": "Custom",
+      "DriverClass": "CreateMotionVoteAction",
+      "Status": "Active",
+      "CategoryID": "@lookup:MJ: Action Categories.Name=Business Apps",
+      "CodeApprovalStatus": "Approved"
+    },
+    "relatedEntities": {
+      "MJ: Action Params": [
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "Name",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": true,
+            "Description": "Election name"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440001"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "MotionText",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": true,
+            "Description": "Text of the motion/resolution"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440002"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "AnchorEntityName",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Entity to link this election to (nullable)"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440003"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "AnchorRecordID",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Record ID in anchor entity (nullable)"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440004"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "EligibilitySourceCode",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": true,
+            "Description": "Code of the eligibility source type"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440005"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "EligibilitySourceSettings",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "JSON settings for the eligibility source"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440006"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "ClosesAt",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": true,
+            "Description": "ISO 8601 timestamp when voting closes"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440007"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "Threshold",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Threshold for passing (defaults to Majority)"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440008"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "ElectionTypeCode",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Code for election type (defaults to motion)"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440009"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "ElectionID",
+            "Type": "Output",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "ID of created election"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-44665544000a"
+          }
+        }
+      ]
+    },
+    "primaryKey": {
+      "ID": "550e8400-e29b-41d4-a716-446655440010"
+    }
+  },
+  {
+    "fields": {
+      "Name": "MJ_BizApps_Voting: Open Election",
+      "Description": "Transitions an election from Draft/Nominations/Ready status to Open.",
+      "Type": "Custom",
+      "DriverClass": "OpenElectionAction",
+      "Status": "Active",
+      "CategoryID": "@lookup:MJ: Action Categories.Name=Business Apps",
+      "CodeApprovalStatus": "Approved"
+    },
+    "relatedEntities": {
+      "MJ: Action Params": [
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "ElectionID",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": true,
+            "Description": "ID of the election to open"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440011"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "Status",
+            "Type": "Output",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Election status after the operation"
+          },
+          "primaryKey": {
+            "ID": "D3980B31-F0DA-4038-A8EF-B5BB428467FD"
+          }
+        }
+      ]
+    },
+    "primaryKey": {
+      "ID": "550e8400-e29b-41d4-a716-446655440012"
+    }
+  },
+  {
+    "fields": {
+      "Name": "MJ_BizApps_Voting: Close Election",
+      "Description": "Transitions an election from Open status to Closed.",
+      "Type": "Custom",
+      "DriverClass": "CloseElectionAction",
+      "Status": "Active",
+      "CategoryID": "@lookup:MJ: Action Categories.Name=Business Apps",
+      "CodeApprovalStatus": "Approved"
+    },
+    "relatedEntities": {
+      "MJ: Action Params": [
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "ElectionID",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": true,
+            "Description": "ID of the election to close"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440013"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "Status",
+            "Type": "Output",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Election status after the operation"
+          },
+          "primaryKey": {
+            "ID": "A96B77FF-69B4-45C4-B57A-1930CC7276DF"
+          }
+        }
+      ]
+    },
+    "primaryKey": {
+      "ID": "550e8400-e29b-41d4-a716-446655440014"
+    }
+  },
+  {
+    "fields": {
+      "Name": "MJ_BizApps_Voting: Get Turnout",
+      "Description": "Retrieves turnout statistics for an election.",
+      "Type": "Custom",
+      "DriverClass": "GetTurnoutAction",
+      "Status": "Active",
+      "CategoryID": "@lookup:MJ: Action Categories.Name=Business Apps",
+      "CodeApprovalStatus": "Approved"
+    },
+    "relatedEntities": {
+      "MJ: Action Params": [
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "ElectionID",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": true,
+            "Description": "ID of the election"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440015"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "VoterCount",
+            "Type": "Output",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Total eligible voters"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440016"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "TurnoutCount",
+            "Type": "Output",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Number of votes cast"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440017"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "TurnoutPercent",
+            "Type": "Output",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Percentage of eligible voters who voted"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440018"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "QuorumMet",
+            "Type": "Output",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Whether the election quorum has been met (null when no quorum configured)"
+          },
+          "primaryKey": {
+            "ID": "F6E3A4A8-CF93-4FEE-B343-0F0D5A6C42DF"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "TurnoutJSON",
+            "Type": "Output",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "JSON-serialized full turnout output, including breakdowns by channel and method"
+          },
+          "primaryKey": {
+            "ID": "23718E67-44FC-47E8-89BA-4D8DE42501C5"
+          }
+        }
+      ]
+    },
+    "primaryKey": {
+      "ID": "550e8400-e29b-41d4-a716-446655440019"
+    }
+  },
+  {
+    "fields": {
+      "Name": "MJ_BizApps_Voting: Get Election Results",
+      "Description": "Retrieves election results. The viewer (administrator, eligible, voted) is resolved server-side from the calling user; it cannot be supplied.",
+      "Type": "Custom",
+      "DriverClass": "GetElectionResultsAction",
+      "Status": "Active",
+      "CategoryID": "@lookup:MJ: Action Categories.Name=Business Apps",
+      "CodeApprovalStatus": "Approved"
+    },
+    "relatedEntities": {
+      "MJ: Action Params": [
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "ElectionID",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": true,
+            "Description": "ID of the election"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-44665544001a"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "ResultsJSON",
+            "Type": "Output",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "JSON-serialized election results"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-44665544001f"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "Visible",
+            "Type": "Output",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Whether results are visible to the calling user"
+          },
+          "primaryKey": {
+            "ID": "77EE2629-4C41-4293-BDC2-383489B2A3C0"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "IsFinal",
+            "Type": "Output",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Whether the results are final"
+          },
+          "primaryKey": {
+            "ID": "B10106D5-4B1C-42B7-B7E4-5086565F56B7"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "Reason",
+            "Type": "Output",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Why results are not visible, when Visible is false"
+          },
+          "primaryKey": {
+            "ID": "39499FCF-E8AF-4705-A5C4-E0683681A8C7"
+          }
+        }
+      ]
+    },
+    "primaryKey": {
+      "ID": "550e8400-e29b-41d4-a716-446655440020"
+    }
+  },
+  {
+    "fields": {
+      "Name": "MJ_BizApps_Voting: Tally Election",
+      "Description": "Tallies the votes for a closed election.",
+      "Type": "Custom",
+      "DriverClass": "TallyElectionAction",
+      "Status": "Active",
+      "CategoryID": "@lookup:MJ: Action Categories.Name=Business Apps",
+      "CodeApprovalStatus": "Approved"
+    },
+    "relatedEntities": {
+      "MJ: Action Params": [
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "ElectionID",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": true,
+            "Description": "ID of the closed election"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440021"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "TieBreakSeed",
+            "Type": "Input",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Optional seed for tie-breaking randomization"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440022"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "Status",
+            "Type": "Output",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "Election status after tally"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440023"
+          }
+        },
+        {
+          "fields": {
+            "ActionID": "@parent:ID",
+            "Name": "ContestsJSON",
+            "Type": "Output",
+            "ValueType": "Scalar",
+            "IsArray": false,
+            "IsRequired": false,
+            "Description": "JSON-serialized contest outcomes"
+          },
+          "primaryKey": {
+            "ID": "550e8400-e29b-41d4-a716-446655440024"
+          }
+        }
+      ]
+    },
+    "primaryKey": {
+      "ID": "550e8400-e29b-41d4-a716-446655440025"
+    }
+  }
+]

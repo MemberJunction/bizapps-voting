@@ -1,0 +1,15 @@
+[
+  {
+    "fields": {
+      "Name": "Voting Election Scheduler",
+      "Description": "Opens Ready elections whose OpensAt has arrived and closes Open elections whose ClosesAt has passed. Idempotent.",
+      "DriverClass": "ElectionSchedulerJob",
+      "DomainRunEntity": null,
+      "DomainRunEntityFKey": null,
+      "NotificationsAvailable": true
+    },
+    "primaryKey": {
+      "ID": "29C0C27E-8797-4104-A0D3-B30E8947766F"
+    }
+  }
+]
