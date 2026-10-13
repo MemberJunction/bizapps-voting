@@ -19,6 +19,7 @@ import {
     type ServerExtensionConfig,
 } from '@memberjunction/server-extensions-core';
 import { UserCache } from '@memberjunction/generic-database-provider';
+import { configInfo } from '@memberjunction/server';
 import type { mjBizAppsVotingBallotDistributionEntity } from '@mj-biz-apps/voting-entities';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -42,7 +43,7 @@ import {
     type EdgeRequest,
     type EdgeResponse,
 } from './edge-core.js';
-import { ElementAssetHeaders, IsValidSlug, ParseAllowedOrigins, ResolveClientIp } from './edge-policy.js';
+import { ElementAssetHeaders, IsValidSlug, NormalizeGraphQLPath, ParseAllowedOrigins, ResolveClientIp, ResolveGraphQLUrl } from './edge-policy.js';
 import { BuildHostErrorResponse, BuildHostPageResponse, type HostPageResponse } from './host-page.js';
 import { FixedWindowRateLimiter } from './rate-limiter.js';
 import { MAX_BODY_LIMIT } from './request-validation.js';
@@ -62,6 +63,8 @@ interface BallotEdgeSettings extends MintSettings {
     RateLimitMaxGlobal?: number;
     /** Reverse proxies that append to X-Forwarded-For. 0 (default) uses the socket address. */
     TrustedProxyHops?: number;
+    /** Absolute GraphQL URL to advertise in /info when the public address differs from what the request shows (gateways). */
+    GraphQLUrl?: string;
 }
 
 const requireFromHere = createRequire(import.meta.url);
@@ -151,6 +154,7 @@ export class BallotEdgeExtension extends BaseServerExtension {
             Ip: ResolveClientIp(req, this.settings.TrustedProxyHops ?? 0),
             Origin: typeof origin === 'string' ? origin : undefined,
             Host: typeof host === 'string' ? host : undefined,
+            Protocol: req.protocol,
         };
     }
 
@@ -204,7 +208,7 @@ export class BallotEdgeExtension extends BaseServerExtension {
             this.sendHtml(
                 res,
                 BuildHostPageResponse(
-                    { Slug: slug, ApiRoot: this.rootPath, ElementSrc: resolveElementDir() ? `${this.rootPath}/element/main.js` : undefined, Title: dist.ElectionName },
+                    { Slug: slug, ApiRoot: this.rootPath, GraphQLUrl: this.graphQLPath(), ElementSrc: resolveElementDir() ? `${this.rootPath}/element/main.js` : undefined, Title: dist.ElectionName },
                     dist.AllowedOrigins
                 )
             );
@@ -226,11 +230,17 @@ export class BallotEdgeExtension extends BaseServerExtension {
                     : { Ok: true, ElectionID: result.Value.ElectionID, EligibleVoterID: result.Value.EligibleVoterID };
             },
             Mint: (electionID, voterID) => MintBallotSession(electionID, voterID, this.settings),
+            GraphQLUrl: (req) => ResolveGraphQLUrl({ Configured: this.settings.GraphQLUrl, RootPath: configInfo.graphqlRootPath, Protocol: req.Protocol, Host: req.Host }),
             Limiter: this.limiter,
             RateMax: this.settings.RateLimitMax ?? DEFAULT_RATE_MAX,
             RateMaxGlobal: this.settings.RateLimitMaxGlobal ?? DEFAULT_RATE_MAX_GLOBAL,
             Log: (m) => LogStatus(m),
         };
+    }
+
+    /** MJ's GraphQL route as a path. The first-party page is served by the same server, so a path is exact and cannot be spoofed through the Host header. */
+    private graphQLPath(): string {
+        return NormalizeGraphQLPath(configInfo.graphqlRootPath);
     }
 
     private systemContext(): VotingContext {

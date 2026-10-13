@@ -157,3 +157,30 @@ export function CorsHeaders(origin: string): Record<string, string> {
         'Access-Control-Max-Age': '600',
     };
 }
+
+/**
+ * MJ's GraphQL route as a path: the server's `graphqlRootPath` (default `/`) with a leading slash and no stray whitespace.
+ * This is the route the GraphQL endpoint is mounted on; it is not `{edge root}/graphql`.
+ */
+export function NormalizeGraphQLPath(rootPath: string | null | undefined): string {
+    const trimmed = (rootPath ?? '').trim();
+    if (!trimmed) return '/';
+    return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+}
+
+const HOST_PATTERN = /^[A-Za-z0-9.-]+(:\d{1,5})?$|^\[[0-9A-Fa-f:.]+\](:\d{1,5})?$/;
+
+/**
+ * The absolute GraphQL URL a cross-origin embed should use, for GET /:slug/info.
+ * An operator-configured URL (`GraphQLUrl` extension setting, for deployments behind a gateway) wins; otherwise it is the
+ * scheme and Host the voter reached us on, plus the server's GraphQL path. An unusable Host yields undefined (the element
+ * then falls back to `{origin}/graphql`) rather than an echoed, attacker-shaped value.
+ */
+export function ResolveGraphQLUrl(o: { Configured?: string; RootPath?: string | null; Protocol?: string; Host?: string }): string | undefined {
+    const configured = o.Configured?.trim();
+    if (configured) return /^https?:\/\/[^\s]+$/i.test(configured) ? configured : undefined;
+    const host = o.Host?.trim();
+    if (!host || !HOST_PATTERN.test(host)) return undefined;
+    const scheme = o.Protocol?.toLowerCase() === 'http' ? 'http' : 'https';
+    return `${scheme}://${host}${NormalizeGraphQLPath(o.RootPath)}`;
+}

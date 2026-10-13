@@ -3,7 +3,7 @@ import { configFromAttributes, inputsFromAttributes, effectOf } from '../element
 
 describe('element-attributes', () => {
   describe('configFromAttributes', () => {
-    it('should read api-root and build graphqlUrl', () => {
+    it('should read api-root and leave graphqlUrl unset (never derived from api-root)', () => {
       const read = (name: string) => {
         const attrs: Record<string, string> = { 'api-root': 'https://api.example.com/vote' };
         return attrs[name] || null;
@@ -12,7 +12,7 @@ describe('element-attributes', () => {
       const config = configFromAttributes(read);
 
       expect(config.apiRoot).toBe('https://api.example.com/vote');
-      expect(config.graphqlUrl).toContain('vote/graphql');
+      expect(config.graphqlUrl).toBeUndefined();
     });
 
     it('should use defaults when attributes are missing', () => {
@@ -20,7 +20,7 @@ describe('element-attributes', () => {
 
       expect(config.apiRoot).toBe('/vote');
       expect(config.language).toBeUndefined();
-      expect(config.graphqlUrl).toBe('/vote/graphql');
+      expect(config.graphqlUrl).toBeUndefined();
     });
 
     it('should honour an explicit graphql-url over the api-root default', () => {

@@ -8,6 +8,7 @@ import {
   GENERAL_COMMENT_KEY,
   classifyMyBallot,
   resolveLanguage,
+  ResolveGraphqlUrl,
   type CommentDraft,
 } from '../api/ballot-flow';
 import { BallotApiError } from '../api/ballot-api.client';
@@ -211,6 +212,31 @@ describe('StandardsItem comments', () => {
     expect(inputOf(1)).toMatchObject({
       Submission: { Contests: [{ ContestID: 'c1', Comments: [{ CommentType: 'General', Comment: 'Because' }] }] },
     });
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('GraphQL endpoint resolution', () => {
+  it('prefers the attribute, then the info endpoint, then {origin}/, and never {apiRoot}/graphql', () => {
+    const info = { ElectionName: 'E', AllowedMethods: [], Theme: null, DefaultLanguage: 'en', GraphQLUrl: 'https://mj.example.com/' };
+    expect(ResolveGraphqlUrl('https://attr.example.com/gql', info, 'https://page.example.com')).toBe('https://attr.example.com/gql');
+    expect(ResolveGraphqlUrl(undefined, info, 'https://page.example.com')).toBe('https://mj.example.com/');
+    expect(ResolveGraphqlUrl('  ', { ...info, GraphQLUrl: undefined }, 'https://page.example.com')).toBe('https://page.example.com/');
+    expect(ResolveGraphqlUrl(undefined, undefined, 'https://page.example.com')).toBe('https://page.example.com/');
+  });
+
+  it('an embed that sets only api-root sends operations to the GraphQLUrl from /info', async () => {
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+    fetchMock
+      .mockResolvedValueOnce(json({ ElectionName: 'E', AllowedMethods: ['emailed-link'], Theme: null, DefaultLanguage: 'en', GraphQLUrl: 'https://mj.example.com/' }))
+      .mockResolvedValueOnce(json({ Token: 'jwt', ExpiresAt: '2030-01-01T00:00:00Z', ElectionID: 'e1' }))
+      .mockResolvedValueOnce(op({ Success: true, ReceiptCode: 'R' }));
+    const flow = new BallotFlow({ apiRoot: 'https://edge.example.com/vote' }, 's');
+    await flow.LoadInfo();
+    await flow.SignIn('emailed-link', { Token: 't' });
+    await flow.Cast(styleIn('en', 'h'), { Contests: [] }, 'en');
+    expect(String(fetchMock.mock.calls[2][0])).toBe('https://mj.example.com/');
     vi.unstubAllGlobals();
   });
 });

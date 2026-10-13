@@ -103,6 +103,8 @@ export interface DistributionInfo {
   AllowedMethods: string[];
   Theme: Record<string, unknown> | null;
   DefaultLanguage: string;
+  /** MJ's GraphQL endpoint as the edge knows it (absolute). Lets an embed that sets only `api-root` find the operations. */
+  GraphQLUrl?: string;
 }
 
 /** The credential bodies the edge accepts (only these fields are read; anything else is ignored server-side). */

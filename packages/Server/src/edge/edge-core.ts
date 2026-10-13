@@ -48,6 +48,8 @@ export interface EdgeDeps {
     Verify(distribution: DistributionRecord, methodCode: string, credential: VoterCredentialPresentation): Promise<VerifyOutcome>;
     /** May throw when the deployment cannot mint; the handler reports a generic 503. */
     Mint(electionID: string, eligibleVoterID: string): MintedBallotSession;
+    /** MJ's GraphQL endpoint as a third-party embed should reach it (absolute); undefined when it can't be told. */
+    GraphQLUrl(req: EdgeRequest): string | undefined;
     Limiter: RateLimitStore;
     /** Max requests per window per (IP, slug), and per IP across slugs. */
     RateMax: number;
@@ -60,6 +62,8 @@ export interface EdgeRequest {
     Ip: string;
     Origin?: string;
     Host?: string;
+    /** `http` or `https`, as the request reached us (Express resolves proxy headers per its trust setting). */
+    Protocol?: string;
 }
 
 export interface EdgeResponse {
@@ -131,6 +135,7 @@ export async function HandleInfo(deps: EdgeDeps, req: EdgeRequest, slug: string)
             AllowedMethods: dist.AllowedMethods,
             Theme: dist.Theme,
             DefaultLanguage: dist.DefaultLanguage,
+            GraphQLUrl: deps.GraphQLUrl(req),
         },
     };
 }

@@ -26,7 +26,20 @@ import type {
 
 export interface BallotFlowConfig {
   apiRoot: string;
-  graphqlUrl: string;
+  /** The `graphql-url` attribute, when set. */
+  graphqlUrl?: string;
+}
+
+/**
+ * Where the operations go, in order: the `graphql-url` attribute, the info endpoint's GraphQLUrl, then `{origin}/` (MJ's default graphqlRootPath is `/`).
+ * Never `{apiRoot}/graphql`: the edge root is not MJ's GraphQL endpoint.
+ */
+export function ResolveGraphqlUrl(attribute: string | undefined, info: DistributionInfo | undefined, origin: string): string {
+  return attribute?.trim() || info?.GraphQLUrl?.trim() || `${origin}/`;
+}
+
+function currentOrigin(): string {
+  return typeof location !== 'undefined' ? location.origin : '';
 }
 
 /** What to show after GetMyBallot. */
@@ -99,7 +112,7 @@ export class BallotFlow {
     this.electionId = session.ElectionID;
     this.client = new BallotApiClient({
       apiRoot: this.config.apiRoot,
-      graphqlUrl: this.config.graphqlUrl,
+      graphqlUrl: ResolveGraphqlUrl(this.config.graphqlUrl, this.info, currentOrigin()),
       token: session.Token,
     });
   }

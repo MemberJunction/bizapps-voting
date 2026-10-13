@@ -26,3 +26,18 @@ export { overlayDescriptors, assembleElectionContributions } from './lib/base-el
 export { BaseElectionAdminTab } from './lib/base-election-admin-tab';
 export { BaseElectionSetupStep } from './lib/base-election-setup-step';
 export { BaseElectionResultsView } from './lib/base-election-results-view';
+
+// Standards Ballot election type (UI driver, document step, comments results view)
+export {
+  StandardsBallotUIDriver,
+  STANDARDS_BALLOT_TYPE_CODE,
+  STANDARDS_BALLOT_EXTENSION_ENTITY,
+  STANDARDS_BALLOT_DETAILS_COMPONENT,
+  STANDARDS_BALLOT_COMMENTS_COMPONENT,
+} from './lib/standards-ballot-ui-driver';
+export { StandardsBallotDetailsStepComponent } from './lib/standards-ballot-details-step';
+export { StandardsBallotCommentsViewComponent } from './lib/standards-ballot-comments-view';
+export { StandardsDetailsIssues } from './lib/standards-ballot-details-rules';
+export type { StandardsDetailsValues, PriorBallotOption } from './lib/standards-ballot-details-rules';
+export { BuildCommentRows, SummarizeComments } from './lib/standards-ballot-comment-rows';
+export type { CommentRow, CommentSummary, CommentRowSource, ResolutionRowSource, ContestRowSource } from './lib/standards-ballot-comment-rows';

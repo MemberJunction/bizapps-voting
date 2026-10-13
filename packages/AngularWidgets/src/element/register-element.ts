@@ -10,7 +10,7 @@
  * Attributes:
  * - `slug` (required): the election distribution slug
  * - `api-root` (optional): API root path, defaults to `${location.origin}/vote`
- * - `graphql-url` (optional): GraphQL endpoint
+ * - `graphql-url` (optional): GraphQL endpoint; when absent the edge's info endpoint (GraphQLUrl) is used, then `${location.origin}/` (MJ's default GraphQL root), never `${api-root}/graphql`
  * - `host-assertion` (optional): RS256 host identity assertion
  * - `email` (optional): pre-filled voter email
  * - `language` (optional): ballot language (defaults to 'en')

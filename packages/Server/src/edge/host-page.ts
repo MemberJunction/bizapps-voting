@@ -11,6 +11,8 @@ export interface HostPageOptions {
     /** The edge root path, e.g. `/vote`. */
     ApiRoot: string;
     Nonce: string;
+    /** MJ's GraphQL route on this origin (a path such as `/`); rendered as the element's graphql-url. Omitted: the element finds it via /info. */
+    GraphQLUrl?: string;
     /** Where the element bundle is served; omitted when the bundle is not built (the page then says so). */
     ElementSrc?: string;
     Title?: string;
@@ -42,7 +44,7 @@ export function RenderHostPage(o: HostPageOptions): string {
     const title = EscapeHtml(o.Title ?? 'Ballot');
     const nonce = EscapeAttr(o.Nonce);
     const body = o.ElementSrc
-        ? `<mj-ballot slug="${EscapeAttr(o.Slug)}" api-root="${EscapeAttr(o.ApiRoot)}"></mj-ballot>`
+        ? `<mj-ballot slug="${EscapeAttr(o.Slug)}" api-root="${EscapeAttr(o.ApiRoot)}"${o.GraphQLUrl ? ` graphql-url="${EscapeAttr(o.GraphQLUrl)}"` : ''}></mj-ballot>`
         : '<p class="notice" role="alert">The ballot is not available right now.</p>';
     const script = o.ElementSrc ? `\n  <script type="module" src="${EscapeAttr(o.ElementSrc)}" nonce="${nonce}"></script>` : '';
     return `<!doctype html>

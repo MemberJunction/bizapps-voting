@@ -8,6 +8,7 @@ import {
     type EdgeRequest,
     type VerifyOutcome,
 } from '../edge/edge-core.js';
+import { NormalizeGraphQLPath, ResolveGraphQLUrl } from '../edge/edge-policy.js';
 import { FixedWindowRateLimiter } from '../edge/rate-limiter.js';
 import { BuildHostPageResponse, RenderHostPage } from '../edge/host-page.js';
 
@@ -33,6 +34,7 @@ function deps(over: Partial<EdgeDeps> = {}): EdgeDeps & { logs: string[] } {
         LoadDistribution: async () => dist(),
         Verify: async (): Promise<VerifyOutcome> => ({ Ok: true, ElectionID: 'e1', EligibleVoterID: 'v1' }),
         Mint: () => ({ Token: 'jwt.token.value', ExpiresAt: '2030-01-01T00:00:00.000Z' }),
+        GraphQLUrl: (r) => ResolveGraphQLUrl({ RootPath: '/', Protocol: r.Protocol, Host: r.Host }),
         Limiter: new FixedWindowRateLimiter(60_000),
         RateMax: 5,
         RateMaxGlobal: 50,
@@ -49,7 +51,12 @@ describe('GET info', () => {
     it('returns only the public fields for an Active distribution of an Open election', async () => {
         const r = await HandleInfo(deps(), req(), 'board-2027');
         expect(r.Status).toBe(200);
-        expect(r.Body).toEqual({ ElectionName: 'Board Election', AllowedMethods: ['emailed-link'], Theme: { primary: '#123456' }, DefaultLanguage: 'en' });
+        expect(r.Body).toEqual({ ElectionName: 'Board Election', AllowedMethods: ['emailed-link'], Theme: { primary: '#123456' }, DefaultLanguage: 'en', GraphQLUrl: 'https://api.example.org/' });
+    });
+    it('advertises MJ\'s GraphQL endpoint, never the edge root, so an embed that sets only api-root works', async () => {
+        const r = await HandleInfo(deps({ GraphQLUrl: () => 'https://mj.example.org/graphql' }), req(), 'board-2027');
+        expect((r.Body as { GraphQLUrl?: string }).GraphQLUrl).toBe('https://mj.example.org/graphql');
+        expect(JSON.stringify(r.Body)).not.toContain('/vote/graphql');
     });
     it('404s unknown, inactive, non-open and reserved slugs', async () => {
         expect((await HandleInfo(deps({ LoadDistribution: async () => null }), req(), 'x')).Status).toBe(404);
@@ -173,6 +180,14 @@ describe('host page', () => {
         expect(html).toContain('<script type="module" src="/vote/element/main.js" nonce="N0nce"></script>');
         expect(html).not.toContain('<script>');
     });
+    it('renders graphql-url when the edge knows the GraphQL route, and omits it otherwise', () => {
+        const withUrl = RenderHostPage({ Slug: 's', ApiRoot: '/vote', Nonce: 'n', ElementSrc: '/vote/element/main.js', GraphQLUrl: '/api/graphql' });
+        expect(withUrl).toContain('<mj-ballot slug="s" api-root="/vote" graphql-url="/api/graphql"></mj-ballot>');
+        const without = RenderHostPage({ Slug: 's', ApiRoot: '/vote', Nonce: 'n', ElementSrc: '/vote/element/main.js' });
+        expect(without).not.toContain('graphql-url');
+        const escaped = RenderHostPage({ Slug: 's', ApiRoot: '/vote', Nonce: 'n', ElementSrc: '/x.js', GraphQLUrl: '/"><script>' });
+        expect(escaped).not.toContain('<script>');
+    });
     it('sends a fresh nonce in both the CSP and the markup, with frame-ancestors from the origins', () => {
         const a = BuildHostPageResponse({ Slug: 's', ApiRoot: '/vote', ElementSrc: '/vote/element/main.js' }, ['https://members.example.org']);
         const b = BuildHostPageResponse({ Slug: 's', ApiRoot: '/vote', ElementSrc: '/vote/element/main.js' }, []);
@@ -183,5 +198,27 @@ describe('host page', () => {
         expect(a.Headers['Content-Security-Policy']).toContain('frame-ancestors https://members.example.org');
         expect(b.Headers['Content-Security-Policy']).toContain("frame-ancestors 'none'");
         expect(a.Headers['Referrer-Policy']).toBe('no-referrer');
+    });
+});
+
+describe('GraphQL URL resolution', () => {
+    it('normalises the server GraphQL root path', () => {
+        expect(NormalizeGraphQLPath(undefined)).toBe('/');
+        expect(NormalizeGraphQLPath('')).toBe('/');
+        expect(NormalizeGraphQLPath('/')).toBe('/');
+        expect(NormalizeGraphQLPath('graphql')).toBe('/graphql');
+        expect(NormalizeGraphQLPath(' /api/graphql ')).toBe('/api/graphql');
+    });
+    it('uses the configured URL, else scheme + host + path; never the edge root', () => {
+        expect(ResolveGraphQLUrl({ Configured: 'https://gw.example.org/graphql', RootPath: '/', Host: 'x.example.org' })).toBe('https://gw.example.org/graphql');
+        expect(ResolveGraphQLUrl({ RootPath: '/graphql', Protocol: 'http', Host: 'localhost:4103' })).toBe('http://localhost:4103/graphql');
+        expect(ResolveGraphQLUrl({ RootPath: '/', Protocol: 'https', Host: 'api.example.org' })).toBe('https://api.example.org/');
+        expect(ResolveGraphQLUrl({ RootPath: '/', Host: 'api.example.org' })).toBe('https://api.example.org/');
+    });
+    it('refuses an unusable host or configured value rather than echoing it', () => {
+        expect(ResolveGraphQLUrl({ RootPath: '/', Host: 'evil.example/path?x' })).toBeUndefined();
+        expect(ResolveGraphQLUrl({ RootPath: '/', Host: 'a b' })).toBeUndefined();
+        expect(ResolveGraphQLUrl({ RootPath: '/' })).toBeUndefined();
+        expect(ResolveGraphQLUrl({ Configured: 'javascript:alert(1)', RootPath: '/', Host: 'ok.example.org' })).toBeUndefined();
     });
 });

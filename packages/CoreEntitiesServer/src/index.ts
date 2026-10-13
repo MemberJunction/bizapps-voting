@@ -31,6 +31,7 @@ import {
     EligibleVoterEntityServer,
     ParticipationEntityServer,
 } from './entity-servers.js';
+import { StandardsBallotServerDriver } from './drivers/standards-ballot-server-driver.js';
 
 // Write guards for ballot box and tally
 export { BallotBoxWriteGuard, TallyWriteGuard } from './write-guards.js';
@@ -50,6 +51,24 @@ export type {
     ElectionResultsContext,
 } from './drivers/base-election-type-server-driver.js';
 export { ElectionTypeDriverRegistry } from './drivers/election-type-driver-registry.js';
+export {
+    StandardsBallotServerDriver,
+    RunViewStandardsBallotFactSource,
+    STANDARDS_BALLOT_EXTENSION_ENTITY,
+    ApproveOptionOf,
+    DisapproveOptionOf,
+    StandardsContestShapeIssues,
+    StandardsStyleIssues,
+    StandardsCastIssues,
+    StandardsExtensionIssues,
+} from './drivers/standards-ballot-server-driver.js';
+export type {
+    StandardsBallotFactSource,
+    StandardsContestFacts,
+    StandardsOptionFacts,
+    StandardsExtensionFacts,
+    PriorElectionFacts,
+} from './drivers/standards-ballot-server-driver.js';
 
 // Invariant helpers (the state machine and lock rule themselves live in @mj-biz-apps/voting-entities)
 export {
@@ -93,6 +112,7 @@ export function LoadBizAppsVotingEntitiesServer(): void {
         ContestResultEntityServer,
         ContestOptionResultEntityServer,
         ElectionTypeEntityServer,
+        StandardsBallotServerDriver,
     ];
     void classes;
 }

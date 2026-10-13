@@ -8,7 +8,8 @@
 
 export interface BallotApiConfig {
   apiRoot: string;
-  graphqlUrl: string;
+  /** Explicit `graphql-url` attribute; when absent the flow uses the info endpoint's GraphQLUrl, then `{origin}/` (MJ's default graphqlRootPath). Never derived from apiRoot. */
+  graphqlUrl?: string;
   hostAssertion?: string;
   email?: string;
   /** Explicit ballot language; when absent the distribution's DefaultLanguage (else 'en') applies. */
@@ -55,7 +56,7 @@ export function configFromAttributes(read: (name: string) => string | null): Bal
   const apiRoot = read('api-root') || `${typeof location !== 'undefined' ? location.origin : ''}/vote`;
   return {
     apiRoot,
-    graphqlUrl: read('graphql-url') || `${apiRoot}/graphql`,
+    graphqlUrl: read('graphql-url') || undefined,
     hostAssertion: read('host-assertion') ?? undefined,
     email: read('email') ?? undefined,
     language: read('language') || undefined,
