@@ -48,7 +48,6 @@ import {
     IsValidSlug,
     NormalizeGraphQLPath,
     ParseAllowedOrigins,
-    PromoteLastLayerToFront,
     ResolveClientIp,
     ResolveGraphQLUrl,
     StripHostResponseHeaders,
@@ -129,12 +128,11 @@ export class BallotEdgeExtension extends BaseServerExtension {
             LogStatus(`[Voting] Ballot element served from ${elementDir} at GET ${root}/element/main.js`);
         }
 
-        // The edge owns its namespace's CORS and fingerprinting. The host's global CORS middleware (mounted before every
-        // extension) reflects any Origin and answers every preflight itself, and Express stamps X-Powered-By on every response;
-        // neither may reach a /vote response. Preflights are decided ahead of the host middleware; everything else is cleaned
-        // here, before the edge's own handlers set exactly the grants its policy allows.
+        // The edge owns its namespace's CORS and fingerprinting. The extension declares OwnsCORS, so MJ's global CORS
+        // middleware skips /vote and every preflight reaches the gate below. Anything the host still set (Express stamps
+        // X-Powered-By on every response; a host that ignores OwnsCORS would add its own grants) is cleaned here, before the
+        // edge's own handlers set exactly the grants its policy allows.
         app.use(root, (req: Request, res: Response, next: NextFunction) => this.preflightGate(req, res, next));
-        if (!PromoteLastLayerToFront(app)) LogError('[VotingBallotEdge] Could not order the preflight gate ahead of the host CORS middleware; the host answers /vote preflights.');
         app.use(root, (_req: Request, res: Response, next: NextFunction) => {
             StripHostResponseHeaders(res);
             next();

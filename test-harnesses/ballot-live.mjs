@@ -87,13 +87,6 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const cast = await wire.WireCast.Create();
 const admin = await cast.As('admin');
 
-// MJ's EntityInfo.ChildEntities (the IS-A child list EnsureISAChild consults) reads the GLOBAL metadata provider, and every
-// wire identity is a separate provider, so without a global one no IS-A child resolves for anybody. Register the
-// least-privileged persona as the global provider: metadata lookups work, and anything that silently falls back to the
-// global provider runs with an ordinary member's rights rather than an administrator's or the system's.
-const coreModule = await importResolved('@memberjunction/core');
-(coreModule.default ?? coreModule).Metadata.Provider = (await cast.As('outsider')).Provider;
-
 function must(what, result) {
     return wire.MustSucceed(what, result);
 }

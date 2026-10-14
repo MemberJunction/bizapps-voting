@@ -102,19 +102,11 @@ Only limitations verified in the code are listed.
 
 ## Caching
 
-- **A client can be served its own pre-write rows for up to 5 seconds after a Remote Operation wrote** (confirmed by
-  `wire-lifecycle.WL24`; MJ core behaviour, not voting's). MJ's `ProviderBase` (`MJCore/src/generic/providerBase.ts`)
-  keeps a **dedup-linger** replay: an identical `RunView`/`RunViews` request resolved within `ProviderBase.DedupLingerMs`
-  (default 5000 ms) is answered from the earlier result with no server round trip (`runViewsUncoalesced`, "Linger hit").
-  The replay is dropped only by a `BaseEntity` save/delete/`remote-invalidate` event raised **in the client process**
-  (`invalidateInflightViewsForEntity`). A Remote Operation saves on the server, so the client sees no save event; a
-  `remote-invalidate` reaches a client only through the GraphQL `cacheInvalidation` subscription, which MJAPI publishes
-  from Redis pub/sub (`MJServer/src/generic/CacheInvalidationResolver.ts`), i.e. not at all on a single instance without
-  Redis, nor for a client without a websocket. Verified over the wire: the same read passes with
-  `ProviderBase.DedupLingerMs = 0` and fails at the default. Nothing in MJ was patched; the fix belongs in MJ (for example,
-  dropping the linger entries of the entities an operation touched when `RouteOperation` returns, or not lingering across a
-  mutating Remote Operation). Clients that need ground truth immediately after an operation pass `BypassCache: true`, which
-  also bypasses the linger replay.
+- **A client reads its own writes straight after a Remote Operation** (confirmed by `wire-lifecycle.WL24`, which reads
+  immediately after each lifecycle operation). MJ's `ProviderBase` keeps a short **dedup-linger** replay of identical
+  `RunView`/`RunViews` requests (`ProviderBase.DedupLingerMs`), and from MJ `6.2.0-edge.4` the GraphQL provider drops it
+  when any mutation completes. A Remote Operation does not name the entities it wrote, so the whole replay is dropped; that
+  costs at most one extra round trip per read that follows an operation.
 - **The server side is fresh.** After a freeze, open, close, cancel, nominations change or certification has committed, the
   operation awaits `RefreshCachedViews` (`packages/Server/src/shared/cache-refresh.ts`), which calls
   `LocalCacheManager.InvalidateEntityCaches` for the entities it changed. MJ's own maintenance of the server cache is

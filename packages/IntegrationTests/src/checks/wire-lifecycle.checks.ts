@@ -28,8 +28,8 @@
  *   WL21  CreateElection validation refusals carry their reasons
  *   WL22  OpenElection readiness refusals (trustee ceremony missing, verifiable provider missing)
  *   WL23  the audit trail records the lifecycle and never contains ballot content
- *   WL24  a plain (cache-allowed) RunView of the election sees each lifecycle transition (server cache is invalidated by the
- *         operation; the client's own MJ dedup-linger window is waited out, see docs/voting/known-limitations.md "Caching")
+ *   WL24  a plain (cache-allowed) RunView of the election, read straight after each lifecycle operation, sees the transition
+ *         (the operation invalidates the server cache; the client provider drops its dedup-linger replay on the mutation)
  *   WL25  nominations: open, nominate, decide (approve creates the ballot option), close, then vote for the nominee
  *   WL26  challenging a voter on the roll (reason required, admin only) removes them from the electorate
  *   WL27  AllowWriteIn on a contest spec gives the ballot exactly one write-in option; a write-in vote is cast and counted
@@ -37,7 +37,6 @@
  *   WL29  no ballot distribution can be created for a Closed, Tallied, Certified or Cancelled election
  *   WL30  audit events of voter operations name the acting voter (nominations by a member persona)
  */
-import { ProviderBase } from '@memberjunction/core';
 import { Assert, AssertEqual, IntegrationCheckRegistry, type NamedCheck } from '@memberjunction/testing-integration/registry';
 import {
     VotingAmendRollOperation,
@@ -737,20 +736,13 @@ const checks: NamedCheck[] = [
         Fn: async () => {
             const E = await CreateDraftElection(C(), A(), { TypeCode: 'motion', Name: Tagged('Wire freshness'), Voters: [PersonaVoter(C(), 'member1', 0), PersonaVoter(C(), 'member2', 1)], Contests: [MotionSpec('Freshness')], Extra: { SecrecyMode: 'Secret' } });
             created.push(E);
-            // What this proves: the SERVER serves no stale election after an operation's write (the operations drop the
-            // server's cached Elections views once their work commits, RefreshCachedViews). What it must step around: MJ's
-            // CLIENT provider replays an identical RunView resolved within ProviderBase.DedupLingerMs (5 s by default) and
-            // only drops that replay on a BaseEntity event raised in the client process. A write made on the server by a Remote
-            // Operation raises none there (no cache-invalidation subscription without Redis + websockets), so an immediate
-            // identical read can be served the pre-write rows by the client itself. That is MJ core behaviour, documented in
-            // docs/voting/known-limitations.md ("Caching"); each read below therefore waits out this client's linger window
-            // since its previous identical read, and then must reflect the transition.
-            let lastRead = 0;
+            // What this proves, back to back with no wait: the SERVER serves no stale election after an operation's write
+            // (the operations drop the server's cached Elections views once their work commits, RefreshCachedViews), and the
+            // CLIENT does not replay a pre-write result either: MJ's provider drops its RunView dedup-linger entries when a
+            // GraphQL mutation (every Remote Operation is one) completes, so an identical read straight after an operation
+            // goes back to the server.
             const plain = async (): Promise<{ Status: string; RollFrozenAt: string | null }> => {
-                const wait = lastRead + ProviderBase.DedupLingerMs + 100 - Date.now();
-                if (wait > 0) await new Promise((r) => setTimeout(r, wait));
                 const res = await A().RunView<{ Status: string; RollFrozenAt: string | null }>({ EntityName: 'MJ_BizApps_Voting: Elections', ExtraFilter: `ID = '${E.ElectionID}'`, Fields: ['Status', 'RollFrozenAt'], ResultType: 'simple' });
-                lastRead = Date.now();
                 if (!res.Success) throw new Error(res.ErrorMessage);
                 return res.Results[0];
             };
