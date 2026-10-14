@@ -26,6 +26,7 @@ import { VotingAuthorization } from '../shared/authorization.js';
 import { SystemContext } from '../shared/system-user.js';
 import { type EngineResult, type VotingContext, Fail, IsFailure, Ok, PassFailure, RunViewOf } from '../shared/types.js';
 import { SqlLiteral } from '../shared/voter-identity.js';
+import { AcquireTransactionLocks, ResultsLockResource } from '../shared/transaction-lock.js';
 import { BuildResultsContext, ErrorText, FindPersonForUser, LoadElectionEntity, LoadFinalContestResults, SaveOrThrow, RunTransactional } from './person-support.js';
 import { type BallotIdentity, ComputeBallotSetHash } from './tally-pipeline.js';
 import { DescribeResultsTimingDisclosure, RequiredCertifiersOf } from './results-policy.js';
@@ -100,6 +101,11 @@ export class CertificationEngine extends BaseSingleton<CertificationEngine> {
         let value: CertifyValue;
         try {
             value = await RunTransactional(ctx, async () => {
+                // Serialized with the tally (ResultsLockResource): a re-tally cannot replace the results between this
+                // check and the signature, and a signature cannot land on results a running tally is replacing.
+                await AcquireTransactionLocks(SystemContext(ctx), [ResultsLockResource(election.ID)]);
+                const current = await LoadElectionEntity(election.ID, SystemContext(ctx));
+                if (current?.Status !== 'Tallied') throw new Error(`The election is ${current?.Status ?? 'missing'}; only a Tallied election can be certified.`);
                 const certification =
                     existing ?? (await ctx.Provider.GetEntityObject<mjBizAppsVotingElectionCertificationEntity>(CERTIFICATIONS_ENTITY, ctx.ContextUser));
                 if (!existing) {

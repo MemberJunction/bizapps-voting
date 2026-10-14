@@ -16,10 +16,15 @@ const mocks = vi.hoisted(() => ({
     Refresh: vi.fn(),
     OnResultsCertified: vi.fn(),
     BuildResultsContext: vi.fn(),
+    AcquireTransactionLocks: vi.fn(),
     Saves: [] as SavedRow[],
 }));
 
 vi.mock('../shared/election-graph.js', () => ({ LoadElectionGraph: mocks.LoadElectionGraph }));
+vi.mock('../shared/transaction-lock.js', () => ({
+    AcquireTransactionLocks: mocks.AcquireTransactionLocks,
+    ResultsLockResource: (id: string) => `voting:results:${id.toLowerCase()}`,
+}));
 vi.mock('../shared/audit.js', () => ({ ElectionAudit: { Record: mocks.Record } }));
 vi.mock('../shared/cache-refresh.js', () => ({ RefreshCachedViews: mocks.Refresh }));
 vi.mock('../shared/system-user.js', () => ({
@@ -96,11 +101,21 @@ describe('CertificationEngine.Certify by an Election Inspector', () => {
             { Who: 'election:SYSTEM-USER', Status: 'Certified' },
         ]);
         expect(mocks.LoadElectionEntity.mock.calls[0][1].ContextUser).toBe(SYSTEM);
+        // serialized with the tally: the results lock is taken first, inside the certification transaction
+        expect(mocks.AcquireTransactionLocks).toHaveBeenCalledTimes(1);
+        expect(mocks.AcquireTransactionLocks.mock.calls[0][1]).toEqual(['voting:results:e1']);
         expect(mocks.OnResultsCertified).toHaveBeenCalledTimes(1);
         expect(mocks.BuildResultsContext.mock.calls[0][0].Election.Status).toBe('Certified');
         expect(mocks.Refresh).toHaveBeenCalledWith(['MJ_BizApps_Voting: Elections', 'MJ_BizApps_Voting: Election Certifications']);
         // the audit event is recorded as the signer, not as the system user
         expect(mocks.Record.mock.calls[0][0].ContextUser).toBe(INSPECTOR);
         expect(mocks.Record.mock.calls[0][2]).toBe('Certified');
+    });
+
+    it('refuses to sign when a re-check under the results lock finds the election no longer Tallied', async () => {
+        mocks.LoadElectionEntity.mockImplementation(async (_id: string, ctx: VotingContext) => row('election', (ctx.ContextUser as unknown as { ID: string }).ID, { ID: 'E1', Status: 'Cancelled' }, true));
+        const result = await CertificationEngine.Instance.Certify('E1', 'notes', makeCtx());
+        expect(result).toMatchObject({ Success: false, Code: 'CertifyFailed' });
+        expect(mocks.Saves).toEqual([]);
     });
 });

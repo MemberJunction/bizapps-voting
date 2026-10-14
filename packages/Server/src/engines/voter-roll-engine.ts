@@ -24,7 +24,8 @@ import {
     MergeSettings,
     NormalizeWeight,
     ParseJsonObject,
-    RedactInlineRoll,
+    RedactSourceSettingsAtFreeze,
+    SourceSettingsDigest,
     type RollChangeContext,
     type RollEntry,
     type UnmatchedRow,
@@ -115,12 +116,14 @@ export class VoterRollEngine extends BaseSingleton<VoterRollEngine> {
             if (finalRoll.length === 0) return Fail('EmptyRoll', 'The eligibility source produced no voters; the roll was not frozen.');
             const rollHash = ComputeRollHash(finalRoll);
 
+            const settingsDigest = election.EligibilitySourceSettings?.trim() ? SourceSettingsDigest(election.EligibilitySourceSettings) : null;
             await this.inTransaction(ctx, async () => {
                 for (const entry of toInsert) await this.insertVoter(election.ID, entry, false, ctx);
                 election.RollFrozenAt = new Date();
                 election.RollHash = rollHash;
-                // The roll now lives in Eligible Voters; do not leave a CSV source's rows (emails) on the election row, which members can read.
-                election.EligibilitySourceSettings = RedactInlineRoll(election.EligibilitySourceSettings);
+                // The roll now lives in Eligible Voters and members can read the election row from here on: keep no source
+                // settings (CSV emails, entity filters, source keys) on it, only their digest.
+                election.EligibilitySourceSettings = RedactSourceSettingsAtFreeze(election.EligibilitySourceSettings);
                 if (!(await election.Save())) throw new Error(`Could not record the frozen roll on the election: ${election.LatestResult?.CompleteMessage ?? 'unknown error'}`);
                 await Driver.OnRollFrozen(rollContext);
             });
@@ -129,6 +132,7 @@ export class VoterRollEngine extends BaseSingleton<VoterRollEngine> {
                 VoterCount: finalRoll.length,
                 RollHash: rollHash,
                 Source: SourceCode,
+                SourceSettingsSha256: settingsDigest,
                 UnmatchedRows: Unmatched.length,
             });
             return Ok({ VoterCount: finalRoll.length, RollHash: rollHash, Unmatched });

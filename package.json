@@ -37,15 +37,15 @@
     "@angular/core": "21.2.22",
     "@angular/forms": "21.2.22",
     "@changesets/cli": "^2.29.8",
-    "@memberjunction/cli": "6.2.0-edge.2",
-    "@memberjunction/core": "6.2.0-edge.2",
-    "@memberjunction/core-entities": "6.2.0-edge.2",
-    "@memberjunction/global": "6.2.0-edge.2",
-    "@memberjunction/ng-base-forms": "6.2.0-edge.2",
-    "@memberjunction/ng-entity-viewer": "6.2.0-edge.2",
-    "@memberjunction/ng-link-directives": "6.2.0-edge.2",
-    "@memberjunction/ng-shared": "6.2.0-edge.2",
-    "@memberjunction/server": "6.2.0-edge.2",
+    "@memberjunction/cli": "6.2.0-edge.5",
+    "@memberjunction/core": "6.2.0-edge.5",
+    "@memberjunction/core-entities": "6.2.0-edge.5",
+    "@memberjunction/global": "6.2.0-edge.5",
+    "@memberjunction/ng-base-forms": "6.2.0-edge.5",
+    "@memberjunction/ng-entity-viewer": "6.2.0-edge.5",
+    "@memberjunction/ng-link-directives": "6.2.0-edge.5",
+    "@memberjunction/ng-shared": "6.2.0-edge.5",
+    "@memberjunction/server": "6.2.0-edge.5",
     "@types/node": "^22.10.0",
     "dotenv": "^17.2.4",
     "simple-git": "^3.31.1",
@@ -56,8 +56,8 @@
   },
   "pnpm": {
     "overrides": {
-      "@memberjunction/core": "6.2.0-edge.2",
-      "@memberjunction/global": "6.2.0-edge.2"
+      "@memberjunction/core": "6.2.0-edge.5",
+      "@memberjunction/global": "6.2.0-edge.5"
     }
   },
   "engines": {

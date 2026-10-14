@@ -4,8 +4,10 @@
  */
 
 import { type UserInfo } from '@memberjunction/core';
+import { UUIDsEqual } from '@memberjunction/global';
 import { UserCache } from '@memberjunction/generic-database-provider';
-import { type VotingContext } from './types.js';
+import { IsGuestPrincipal, ParseGuestResource } from './principal.js';
+import { type VotingActor, type VotingContext } from './types.js';
 
 /** The MJ system user. Throws when the user cache holds none (a deployment without the system user cannot cast ballots safely). */
 export function GetSystemUser(): UserInfo {
@@ -16,7 +18,26 @@ export function GetSystemUser(): UserInfo {
     return user;
 }
 
-/** Same provider, system user. For ballot-box reads and writes ONLY. */
+/**
+ * Who `user` is for audit attribution: the MJ user, or for a guest ballot session the roll entry its signed scope names.
+ * Undefined for the system user itself (and for a guest with no ballot scope), which audits as no actor.
+ */
+export function ActorOf(user: UserInfo | undefined | null, systemUserID?: string): VotingActor | undefined {
+    if (!user) return undefined;
+    if (IsGuestPrincipal(user)) {
+        const scope = ParseGuestResource(user.MagicLinkScope?.ResourceID);
+        return scope ? { GuestEligibleVoterID: scope.EligibleVoterID } : undefined;
+    }
+    if (!user.ID || (systemUserID && UUIDsEqual(systemUserID, user.ID))) return undefined;
+    return { UserID: user.ID };
+}
+
+/**
+ * Same provider, system user. For ballot-box reads and writes, and for voter operations after the caller was authorized.
+ * The caller is kept as the context's `Actor` (audit attribution only); a context that already carries one keeps it.
+ */
 export function SystemContext(ctx: VotingContext): VotingContext {
-    return { ContextUser: GetSystemUser(), Provider: ctx.Provider };
+    const system = GetSystemUser();
+    const actor = ctx.Actor ?? ActorOf(ctx.ContextUser, system.ID);
+    return actor ? { ContextUser: system, Provider: ctx.Provider, Actor: actor } : { ContextUser: system, Provider: ctx.Provider };
 }

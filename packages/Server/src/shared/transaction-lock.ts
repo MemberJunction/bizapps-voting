@@ -14,6 +14,14 @@
 import { type DatabasePlatform, type ExecuteSQLOptions, type IMetadataProvider, type UserInfo } from '@memberjunction/core';
 import { type VotingContext } from './types.js';
 
+/**
+ * The named lock that serializes everything that writes or freezes an election's results: the tally (first or re-tally)
+ * and each certification signature. Taken inside their transactions (AcquireTransactionLocks).
+ */
+export function ResultsLockResource(electionID: string): string {
+    return `voting:results:${electionID.toLowerCase()}`;
+}
+
 /** How long a cast waits for another cast of the same contest before giving up. */
 export const TRANSACTION_LOCK_TIMEOUT_MS = 30_000;
 

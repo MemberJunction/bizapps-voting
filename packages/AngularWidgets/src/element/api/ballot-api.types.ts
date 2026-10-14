@@ -96,6 +96,17 @@ export interface VotingGetMyParticipationOutput extends OperationOutputBase {
   Channel?: VotingParticipationChannel;
 }
 
+// ---- Voting.VerifyReceipt ----
+export interface VotingVerifyReceiptInput {
+  ElectionID: string;
+  ReceiptCode: string;
+}
+
+export interface VotingVerifyReceiptOutput extends OperationOutputBase {
+  Found?: boolean;
+  Counted?: boolean;
+}
+
 // ---- Public edge ----
 /** GET {apiRoot}/{slug}/info */
 export interface DistributionInfo {

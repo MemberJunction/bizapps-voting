@@ -210,15 +210,26 @@ export class LiveElection {
     }
 
     public async Distribute(): Promise<void> {
-        const distribution = await this.Admin.NewEntity<mjBizAppsVotingBallotDistributionEntity>(DISTRIBUTIONS);
+        const attempt = await this.TryDistribute(this.Slug);
+        if (!attempt.Saved) throw new Error(`Ballot Distribution save over the wire failed: ${attempt.Message || 'unknown'}`);
+    }
+
+    /** Tries to create one more ballot distribution (as the admin, over the wire) under `slug`; never throws. */
+    public async TryDistribute(slug = `${this.Slug}-${randomBytes(2).toString('hex')}`, client: WireClient = this.Admin): Promise<{ Saved: boolean; Message: string }> {
+        const distribution = await client.NewEntity<mjBizAppsVotingBallotDistributionEntity>(DISTRIBUTIONS);
         distribution.NewRecord();
         distribution.ElectionID = this.ElectionID;
         distribution.Name = `${this.Name} ballot`;
-        distribution.Slug = this.Slug;
+        distribution.Slug = slug;
         distribution.DistributionKey = `key_${randomBytes(8).toString('hex')}`;
         distribution.Status = 'Active';
         distribution.AllowedCredentialMethods = JSON.stringify(['second-factor']);
-        if (!(await distribution.Save())) throw new Error(`Ballot Distribution save over the wire failed: ${distribution.LatestResult?.CompleteMessage ?? 'unknown'}`);
+        try {
+            const saved = await distribution.Save();
+            return { Saved: saved, Message: saved ? '' : (distribution.LatestResult?.CompleteMessage ?? '') };
+        } catch (e) {
+            return { Saved: false, Message: e instanceof Error ? e.message : String(e) };
+        }
     }
 
     public async Open(): Promise<void> {

@@ -9,6 +9,8 @@ export const MJ_SERVER_EXTENSIONS: ServerExtensionConfig[] = [
         Enabled: true,
         DriverClass: 'VotingBallotEdge',
         RootPath: '/vote',
+        // The edge answers its own preflights and grants origins per distribution, so MJ's global CORS skips /vote.
+        OwnsCORS: true,
         Settings: {},
     },
 ];

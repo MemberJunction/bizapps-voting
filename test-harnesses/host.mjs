@@ -9,8 +9,9 @@
  * Environment (all optional):
  *   VOTING_WIRE_PORT      listen port (default 4104)
  *   VOTING_WIRE_RUN_DIR   where the pid file and log live (default <repo>/tmp, gitignored)
+ *   VOTING_IT_DATABASE    a private voting database to serve instead of MJ_Voting_Dev
  *
- * The host only ever serves MJ_Voting_Dev. Credentials come from the voting repo .env and are never printed.
+ * The host only ever serves MJ_Voting_Dev (or the VOTING_IT_DATABASE override). Credentials come from the voting repo .env and are never printed.
  */
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

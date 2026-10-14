@@ -108,7 +108,11 @@ roll can still be amended while nominations run. Voters submit with `Voting.Subm
    `Certified` and the driver's `OnResultsCertified` runs. Until then the election stays `Tallied`.
 4. If the roll or ballot set changes between signatures, certifying is refused (`HashMismatch`).
 
-You can re-tally a `Tallied` election before certification; certified elections are final.
+You can re-tally a `Tallied` election until the first certifier signs: that is the recount path. The re-tally demotes the
+previous result rows (kept, `IsFinal = 0`) and writes one new final result per contest in the same transaction, and the
+`Tallied` audit event names the administrator with `Retally: true`. Once a signature exists the tally is refused
+(certification is signing those results), and a `Certified` or `Cancelled` election is never tallied. The tally and each
+signature are serialized on a per-election lock, so a re-tally cannot slip in between the check and the signature.
 
 ## Revotes
 

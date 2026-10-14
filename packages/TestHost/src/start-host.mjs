@@ -5,7 +5,8 @@
  *
  * Mirrors MJ/packages/MJAPI/src/index.ts: MJ's prebuilt class registrations + createMJServer(). The Open App packages
  * (bizapps-common, voting) come from mj.config.cjs dynamicPackages. Env comes from the voting repo .env; the database
- * is pinned to MJ_Voting_Dev. No secret is ever printed.
+ * is pinned to MJ_Voting_Dev, or to the private voting database named by VOTING_IT_DATABASE (the same override the
+ * database tier honours). DB_DATABASE from the .env is never used. No secret is ever printed.
  */
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +20,7 @@ const repoRoot = resolve(hostDir, '../..');
 process.chdir(hostDir);
 dotenv.config({ path: resolve(repoRoot, '.env'), quiet: true });
 
-const TEST_DATABASE = 'MJ_Voting_Dev';
+const TEST_DATABASE = process.env.VOTING_IT_DATABASE?.trim() || 'MJ_Voting_Dev';
 if (process.env.DB_DATABASE && process.env.DB_DATABASE !== TEST_DATABASE) {
     console.warn(`[voting-test-host] DB_DATABASE is overridden to ${TEST_DATABASE}; this host never serves another database.`);
 }

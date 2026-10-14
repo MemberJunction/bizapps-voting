@@ -93,12 +93,24 @@ Dispatched on the element (`bubbles`, `composed`). Details never carry a name, e
 
 | Event | `detail` | When |
 |---|---|---|
-| `ballot-state-change` | `{ state }` | `ready`, `reviewing`, `voted` (the voter had already voted). Other internal states (`init`, `login`, `casting`, `cast`, `closed`, `error`) do not emit this event |
+| `ballot-state-change` | `{ state }` | `ready`, `reviewing`, `voted` (the voter had already voted), `verify` (the receipt check opened) and, when the check is left with Back, the state it returns to. Other internal states (`init`, `login`, `casting`, `cast`, `closed`, `error`) do not emit this event on their own |
 | `ballot-cast` | `{ electionId, receiptCode }` | The ballot was recorded |
+| `receipt-verified` | `{ outcome }` | A receipt check answered: `counted`, `not-counted` (recorded, then replaced by a later ballot) or `not-found` |
 | `ballot-error` | `{ message }` | A step failed (fixed, safe text) |
 | `ballot-close` | `{}` | The voter pressed Cancel |
 
 There is no public JavaScript API beyond the attributes (no `getState()`, `close()` or `reset()` methods).
+
+### Verifying a receipt
+
+The element has a **Verify a Receipt** check (`Voting.VerifyReceipt`). It is offered after casting and on the "already
+voted" screen, prefilled with that session's receipt, and from the sign-in screen. The operation needs a ballot session (a
+guest scoped to the election, or a signed-in MJ user), so from the sign-in screen the element says so and opens the check
+straight after the voter signs in, before the ballot; Back then shows the ballot. The answer is one of three fixed
+sentences (recorded and counted; recorded but replaced by a later ballot; not found) in a `role="status"` live region; it
+never says how anyone voted. The code is trimmed, spaces dropped and upper-cased before it is sent. Strings are
+overridable like the rest (`verifyReceipt`, `verifyReceiptIntro`, `verifySignInFirst`, `receiptCodeLabel`,
+`receiptCounted`, `receiptNotCounted`, `receiptNotFound`, ...).
 
 ### Iframe messages
 

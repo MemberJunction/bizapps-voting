@@ -1,6 +1,6 @@
 /**
  * The ballot widget's server conversation, free of Angular so it can be tested end to end with a mocked `fetch`:
- * /info -> /session -> Voting.GetMyBallot -> Voting.CastBallot -> Voting.GetResults.
+ * /info -> /session -> Voting.GetMyBallot -> Voting.CastBallot -> Voting.GetResults, and Voting.VerifyReceipt.
  */
 import type {
   BallotStyle,
@@ -79,6 +79,24 @@ export interface ResultsView {
   Output: VotingGetResultsOutput;
 }
 
+/** What checking a receipt found. */
+export type ReceiptCheck = 'counted' | 'not-counted' | 'not-found';
+
+/**
+ * The receipt code as the voter typed or pasted it, ready to send: surrounding space removed, inner spaces dropped,
+ * upper case. The server applies its own normalization; this only spares the voter a needless "not found". Empty when
+ * nothing usable was typed.
+ */
+export function NormalizeReceiptInput(text: string | null | undefined): string {
+  return (text ?? '').replace(/\s+/g, '').toUpperCase();
+}
+
+/** Maps VerifyReceipt's answer to what the voter is told. A receipt that was found but is not counted was replaced by a later ballot. */
+export function DescribeReceiptCheck(output: { Found?: boolean; Counted?: boolean }): ReceiptCheck {
+  if (!output.Found) return 'not-found';
+  return output.Counted ? 'counted' : 'not-counted';
+}
+
 export class BallotFlow {
   private client: BallotApiClient | null = null;
   private electionId = '';
@@ -142,6 +160,17 @@ export class BallotFlow {
       Reason: output.Reason,
       Output: output,
     };
+  }
+
+  /** Whether the session is open (VerifyReceipt, like every voter operation, needs one). */
+  get SignedIn(): boolean {
+    return this.client !== null;
+  }
+
+  /** Checks a receipt code against this election's ballot box: recorded and counted, recorded but replaced, or unknown. */
+  async VerifyReceipt(receiptCode: string): Promise<ReceiptCheck> {
+    const output = await this.requireClient().verifyReceipt(this.electionId, receiptCode);
+    return DescribeReceiptCheck(output);
   }
 
   private requireClient(): BallotApiClient {

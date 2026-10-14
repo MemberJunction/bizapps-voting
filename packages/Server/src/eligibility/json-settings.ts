@@ -2,6 +2,8 @@
  * Safe parsing of the JSON settings columns (Election.EligibilitySourceSettings, method Configuration).
  */
 
+import { createHash } from 'node:crypto';
+
 export type JsonObject = Record<string, unknown>;
 
 /** Parses a JSON object column. Null, empty, malformed or non-object values give an empty object. */
@@ -25,24 +27,22 @@ export function MergeSettings(defaults: JsonObject, overrides: JsonObject): Json
     return merged;
 }
 
-/** Settings keys that carry the roll itself (voters' emails and keys) rather than how to find it. */
-export const INLINE_ROLL_KEYS: ReadonlyArray<string> = ['Rows', 'CsvText'];
-
 /**
- * The election's eligibility source settings with any inline roll data removed, for storing once the roll is frozen: the frozen
- * roll lives in Eligible Voters (closed to ordinary users), while the election row is readable by every signed-in user, so the
- * emails a CSV source was given must not stay on it. Marks the settings so the removal is visible. Returns the input unchanged
- * when it carries no inline roll (or is not a JSON object).
+ * What stays of an election's eligibility source settings once the roll is frozen. The settings say how to find the roll
+ * (an inline CSV of voters' emails, an entity name and filter that reveal selection criteria, a third-party source's
+ * keys). Nothing reads them after the freeze (the roll then lives in Eligible Voters, closed to ordinary users, and a roll
+ * is frozen once), but the election row is readable by every signed-in member from then on. So the freeze replaces them
+ * with a marker and the SHA-256 of the settings that were used, which an administrator holding the original can check;
+ * the same digest is written to the RollFrozen audit event. Null or blank settings stay null.
  */
-export function RedactInlineRoll(settingsJson: string | null | undefined): string | null {
-    if (!settingsJson || !settingsJson.trim()) return settingsJson ?? null;
-    const parsed = ParseJsonObject(settingsJson);
-    const present = INLINE_ROLL_KEYS.filter((k) => k in parsed);
-    if (present.length === 0) return settingsJson;
-    const kept: JsonObject = {};
-    for (const [key, value] of Object.entries(parsed)) if (!INLINE_ROLL_KEYS.includes(key)) kept[key] = value;
-    kept.InlineRollRedactedAtFreeze = true;
-    return JSON.stringify(kept);
+export function RedactSourceSettingsAtFreeze(settingsJson: string | null | undefined): string | null {
+    if (!settingsJson || !settingsJson.trim()) return null;
+    return JSON.stringify({ SettingsRedactedAtFreeze: true, SettingsSha256: SourceSettingsDigest(settingsJson) });
+}
+
+/** SHA-256 (hex) of the settings text exactly as stored before the freeze. */
+export function SourceSettingsDigest(settingsJson: string): string {
+    return createHash('sha256').update(settingsJson, 'utf8').digest('hex');
 }
 
 /** A trimmed non-empty string, else null. */

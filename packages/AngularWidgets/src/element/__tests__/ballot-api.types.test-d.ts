@@ -31,6 +31,11 @@ describe('local wire types match the generated remote operations', () => {
     expectTypeOf<Local.VotingContestOutcome>().toEqualTypeOf<Gen.VotingContestOutcome>();
   });
 
+  it('VerifyReceipt', () => {
+    expectTypeOf<Local.VotingVerifyReceiptInput>().toEqualTypeOf<Gen.VotingVerifyReceiptInput>();
+    expectTypeOf<Local.VotingVerifyReceiptOutput>().toEqualTypeOf<Gen.VotingVerifyReceiptOutput>();
+  });
+
   it('GetMyParticipation', () => {
     expectTypeOf<Local.VotingGetMyParticipationInput>().toEqualTypeOf<Gen.VotingGetMyParticipationInput>();
     expectTypeOf<Local.VotingGetMyParticipationOutput>().toEqualTypeOf<Gen.VotingGetMyParticipationOutput>();

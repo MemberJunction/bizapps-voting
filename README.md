@@ -245,14 +245,14 @@ migrations/  metadata/  codegen/  docs/voting/  plans/
 There is no MJAPI or MJExplorer in this repo; it loads into a host MJ (on the M5 workspace, MJ's own shells).
 
 **Prerequisites**
-- **Unreleased MemberJunction changes** (pending in an MJ PR; until released, run against that MJ branch):
-  1. *CodeGen applies per-table `Entities` config at entity creation, including `AutoAddPermissions`*
-     (`resolveCreationTimeEntityConfig` / `resolveCreationTimeAutoAddPermissions` in `CodeGenLib`). Without it the ballot
-     tables get timestamp columns and default permissions.
-  2. *New `@memberjunction/server` exports*: `BuildSessionClaims`, `MagicLinkKeyManager`, `MagicLinkService`, `HashToken`,
-     `GenerateRawToken`, `VerifyHostAssertion`, `IsScopeLimitedPrincipal`. The ballot edge cannot mint sessions without them.
+- **MemberJunction `6.2.0-edge.5` or later** (the first edge release cut after MJ #5637 merged; `6.2.0-edge.4` predates it). It carries
+  what this app needs from MJ: CodeGen applying per-table `Entities` config (including `AutoAddPermissions`) at entity
+  creation, the `@memberjunction/server` exports the ballot edge mints sessions with (`BuildSessionClaims`,
+  `MagicLinkKeyManager`, `VerifyHostAssertion`, `IsScopeLimitedPrincipal`, …), `OwnsCORS` server extensions, per-provider
+  IS-A metadata, and RunView linger invalidation after a mutation. Until it is published, build inside a workspace linked
+  to MJ `next`.
 - `bizapps-common` installed (elections reference its `Person` / `Organization` tables); `mj-app.json` declares it as the `mj-bizapps-common` dependency (`>=5.46.1 <6.0.0`).
-- MJ `>=6.2.0-edge.2 <7.0.0` (`mj-app.json`).
+- MJ `>=6.2.0-edge.5 <7.0.0` (`mj-app.json`).
 
 **Install** (full recipe: [docs/template-docs/linking-to-mj.md](docs/template-docs/linking-to-mj.md))
 1. Server: in the MJ root `mj.config.cjs` add a `dynamicPackages.server` entry

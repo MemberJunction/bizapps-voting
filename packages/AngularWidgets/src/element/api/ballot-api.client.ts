@@ -23,6 +23,8 @@ import type {
   VotingGetMyParticipationOutput,
   VotingGetResultsInput,
   VotingGetResultsOutput,
+  VotingVerifyReceiptInput,
+  VotingVerifyReceiptOutput,
 } from './ballot-api.types';
 
 export * from './ballot-api.types';
@@ -163,6 +165,14 @@ export class BallotApiClient {
   getMyParticipation(electionId: string): Promise<VotingGetMyParticipationOutput> {
     return this.execute<VotingGetMyParticipationInput, VotingGetMyParticipationOutput>('Voting.GetMyParticipation', {
       ElectionID: electionId,
+    });
+  }
+
+  /** Whether a receipt code belongs to a ballot recorded (Found) and counted (Counted) in the election. Nothing else. */
+  verifyReceipt(electionId: string, receiptCode: string): Promise<VotingVerifyReceiptOutput> {
+    return this.execute<VotingVerifyReceiptInput, VotingVerifyReceiptOutput>('Voting.VerifyReceipt', {
+      ElectionID: electionId,
+      ReceiptCode: receiptCode,
     });
   }
 

@@ -39,6 +39,9 @@ Only limitations verified in the code are listed.
 
 ## Elections and results
 
+- **Re-tallying stops at the first certification signature.** A `Tallied` election can be re-tallied (the recount path)
+  until a certifier signs; after that, and once it is `Certified`, the tally is refused. There is no "revoke the
+  certification and recount" operation.
 - **Administrator tie-breaks are drawn by lot.** A contest with `TieBreakMethod = Administrator` records the lot result with a
   note that it is *provisional*; no operation lets an administrator decide the tie.
 - **`HostMembers` is approximated** as any signed-in, non-guest MJ user: Voting has no host-membership concept.
@@ -76,9 +79,12 @@ Only limitations verified in the code are listed.
   Options, Standards Ballot Elections, certified Certifications): an election's existence, name, dates, contests and
   candidates are not secret from members, and the Explorer lists read them directly. Draft elections are hidden by
   row-level security; there is no per-voter filter.
-- **Row-level security hides rows, not columns.** `Elections.Configuration` and the type settings stay readable to members
-  of a visible election. The one sensitive column that existed, an inline CSV roll in `EligibilitySourceSettings`, is
-  redacted at freeze; a roll source that keeps voter data elsewhere in those JSON columns would need the same.
+- **Row-level security hides rows, not columns.** Members can read every column of a frozen election. The roll source
+  settings are replaced by a marker and a digest at the freeze and `Configuration` accepts only documented or type-declared
+  keys ([security.md](security.md#what-a-member-can-read-of-an-election-row)). Two consequences: after the freeze nobody,
+  administrators included, can read the source settings back from the election (only the `RollFrozen` audit digest
+  remains), and an election type whose driver needs extra configuration must declare the keys, which then become
+  member-readable. Elections frozen before this change keep their settings until a data fix rewrites them.
 - **Open-ballot comments and their resolutions are readable by members**, as the Standards ballot widget requires. A comment
   row carries its `ParticipationID`; members cannot resolve it to a voter (the poll book is closed), but administrators and
   inspectors can, which is by design for Open ballots.
@@ -86,7 +92,8 @@ Only limitations verified in the code are listed.
   given the `Voting Administrator` role.
 - **The engine role is broad** (it covers everything the system user runs: voter operations, edge, jobs, tests). It is safe
   only because it is held solely by the system user (asserted by `04-access.test.ts`); never grant it to a person or key.
-- **Audit events written during voter operations carry no acting user.**
+- **Audit events of guest ballot sessions name the voter by roll entry, not by user.** A guest principal is not a stored MJ
+  user, so `ActorUserID` stays empty and the details carry `ActorEligibleVoterID`.
 - **The Explorer screens that join to the poll book** (the comments panel's commenter names) show "Unknown voter" to
   anyone but administrators and inspectors.
 - **A second CodeGen run over a database built from this migration rewrites seven base views and their create/update
@@ -95,19 +102,11 @@ Only limitations verified in the code are listed.
 
 ## Caching
 
-- **A client can be served its own pre-write rows for up to 5 seconds after a Remote Operation wrote** (confirmed by
-  `wire-lifecycle.WL24`; MJ core behaviour, not voting's). MJ's `ProviderBase` (`MJCore/src/generic/providerBase.ts`)
-  keeps a **dedup-linger** replay: an identical `RunView`/`RunViews` request resolved within `ProviderBase.DedupLingerMs`
-  (default 5000 ms) is answered from the earlier result with no server round trip (`runViewsUncoalesced`, "Linger hit").
-  The replay is dropped only by a `BaseEntity` save/delete/`remote-invalidate` event raised **in the client process**
-  (`invalidateInflightViewsForEntity`). A Remote Operation saves on the server, so the client sees no save event; a
-  `remote-invalidate` reaches a client only through the GraphQL `cacheInvalidation` subscription, which MJAPI publishes
-  from Redis pub/sub (`MJServer/src/generic/CacheInvalidationResolver.ts`), i.e. not at all on a single instance without
-  Redis, nor for a client without a websocket. Verified over the wire: the same read passes with
-  `ProviderBase.DedupLingerMs = 0` and fails at the default. Nothing in MJ was patched; the fix belongs in MJ (for example,
-  dropping the linger entries of the entities an operation touched when `RouteOperation` returns, or not lingering across a
-  mutating Remote Operation). Clients that need ground truth immediately after an operation pass `BypassCache: true`, which
-  also bypasses the linger replay.
+- **A client reads its own writes straight after a Remote Operation** (confirmed by `wire-lifecycle.WL24`, which reads
+  immediately after each lifecycle operation). MJ's `ProviderBase` keeps a short **dedup-linger** replay of identical
+  `RunView`/`RunViews` requests (`ProviderBase.DedupLingerMs`), and from MJ `6.2.0-edge.5` the GraphQL provider drops it
+  when any mutation completes. A Remote Operation does not name the entities it wrote, so the whole replay is dropped; that
+  costs at most one extra round trip per read that follows an operation.
 - **The server side is fresh.** After a freeze, open, close, cancel, nominations change or certification has committed, the
   operation awaits `RefreshCachedViews` (`packages/Server/src/shared/cache-refresh.ts`), which calls
   `LocalCacheManager.InvalidateEntityCaches` for the entities it changed. MJ's own maintenance of the server cache is

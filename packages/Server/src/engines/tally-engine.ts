@@ -2,7 +2,10 @@
  * TallyEngine: turns the counted ballots of a Closed election into results (design sections 4.4, 4.5, 10).
  *
  * Pipeline:
- *   1. The election must be Closed (or Tallied, for a re-tally).
+ *   1. The election must be Closed, or Tallied for a re-tally (the deliberate recount path) while no certification has been
+ *      signed. Certified, Cancelled and every other status are refused (`TallyRefusal`). The check is repeated inside the
+ *      write transaction under the election's results lock, which certification takes too, so a re-tally can never land
+ *      on results someone has started to certify.
  *   2. Tier B needs the trustee-reconstructed key (TrusteeEngine); tier C needs a registered BaseVerifiableTallyProvider.
  *   3. Counted CastBallots are read with the SYSTEM user, SHUFFLED with a CSPRNG, and only then decrypted, so no order in
  *      the database or the logs survives into processing.
@@ -34,7 +37,8 @@ import { type ElectionGraph, LoadElectionGraph, OptionsOf, TallyCodeOf, VotingCl
 import { SystemContext } from '../shared/system-user.js';
 import { type EngineResult, type VotingContext, Fail, IsFailure, Ok, PassFailure, RunViewOf } from '../shared/types.js';
 import { SqlLiteral } from '../shared/voter-identity.js';
-import { ErrorText, BuildResultsContext, SaveOrThrow, RunTransactional } from './person-support.js';
+import { AcquireTransactionLocks, ResultsLockResource } from '../shared/transaction-lock.js';
+import { ErrorText, BuildResultsContext, LoadElectionEntity, SaveOrThrow, RunTransactional } from './person-support.js';
 import {
     type ContestPlan,
     type ContestResultOutcome,
@@ -61,6 +65,45 @@ const ELIGIBLE_VOTERS_ENTITY = 'MJ_BizApps_Voting: Eligible Voters';
 const CONTEST_RESULTS_ENTITY = 'MJ_BizApps_Voting: Contest Results';
 const CONTEST_OPTION_RESULTS_ENTITY = 'MJ_BizApps_Voting: Contest Option Results';
 const BALLOT_SELECTIONS_ENTITY = 'MJ_BizApps_Voting: Ballot Selections';
+const CERTIFICATIONS_ENTITY = 'MJ_BizApps_Voting: Election Certifications';
+
+/** Why an election cannot be tallied now, or null when it can. */
+export interface TallyRefusalReason {
+    Code: 'AlreadyCertified' | 'CertificationInProgress' | 'ElectionCancelled' | 'NotClosed';
+    Message: string;
+}
+
+/**
+ * The tally gate. A Closed election is tallied; a Tallied one may be re-tallied (the recount path) until a certification
+ * signature exists, because a certifier signs the results as they stand. Certified results are final.
+ * @param status The election's current status.
+ * @param certificationStarted Whether a Draft or Certified certification (at least one signature) exists.
+ */
+export function TallyRefusal(status: string, certificationStarted: boolean): TallyRefusalReason | null {
+    if (status === 'Certified') {
+        return { Code: 'AlreadyCertified', Message: 'The election is Certified; its results are final and cannot be tallied again.' };
+    }
+    if (status === 'Cancelled') {
+        return { Code: 'ElectionCancelled', Message: 'The election is Cancelled; only a Closed election can be tallied.' };
+    }
+    if (status !== 'Closed' && status !== 'Tallied') {
+        return { Code: 'NotClosed', Message: `The election is ${status}; only a Closed election can be tallied.` };
+    }
+    if (status === 'Tallied' && certificationStarted) {
+        return {
+            Code: 'CertificationInProgress',
+            Message: 'Certification of these results has started (a certifier has signed); the election cannot be tallied again.',
+        };
+    }
+    return null;
+}
+
+/** A refusal discovered inside the write transaction (the state changed after the first check). */
+class TallyAbort extends Error {
+    constructor(public readonly Reason: TallyRefusalReason) {
+        super(Reason.Message);
+    }
+}
 
 /** One contest's outcome as reported back to the caller (the operation shapes this into its output). */
 export interface TallyContestReport {
@@ -122,9 +165,8 @@ export class TallyEngine extends BaseSingleton<TallyEngine> {
         if (IsFailure(loaded)) return PassFailure(loaded);
         const graph = loaded.Value;
         const election = graph.Election;
-        if (election.Status !== 'Closed' && election.Status !== 'Tallied') {
-            return Fail('NotClosed', `The election is ${election.Status}; only a Closed election can be tallied.`);
-        }
+        const refusal = TallyRefusal(election.Status, election.Status === 'Tallied' && (await this.certificationStarted(election.ID, ctx)));
+        if (refusal) return Fail(refusal.Code, refusal.Message);
         const firstTally = election.Status === 'Closed';
 
         const plansResult = this.buildPlans(graph);
@@ -156,6 +198,7 @@ export class TallyEngine extends BaseSingleton<TallyEngine> {
         try {
             await RunTransactional(ctx, () =>
                 TallyWriteGuard.RunWithTallyAccess(async () => {
+                    await this.lockAndRecheck(election.ID, election.Status, ctx);
                     await this.demotePreviousFinals(plans, ctx);
                     if (firstTally && election.AssuranceTier === 'Standard') {
                         await this.writeBallotSelections(graph, ballots, ctx);
@@ -170,6 +213,7 @@ export class TallyEngine extends BaseSingleton<TallyEngine> {
             );
         } catch (e) {
             TrusteeEngine.Instance.ClearKeyMaterial(election.ID);
+            if (e instanceof TallyAbort) return Fail(e.Reason.Code, e.Reason.Message);
             return Fail('TallyFailed', `The tally was not saved: ${ErrorText(e)}`);
         }
 
@@ -356,6 +400,38 @@ export class TallyEngine extends BaseSingleton<TallyEngine> {
     }
 
     // --- Writing ------------------------------------------------------------------------------------------------------
+
+    /**
+     * Inside the write transaction: takes the election's results lock (certification takes it too), then re-reads the
+     * election and its certification. A status that moved since the first check (a concurrent tally, a certifier signing,
+     * a cancellation) aborts the transaction, so exactly one tally's results end up final and none replaces results under
+     * certification.
+     */
+    private async lockAndRecheck(electionID: string, expectedStatus: string, ctx: VotingContext): Promise<void> {
+        await AcquireTransactionLocks(SystemContext(ctx), [ResultsLockResource(electionID)]);
+        const fresh = await LoadElectionEntity(electionID, ctx);
+        if (!fresh) throw new Error('The election could not be re-read.');
+        const reason =
+            fresh.Status !== expectedStatus
+                ? (TallyRefusal(fresh.Status, false) ?? { Code: 'NotClosed' as const, Message: `The election moved to ${fresh.Status} while it was being tallied; tally again.` })
+                : TallyRefusal(fresh.Status, fresh.Status === 'Tallied' && (await this.certificationStarted(electionID, ctx)));
+        if (reason) throw new TallyAbort(reason);
+    }
+
+    /** Whether a certification with at least one signature (Draft) or a completed one exists for the election. Fresh read. */
+    private async certificationStarted(electionID: string, ctx: VotingContext): Promise<boolean> {
+        const res = await RunViewOf(ctx).RunView(
+            {
+                EntityName: CERTIFICATIONS_ENTITY,
+                ExtraFilter: `ElectionID = ${SqlLiteral(electionID)} AND Status IN ('Draft', 'Certified')`,
+                ResultType: 'count_only',
+                BypassCache: true,
+            },
+            ctx.ContextUser
+        );
+        if (!res.Success) throw new Error('The certification state could not be read.');
+        return res.TotalRowCount > 0;
+    }
 
     private async demotePreviousFinals(plans: ContestPlan[], ctx: VotingContext): Promise<void> {
         if (plans.length === 0) return;

@@ -130,6 +130,13 @@ migration. An election type's `Configuration` holds defaults (`SecrecyMode`, `As
 `ResultsAudience`, `ResultsMinCast`, `AllowRevote`, `AllowedContestKinds`, `AllowedCredentialMethodCodes`,
 `DefaultTallyMethodCode`, ...) and `OverridableKeys`, the only keys an individual election may override.
 
+An election's own `Configuration` column is readable by every signed-in member once the roll is frozen (row-level
+security hides rows, not columns), so the Elections entity server refuses any key that is not documented
+(`ELECTION_CONFIGURATION_KEYS`: `Quorum`, `Reminders`, `Languages`, `IndependentAdministrator`, `RequiredCertifiers` and
+the type defaults above), listed in the type's `OverridableKeys`, or declared by the type's server driver
+(`BaseElectionTypeServerDriver.ConfigurationKeys`). Declare only public governance parameters there; never credentials,
+roll data or private notes.
+
 ## Testing and CI
 
 Unit tests are vitest, next to the code (`pnpm test` at the repo root runs them through turbo). The database-backed tier is

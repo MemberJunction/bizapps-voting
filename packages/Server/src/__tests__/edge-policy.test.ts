@@ -7,7 +7,6 @@ import {
     IsValidSlug,
     OriginAllowed,
     ParseAllowedOrigins,
-    PromoteLastLayerToFront,
     ResolveClientIp,
     StripHostResponseHeaders,
 } from '../edge/edge-policy.js';
@@ -95,18 +94,5 @@ describe('edge policy: what the host adds before the edge', () => {
         ]);
         StripHostResponseHeaders({ removeHeader: (name: string) => void headers.delete(name.toLowerCase()) });
         expect([...headers.keys()]).toEqual(['vary']);
-    });
-
-    it('moves the last router layer to the front', () => {
-        const app = { router: { stack: ['cors', 'auth', 'gate'] as unknown[] } };
-        expect(PromoteLastLayerToFront(app)).toBe(true);
-        expect(app.router.stack).toEqual(['gate', 'cors', 'auth']);
-    });
-
-    it('changes nothing when the router has no usable stack', () => {
-        expect(PromoteLastLayerToFront({})).toBe(false);
-        const single = { router: { stack: ['gate'] as unknown[] } };
-        expect(PromoteLastLayerToFront(single)).toBe(false);
-        expect(single.router.stack).toEqual(['gate']);
     });
 });

@@ -284,7 +284,7 @@ const ENTITIES: readonly EntitySpec[] = [
     Spec('Election Certifiers', 'YYYYYN', '?YYNNN', '?YYNNN', D, 'certification: signed by administrators and inspectors; every UI user reads certified rows'),
 
     Spec('Election Trustees', 'YYNNNN', '?YNNNN', '?YNNNN', D, 'tier-B roster: administrators only'),
-    Spec('Trustee Key Commitments', 'YYNNNN', '?YNNNN', '?NNNNN', D, 'tier-B commitments: administrators create and read (the key ceremony); a published commitment is never rewritten'),
+    Spec('Trustee Key Commitments', 'YYNNNN', '?YNNNN', 'NNNNNN', D, 'tier-B commitments: administrators create and read (the key ceremony); a published commitment is never rewritten, not even by the engine'),
 
     Spec('Ballot Comments', 'YYYYYN', '?NNNNN', '?NNNNN', D, 'comments: every UI user reads Open ballots only; written by the engine'),
     Spec('Comment Resolutions', 'YYYYYN', '?YNNNN', '?YNNNN', D, 'resolutions: every UI user reads Open ballots only; administrators write'),

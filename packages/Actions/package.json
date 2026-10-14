@@ -25,19 +25,19 @@
     "@mj-biz-apps/voting-entities": "0.0.0"
   },
   "peerDependencies": {
-    "@memberjunction/actions": "^6.2.0-edge.2",
-    "@memberjunction/actions-base": "^6.2.0-edge.2",
-    "@memberjunction/core": "^6.2.0-edge.2",
-    "@memberjunction/core-entities": "^6.2.0-edge.2",
-    "@memberjunction/global": "^6.2.0-edge.2"
+    "@memberjunction/actions": "^6.2.0-edge.5",
+    "@memberjunction/actions-base": "^6.2.0-edge.5",
+    "@memberjunction/core": "^6.2.0-edge.5",
+    "@memberjunction/core-entities": "^6.2.0-edge.5",
+    "@memberjunction/global": "^6.2.0-edge.5"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
     "vitest": "^4.0.18",
-    "@memberjunction/actions": "6.2.0-edge.2",
-    "@memberjunction/actions-base": "6.2.0-edge.2",
-    "@memberjunction/core": "6.2.0-edge.2",
-    "@memberjunction/core-entities": "6.2.0-edge.2",
-    "@memberjunction/global": "6.2.0-edge.2"
+    "@memberjunction/actions": "6.2.0-edge.5",
+    "@memberjunction/actions-base": "6.2.0-edge.5",
+    "@memberjunction/core": "6.2.0-edge.5",
+    "@memberjunction/core-entities": "6.2.0-edge.5",
+    "@memberjunction/global": "6.2.0-edge.5"
   }
 }

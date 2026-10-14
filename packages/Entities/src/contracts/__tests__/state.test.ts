@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { ALLOWED_TRANSITIONS, CanTransition, IsConfigurationLocked, IsTerminal } from '../state.js';
+import { ALLOWED_TRANSITIONS, CanTransition, DescribeDistributionCreateRefusal, IsConfigurationLocked, IsTerminal } from '../state.js';
 import type { ElectionStatus } from '../types.js';
 
 describe('state.ts', () => {
@@ -106,5 +106,18 @@ describe('state.ts', () => {
       expect(IsTerminal('Closed')).toBe(false);
       expect(IsTerminal('Tallied')).toBe(false);
     });
+  });
+});
+
+describe('DescribeDistributionCreateRefusal', () => {
+  it('allows a new distribution while the election can still take ballots', () => {
+    for (const status of ['Draft', 'Nominations', 'Ready', 'Open'] as ElectionStatus[]) expect(DescribeDistributionCreateRefusal(status)).toBeNull();
+  });
+  it('refuses one once the election is Closed, Tallied, Certified or Cancelled, naming the status', () => {
+    for (const status of ['Closed', 'Tallied', 'Certified', 'Cancelled'] as ElectionStatus[]) {
+      const refusal = DescribeDistributionCreateRefusal(status);
+      expect(refusal).toContain(status);
+      expect(refusal).toContain('no longer accepts ballots');
+    }
   });
 });

@@ -10,7 +10,7 @@
 
 import { UUIDsEqual } from '@memberjunction/global';
 import type { UserInfo } from '@memberjunction/core';
-import { IsGuestPrincipal } from './principal.js';
+import { IsGuestPrincipal, ParseGuestResource } from './principal.js';
 import { type mjBizAppsVotingEligibleVoterEntity } from '@mj-biz-apps/voting-entities';
 import { type VotingContext, RunViewOf } from './types.js';
 import { SystemContext } from './system-user.js';
@@ -28,22 +28,6 @@ const ELIGIBLE_VOTERS_ENTITY = 'MJ_BizApps_Voting: Eligible Voters';
 /** Escapes a value for a single-quoted SQL literal in an ExtraFilter. */
 export function SqlLiteral(value: string): string {
     return `'${value.replace(/'/g, "''")}'`;
-}
-
-/** A guest scope's parts. */
-export interface GuestScope {
-    ElectionID: string;
-    EligibleVoterID: string;
-}
-
-/** Parses a guest session resource id (`electionId:eligibleVoterId`). Null when it is not that shape. */
-export function ParseGuestResource(resourceID: string | undefined | null): GuestScope | null {
-    if (!resourceID) return null;
-    const idx = resourceID.indexOf(':');
-    if (idx <= 0 || idx === resourceID.length - 1 || resourceID.indexOf(':', idx + 1) !== -1) return null;
-    const electionID = resourceID.slice(0, idx).trim();
-    const voterID = resourceID.slice(idx + 1).trim();
-    return electionID && voterID ? { ElectionID: electionID, EligibleVoterID: voterID } : null;
 }
 
 /**

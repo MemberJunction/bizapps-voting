@@ -2,7 +2,8 @@
  * The `<mj-ballot>` custom element component. WCAG 2.2 AA accessible, mobile-first.
  * Real Shadow DOM isolation, no MJ core imports.
  *
- * States: 'init' → 'login' | 'ready' → 'reviewing' → 'casting' → 'cast' | 'closed' | 'error'
+ * States: 'init' → 'login' | 'ready' → 'reviewing' → 'casting' → 'cast' | 'closed' | 'error'; 'verify' (receipt check,
+ * reached from 'cast', 'voted', or 'login' after signing in) returns to where it was opened.
  *
  * Session: token extracted from #t=... hash (single-use), removed via history.replaceState.
  * Stored only in memory (never localStorage/cookies). Host assertion (RS256) from attribute.
@@ -22,6 +23,7 @@
  * (12) Token memory-only + fragment cleanup - (line ~320)
  * (13) aria-live + fieldset/legend + reduced-motion - (templates + CSS)
  * (14) Overridable strings - (line ~290)
+ * (15) Receipt verification (Voting.VerifyReceipt) - 'verify' state
  */
 
 import {
@@ -59,14 +61,16 @@ import {
   CommentDraftKey,
   EmptyCommentDraft,
   GENERAL_COMMENT_KEY,
+  NormalizeReceiptInput,
   RequiredCommentOptionIDs,
   resolveLanguage,
   type CommentDraft,
+  type ReceiptCheck,
   type ResultsView,
 } from './api/ballot-flow';
 import { BALLOT_CONFIG } from './widget-providers';
 
-type BallotState = 'init' | 'login' | 'ready' | 'reviewing' | 'casting' | 'cast' | 'voted' | 'closed' | 'error';
+type BallotState = 'init' | 'login' | 'ready' | 'reviewing' | 'casting' | 'cast' | 'voted' | 'verify' | 'closed' | 'error';
 
 interface BallotStrings {
   loading: string;
@@ -111,6 +115,17 @@ interface BallotStrings {
   votesCast: string;
   ballotsCounted: string;
   votesLabel: string;
+  verifyReceipt: string;
+  verifyReceiptIntro: string;
+  verifySignInFirst: string;
+  receiptCodeLabel: string;
+  receiptCodeRequired: string;
+  verify: string;
+  verifying: string;
+  back: string;
+  receiptCounted: string;
+  receiptNotCounted: string;
+  receiptNotFound: string;
 }
 
 const DEFAULT_STRINGS: BallotStrings = {
@@ -156,6 +171,17 @@ const DEFAULT_STRINGS: BallotStrings = {
   votesCast: 'Votes cast',
   ballotsCounted: 'Ballots counted',
   votesLabel: 'votes',
+  verifyReceipt: 'Verify a Receipt',
+  verifyReceiptIntro: 'Enter a receipt code to check that the ballot it belongs to is recorded and counted in this election. The check shows nothing about how anyone voted.',
+  verifySignInFirst: 'Checking a receipt needs the same sign-in as voting. Sign in above and the receipt check opens next.',
+  receiptCodeLabel: 'Receipt code',
+  receiptCodeRequired: 'Enter a receipt code.',
+  verify: 'Verify',
+  verifying: 'Checking...',
+  back: 'Back',
+  receiptCounted: 'Verified: a ballot with this receipt code is recorded and counted in this election.',
+  receiptNotCounted: 'A ballot with this receipt code was recorded but is no longer counted: it was replaced by a later ballot.',
+  receiptNotFound: 'No ballot with this receipt code was found in this election. Check the code and try again.',
 };
 
 @Component({
@@ -189,6 +215,18 @@ const DEFAULT_STRINGS: BallotStrings = {
             </div>
             <button type="submit" class="btn-submit">{{ strings.signIn }}</button>
           </form>
+          <div *ngIf="showSecondFactor" class="verify-entry">
+            <button
+              type="button"
+              class="btn-link"
+              (click)="openVerify()"
+              [attr.aria-expanded]="verifyIntent()"
+              aria-controls="verify-signin-note"
+            >
+              {{ strings.verifyReceipt }}
+            </button>
+            <p id="verify-signin-note" class="verify-note" role="status" aria-live="polite"><span *ngIf="verifyIntent()">{{ strings.verifySignInFirst }}</span></p>
+          </div>
         </div>
       </div>
 
@@ -395,6 +433,7 @@ const DEFAULT_STRINGS: BallotStrings = {
           <button type="button" (click)="copyReceiptCode()" class="btn-copy">{{ strings.copyClipboard }}</button>
         </div>
         <p *ngIf="receiptCode()" class="receipt-info">{{ strings.saveCodeToVerify }}</p>
+        <button type="button" class="btn-link btn-verify" (click)="openVerify()">{{ strings.verifyReceipt }}</button>
         <ng-container *ngTemplateOutlet="resultsTpl"></ng-container>
       </div>
 
@@ -407,8 +446,41 @@ const DEFAULT_STRINGS: BallotStrings = {
           <code>{{ receiptCode() }}</code>
           <button type="button" (click)="copyReceiptCode()" class="btn-copy">{{ strings.copyClipboard }}</button>
         </div>
+        <button type="button" class="btn-link btn-verify" (click)="openVerify()">{{ strings.verifyReceipt }}</button>
         <ng-container *ngTemplateOutlet="resultsTpl"></ng-container>
       </div>
+
+      <!-- Receipt verification (Voting.VerifyReceipt): found / counted only, never what was voted -->
+      <section *ngIf="state() === 'verify'" class="receipt-verify" aria-labelledby="verify-heading">
+        <h2 id="verify-heading" tabindex="-1">{{ strings.verifyReceipt }}</h2>
+        <p class="verify-intro">{{ strings.verifyReceiptIntro }}</p>
+        <form class="verify-form" (submit)="onVerifySubmit($event)" novalidate>
+          <div class="form-group">
+            <label for="receipt-code-input">{{ strings.receiptCodeLabel }}</label>
+            <input
+              id="receipt-code-input"
+              name="receiptCode"
+              type="text"
+              autocomplete="off"
+              autocapitalize="characters"
+              spellcheck="false"
+              [(ngModel)]="verifyCode"
+              [attr.aria-invalid]="verifyError() ? 'true' : null"
+              [attr.aria-describedby]="verifyError() ? 'verify-error' : null"
+            />
+          </div>
+          <p *ngIf="verifyError()" id="verify-error" class="login-error" role="alert">{{ verifyError() }}</p>
+          <div class="verify-actions">
+            <button type="submit" class="btn-submit" [disabled]="verifying()">{{ verifying() ? strings.verifying : strings.verify }}</button>
+            <button type="button" class="btn-back" (click)="closeVerify()">{{ strings.back }}</button>
+          </div>
+        </form>
+        <div class="verify-result" role="status" aria-live="polite">
+          <p *ngIf="verifyResult() === 'counted'" class="verify-outcome verify-counted" data-outcome="counted">{{ strings.receiptCounted }}</p>
+          <p *ngIf="verifyResult() === 'not-counted'" class="verify-outcome verify-not-counted" data-outcome="not-counted">{{ strings.receiptNotCounted }}</p>
+          <p *ngIf="verifyResult() === 'not-found'" class="verify-outcome verify-not-found" data-outcome="not-found">{{ strings.receiptNotFound }}</p>
+        </div>
+      </section>
 
       <ng-template #commentTpl let-contest="contest" let-key="key" let-title="title">
         <fieldset class="comment-fieldset">
@@ -887,6 +959,64 @@ const DEFAULT_STRINGS: BallotStrings = {
       color: var(--color-error);
     }
 
+    .btn-link {
+      background: none;
+      border: none;
+      padding: 0.5rem 0.25rem;
+      color: var(--color-focus);
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+
+    .btn-link:focus-visible,
+    .receipt-verify h2:focus-visible {
+      outline: 2px solid var(--color-focus);
+      outline-offset: 2px;
+    }
+
+    .verify-entry {
+      margin-top: 1.5rem;
+    }
+
+    .verify-note {
+      margin: 0.5rem 0 0;
+    }
+
+    .btn-verify {
+      display: block;
+      margin: 0.5rem auto 0;
+    }
+
+    .receipt-verify {
+      max-width: 420px;
+      margin: 0 auto;
+    }
+
+    .verify-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .verify-outcome {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 4px;
+      border: 1px solid var(--color-border);
+      font-weight: 500;
+    }
+
+    .verify-counted {
+      border-color: var(--color-success);
+    }
+
+    .verify-not-counted,
+    .verify-not-found {
+      border-color: var(--color-error);
+    }
+
     .result-options {
       padding-left: 1.25rem;
     }
@@ -956,6 +1086,15 @@ export class MjBallotComponent implements OnInit, OnChanges, OnDestroy {
   resultsView = signal<ResultsView | null>(null);
   formValid = signal<boolean | null>(null);
   validationErrors = signal<Array<{ ContestID?: string; Code: string; Message: string }>>([]);
+
+  // Receipt verification
+  verifyCode = '';
+  verifyResult = signal<ReceiptCheck | null>(null);
+  verifyError = signal('');
+  verifying = signal(false);
+  /** The voter asked to verify a receipt from the sign-in screen: open the check right after signing in. */
+  verifyIntent = signal(false);
+  private verifyReturn: BallotState | null = null;
 
   // Login (second-factor)
   showSecondFactor = false;
@@ -1115,7 +1254,81 @@ export class MjBallotComponent implements OnInit, OnChanges, OnDestroy {
       this.state.set('login');
       return;
     }
+    if (this.verifyIntent()) {
+      this.verifyIntent.set(false);
+      this.openVerify();
+      return;
+    }
     await this.loadBallot();
+  }
+
+  // Item 15: receipt verification. VerifyReceipt needs a session (a guest scoped to this election or a signed-in user),
+  // so from the sign-in screen the request is remembered and the check opens once the voter has signed in.
+
+  /** Opens the receipt check, prefilled with this session's own receipt when there is one. */
+  openVerify(): void {
+    if (!this.flow?.SignedIn) {
+      this.verifyIntent.set(!this.verifyIntent());
+      return;
+    }
+    // Return to a screen the voter was looking at; opened on the way in from the sign-in screen there is none (the ballot loads).
+    const current = this.state();
+    if (current !== 'verify') this.verifyReturn = current === 'cast' || current === 'voted' || current === 'ready' ? current : null;
+    this.verifyCode = this.receiptCode();
+    this.verifyResult.set(null);
+    this.verifyError.set('');
+    this.state.set('verify');
+    this.dispatchCustomEvent('ballot-state-change', { state: 'verify' });
+    this.focusAfterRender('verify-heading');
+  }
+
+  /** Back to where the check was opened from; from the sign-in screen that is the voter's ballot. */
+  closeVerify(): void {
+    const back = this.verifyReturn;
+    this.verifyReturn = null;
+    this.verifyResult.set(null);
+    this.verifyError.set('');
+    if (back) {
+      this.state.set(back);
+      this.dispatchCustomEvent('ballot-state-change', { state: back });
+      return;
+    }
+    void this.loadBallot();
+  }
+
+  onVerifySubmit(event: Event): void {
+    event.preventDefault();
+    void this.checkReceipt();
+  }
+
+  async checkReceipt(): Promise<void> {
+    const code = NormalizeReceiptInput(this.verifyCode);
+    this.verifyResult.set(null);
+    if (!code) {
+      this.verifyError.set(this.strings.receiptCodeRequired);
+      return;
+    }
+    if (!this.flow) return;
+    this.verifyError.set('');
+    this.verifying.set(true);
+    try {
+      const outcome = await this.flow.VerifyReceipt(code);
+      this.verifyResult.set(outcome);
+      this.dispatchCustomEvent('receipt-verified', { outcome });
+    } catch (error) {
+      this.verifyError.set(error instanceof BallotApiError ? error.message : GENERIC_ERROR_MESSAGE);
+    } finally {
+      this.verifying.set(false);
+    }
+  }
+
+  /** Moves focus to an element of the shadow root once the state change has rendered (screen readers follow it). */
+  private focusAfterRender(id: string): void {
+    setTimeout(() => {
+      const root = this.elementRef.nativeElement.shadowRoot;
+      const target = root?.getElementById(id);
+      if (target instanceof HTMLElement) target.focus();
+    }, 0);
   }
 
   private fail(message: string): void {
