@@ -24,12 +24,12 @@
     "@mj-biz-apps/voting-entities": "0.0.0"
   },
   "peerDependencies": {
-    "@memberjunction/core": "^6.2.0-edge.4",
-    "@memberjunction/global": "^6.2.0-edge.4"
+    "@memberjunction/core": "^6.2.0-edge.5",
+    "@memberjunction/global": "^6.2.0-edge.5"
   },
   "devDependencies": {
-    "@memberjunction/core": "6.2.0-edge.4",
-    "@memberjunction/global": "6.2.0-edge.4",
+    "@memberjunction/core": "6.2.0-edge.5",
+    "@memberjunction/global": "6.2.0-edge.5",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   },

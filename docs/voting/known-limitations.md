@@ -104,7 +104,7 @@ Only limitations verified in the code are listed.
 
 - **A client reads its own writes straight after a Remote Operation** (confirmed by `wire-lifecycle.WL24`, which reads
   immediately after each lifecycle operation). MJ's `ProviderBase` keeps a short **dedup-linger** replay of identical
-  `RunView`/`RunViews` requests (`ProviderBase.DedupLingerMs`), and from MJ `6.2.0-edge.4` the GraphQL provider drops it
+  `RunView`/`RunViews` requests (`ProviderBase.DedupLingerMs`), and from MJ `6.2.0-edge.5` the GraphQL provider drops it
   when any mutation completes. A Remote Operation does not name the entities it wrote, so the whole replay is dropped; that
   costs at most one extra round trip per read that follows an operation.
 - **The server side is fresh.** After a freeze, open, close, cancel, nominations change or certification has committed, the

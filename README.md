@@ -245,14 +245,14 @@ migrations/  metadata/  codegen/  docs/voting/  plans/
 There is no MJAPI or MJExplorer in this repo; it loads into a host MJ (on the M5 workspace, MJ's own shells).
 
 **Prerequisites**
-- **MemberJunction `6.2.0-edge.4` or later** (the next edge release; not yet published when this was written). It carries
+- **MemberJunction `6.2.0-edge.5` or later** (the first edge release cut after MJ #5637 merged; `6.2.0-edge.4` predates it). It carries
   what this app needs from MJ: CodeGen applying per-table `Entities` config (including `AutoAddPermissions`) at entity
   creation, the `@memberjunction/server` exports the ballot edge mints sessions with (`BuildSessionClaims`,
   `MagicLinkKeyManager`, `VerifyHostAssertion`, `IsScopeLimitedPrincipal`, …), `OwnsCORS` server extensions, per-provider
   IS-A metadata, and RunView linger invalidation after a mutation. Until it is published, build inside a workspace linked
   to MJ `next`.
 - `bizapps-common` installed (elections reference its `Person` / `Organization` tables); `mj-app.json` declares it as the `mj-bizapps-common` dependency (`>=5.46.1 <6.0.0`).
-- MJ `>=6.2.0-edge.4 <7.0.0` (`mj-app.json`).
+- MJ `>=6.2.0-edge.5 <7.0.0` (`mj-app.json`).
 
 **Install** (full recipe: [docs/template-docs/linking-to-mj.md](docs/template-docs/linking-to-mj.md))
 1. Server: in the MJ root `mj.config.cjs` add a `dynamicPackages.server` entry

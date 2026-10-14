@@ -29,9 +29,9 @@
     "@angular/core": "^21.2.22",
     "@angular/forms": "^21.2.22",
     "@angular/platform-browser": "^21.2.22",
-    "@memberjunction/core": "^6.2.0-edge.4",
-    "@memberjunction/global": "^6.2.0-edge.4",
-    "@memberjunction/ng-base-types": "^6.2.0-edge.4"
+    "@memberjunction/core": "^6.2.0-edge.5",
+    "@memberjunction/global": "^6.2.0-edge.5",
+    "@memberjunction/ng-base-types": "^6.2.0-edge.5"
   },
   "devDependencies": {
     "@angular/common": "21.2.22",
@@ -40,9 +40,9 @@
     "@angular/core": "21.2.22",
     "@angular/forms": "21.2.22",
     "@angular/platform-browser": "21.2.22",
-    "@memberjunction/core": "6.2.0-edge.4",
-    "@memberjunction/global": "6.2.0-edge.4",
-    "@memberjunction/ng-base-types": "6.2.0-edge.4",
+    "@memberjunction/core": "6.2.0-edge.5",
+    "@memberjunction/global": "6.2.0-edge.5",
+    "@memberjunction/ng-base-types": "6.2.0-edge.5",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18",
     "esbuild": "^0.27.2",

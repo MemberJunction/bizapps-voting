@@ -14,7 +14,7 @@
     "url": "https://memberjunction.com"
   },
   "repository": "https://github.com/MemberJunction/bizapps-voting",
-  "mjVersionRange": ">=6.2.0-edge.4 <7.0.0",
+  "mjVersionRange": ">=6.2.0-edge.5 <7.0.0",
   "dependencies": {
     "mj-bizapps-common": {
       "version": ">=5.46.1 <6.0.0",
