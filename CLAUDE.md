@@ -83,6 +83,10 @@ topic before working in its area:
 | Metadata & mj-sync | [docs/claude/08-metadata-and-sync.md](docs/claude/08-metadata-and-sync.md) |
 | Testing | [docs/claude/09-testing.md](docs/claude/09-testing.md) |
 
+The authoring rules MJ and every BizApps repo share (plain migration DDL, CHECK values
+written for people, a `primaryKey` on every metadata record) are in MJ's
+[Schema and Code Authoring Guide](https://github.com/MemberJunction/MJ/blob/next/guides/SCHEMA_AND_CODE_AUTHORING_GUIDE.md), each with its reason.
+
 ## The rules that matter most in THIS repo
 
 1. **No commits without explicit approval** — never run `git commit` unless
