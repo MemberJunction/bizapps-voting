@@ -26,13 +26,48 @@ Full flow: [branching.md](branching.md) and [publishing.md](publishing.md).
 
 ## 3. Branch protection
 
-Nothing in the pipeline pushes to a branch directly, so both branches can be
-protected. Follow the "Open App Release CI Rollout" SOP. On `next`: changes arrive
-by pull request with the door checks required and **no approval required**, and
-the CI GitHub App is a "pull requests only" bypass actor so the back-merge can
-merge itself. On `main`: the `rr:` checks and `build` required, **one approval**,
-and dismiss-stale-reviews, with the Repository admin role as a "pull requests only"
-bypass: the override for a failure case (no second reviewer, a stuck check).
+Nothing in the pipeline pushes to a branch directly, so both branches can be protected.
+Run the script rather than clicking through Settings — it is idempotent, and dry-run by
+default:
+
+```bash
+node ci/protect.mjs --repo <this-repo>           # print the plan, change nothing
+node ci/protect.mjs --repo <this-repo> --apply   # write it
+```
+
+This used to be prose pointing at an "Open App Release CI Rollout" SOP. Rulesets live in
+GitHub config and leave no record in git, so nothing in a repo says how its branches are
+protected and drift is invisible — by the time the script was written, twenty bizApps repos
+had five different ruleset shapes between them, six had `main` unprotected, and one had no
+rulesets at all. A script can detect that and repair it; a document cannot.
+
+It creates three rulesets:
+
+| Ruleset | Branch | Carries |
+|---|---|---|
+| `protect-next` | default | one approval + the door checks |
+| `protect-main` | `main` | one approval, nothing else |
+| `protect-main-checks` | `main` | the `rr:`/`build` checks, deletion, non-fast-forward |
+
+`main` is **split in two** because a ruleset bypass applies to every rule in its ruleset.
+The release has to skip the review — `release.yml` merges the Version Packages PR with the
+App token, so no human approval is needed — without skipping the gate. One ruleset makes
+that impossible: whoever is excused from the review is excused from `build` too. So the CI
+App bypasses `protect-main` and is deliberately absent from `protect-main-checks`. Every
+*other* bypass actor, including any break-glass team, is carried onto both halves, which
+preserves the human override for a stuck check. A human override is a person deciding to;
+an App override would be anyone who can dispatch a workflow deciding to.
+
+Releases are cut by dispatching **Cut the Release** (`release.yml`), not by clicking merge
+on the Version Packages PR.
+
+The script **refuses** if a differently-named ruleset already guards one of those branches,
+because rulesets are additive — leaving an old one in place unions its rules with the new
+ones instead of replacing them, and an old review rule the App cannot bypass would block
+every release while looking replaced. `--adopt` renames it in place instead.
+
+Two things it cannot do: creating a break-glass team needs org-admin rights, and the npm
+setup in §4 is not a GitHub operation.
 
 ## 4. Services to connect
 
