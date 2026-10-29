@@ -96,24 +96,26 @@ file itself.
 
 ## Record file format
 
-A JSON array; each element is one record with a `fields` object:
+A JSON array; each element is one record with a `primaryKey` and a `fields` object:
 
 ```json
 [
-  { "fields": { "Name": "Standard", "Description": "Default item type", "DefaultRank": 10 } },
-  { "fields": { "Name": "Premium",  "Description": "Premium item type",  "DefaultRank": 20 } }
+  { "primaryKey": { "ID": "<UUID from uuidgen>" }, "fields": { "Name": "Standard", "Description": "Default item type", "DefaultRank": 10 } },
+  { "primaryKey": { "ID": "<UUID from uuidgen>" }, "fields": { "Name": "Premium",  "Description": "Premium item type",  "DefaultRank": 20 } }
 ]
 ```
 
-- **New records: write ONLY `fields`.** On first push, mj-sync writes back a
-  `primaryKey` (the generated ID) and a `sync` block (timestamp + checksum) —
-  commit that write-back, and never hand-edit either block.
+- **Every record has a `primaryKey`**, nested `relatedEntities` children
+  included. A row the file creates gets a hardcoded UUID from CLI `uuidgen`
+  (`uuidgen | tr '[:lower:]' '[:upper:]'`), stable forever once pushed
+  anywhere. A row a migration or CodeGen already created gets an `@lookup`
+  that resolves to it. `mj sync push` creates a new row for any record without
+  a `primaryKey`, so leaving it off inserts a duplicate on every fresh database.
+- **Never author or hand-edit a `sync` block** (timestamp + checksum); push
+  writes it.
 - Pushes are **upserts** — safe to re-run. But note: `mj sync push` is a
   **full reconcile** — it can DELETE rows that exist in the DB for that entity
   scope but not in your files. It is a single-author, dev-time tool.
-- Pinning an ID on purpose (like `schema-info/` does) is how you make a
-  record deterministic across databases: supply `primaryKey.ID` yourself with
-  a hardcoded UUID and keep it stable forever once pushed anywhere.
 
 ## Reference syntax
 
