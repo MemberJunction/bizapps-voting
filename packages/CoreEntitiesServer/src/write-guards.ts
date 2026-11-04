@@ -11,7 +11,6 @@
 import { AsyncLocalStorage } from 'async_hooks';
 import {
     ServerOperationScopeManager,
-    StackServerOperationScopeTracker,
     type IServerOperationScopeTracker,
     type ServerOperationScopeFrame,
 } from '@memberjunction/core';
@@ -34,6 +33,7 @@ export const TALLY_ALLOWED_OPERATIONS: ReadonlyArray<string> = [
  * `@memberjunction/generic-database-provider` has not yet replaced the default browser stack tracker.
  */
 class NodeAsyncServerOperationScopeTrackerBridge implements IServerOperationScopeTracker {
+    public readonly IsAsyncSafe = true;
     private readonly _storage = new AsyncLocalStorage<ReadonlyArray<ServerOperationScopeFrame>>();
 
     public RunInScope<T>(frame: ServerOperationScopeFrame, fn: () => T): T {
@@ -42,13 +42,18 @@ class NodeAsyncServerOperationScopeTrackerBridge implements IServerOperationScop
         return this._storage.run(nextFrames, fn);
     }
 
+    public RunWithoutAuthority<T>(fn: () => T): T {
+        return this._storage.run([], fn);
+    }
+
     public GetActiveFrames(): ReadonlyArray<ServerOperationScopeFrame> {
         return this._storage.getStore() ?? [];
     }
 }
 
 function ensureAsyncScopeTrackerInstalled(): void {
-    if (ServerOperationScopeManager.Instance.GetTracker() instanceof StackServerOperationScopeTracker) {
+    const tracker = ServerOperationScopeManager?.Instance?.GetTracker();
+    if (tracker && !tracker.IsAsyncSafe) {
         ServerOperationScopeManager.Instance.SetTracker(new NodeAsyncServerOperationScopeTrackerBridge());
     }
 }

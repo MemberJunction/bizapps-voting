@@ -2,21 +2,7 @@
   "extends": "../../tsconfig.server.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src",
-    "baseUrl": ".",
-    "paths": {
-      "@mj-biz-apps/voting-entities": ["../Entities/dist/index.d.ts"]
-    }
-  },
-  "tsc-alias": {
-    "replacers": {
-      "default": {
-        "enabled": false
-      },
-      "base-url": {
-        "enabled": false
-      }
-    }
+    "rootDir": "src"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "src/**/__tests__/**"]

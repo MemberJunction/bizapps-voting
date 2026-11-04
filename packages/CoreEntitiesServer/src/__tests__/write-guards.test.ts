@@ -184,10 +184,14 @@ describe('ServerOperationScopeManager bridge', () => {
         );
     });
 
-    it('masks outer authority inside RunInClientCrudBoundary so client CRUD cannot inherit engine authority', async () => {
+    it('masks outer authority inside RunInClientCrudBoundary and RunWithoutAuthority so client CRUD cannot inherit engine authority', async () => {
+        expect(ServerOperationScopeManager.Instance.GetTracker().IsAsyncSafe).toBe(true);
         await BallotBoxWriteGuard.RunWithBallotBoxAccess(async () => {
             expect(BallotBoxWriteGuard.HasBallotBoxAccess()).toBe(true);
             ServerOperationScopeManager.Instance.RunInClientCrudBoundary(() => {
+                expect(BallotBoxWriteGuard.HasBallotBoxAccess()).toBe(false);
+            });
+            ServerOperationScopeManager.Instance.RunWithoutAuthority(() => {
                 expect(BallotBoxWriteGuard.HasBallotBoxAccess()).toBe(false);
             });
             expect(BallotBoxWriteGuard.HasBallotBoxAccess()).toBe(true);
