@@ -229,6 +229,13 @@ export function RegisterVotingEntityPolicies(): void {
         });
     }
 
+    EntityLifecyclePolicyEngine.Instance.RegisterPolicy('MJ_BizApps_Voting: Election Audit Events', {
+        writeAuthority: {
+            mode: 'AppendOnly',
+            errorMessage: 'Audit events are append-only and cannot be modified.',
+        },
+    });
+
     const registerParentElectionLockPolicy = (
         policyKey: string,
         targetEntityName: string,

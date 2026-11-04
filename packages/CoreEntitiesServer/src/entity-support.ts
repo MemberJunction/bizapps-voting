@@ -150,6 +150,13 @@ export function ParentIdsOf(entity: BaseEntity, fieldName: string): string[] {
     if (!field) return [];
     const ids: string[] = [];
     if (typeof field.Value === 'string' && field.Value) ids.push(field.Value);
-    if (entity.IsSaved && field.Dirty && typeof field.OldValue === 'string' && field.OldValue) ids.push(field.OldValue);
+    if (
+        entity.IsSaved &&
+        typeof field.OldValue === 'string' &&
+        field.OldValue &&
+        !ids.includes(field.OldValue)
+    ) {
+        ids.push(field.OldValue);
+    }
     return ids;
 }
