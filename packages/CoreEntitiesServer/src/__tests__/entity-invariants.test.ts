@@ -1,9 +1,20 @@
 /**
- * Tests for the pure decision helpers behind the entity server classes.
+ * Tests for the pure decision helpers behind the entity server classes, plus
+ * EntityLifecyclePolicyEngine WriteAuthority gates and CrossEntityPolicyEngine batch memoization.
  * The state machine and lock rule are tested in @mj-biz-apps/voting-entities; here they are only used.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import {
+    BaseEntity,
+    CrossEntityPolicyEngine,
+    EntityInfo,
+    EntityLifecyclePolicyEngine,
+    ServerOperationScopeManager,
+    UserInfo,
+    type CrossEntityBatchItem,
+    type IMetadataProvider,
+} from '@memberjunction/core';
 import {
     ALLOWED_TRANSITIONS,
     CanTransition,
@@ -25,6 +36,20 @@ import {
     GetAllowedLockedFieldChanges,
     ParseConfiguration,
 } from '../entity-invariants.js';
+import {
+    CastBallotEntityServer,
+    ContestEntityServer,
+    ContestOptionEntityServer,
+    ContestResultEntityServer,
+    EligibleVoterEntityServer,
+    RegisterVotingEntityPolicies,
+} from '../entity-servers.js';
+import {
+    BALLOT_BOX_ALLOWED_OPERATIONS,
+    BallotBoxWriteGuard,
+    TALLY_ALLOWED_OPERATIONS,
+    TallyWriteGuard,
+} from '../write-guards.js';
 
 describe('canonical contracts are used, not re-implemented', () => {
     it('the lock rule and state machine come from voting-entities', () => {
@@ -227,5 +252,316 @@ describe('AsString', () => {
         expect(AsString('Open')).toBe('Open');
         expect(AsString(null)).toBeNull();
         expect(AsString(3)).toBeNull();
+    });
+});
+
+// === Helpers for EntityLifecyclePolicyEngine and CrossEntityPolicyEngine tests ===
+
+function buildEntityInfo(name: string, fieldNames: ReadonlyArray<string>): EntityInfo {
+    const id = `entity-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+    return new EntityInfo({
+        ID: id,
+        Name: name,
+        BaseTable: name,
+        BaseView: `vw${name}`,
+        SchemaName: '__mj_BizAppsVoting',
+        AllowCreateAPI: true,
+        AllowUpdateAPI: true,
+        AllowDeleteAPI: true,
+        EntityFields: fieldNames.map((fieldName, idx) => ({
+            ID: `${id}-f-${idx + 1}`,
+            EntityID: id,
+            Name: fieldName,
+            Type: fieldName === 'AddedAfterFreeze' ? 'bit' : 'nvarchar',
+            IsPrimaryKey: fieldName === 'ID',
+            AllowsNull: fieldName !== 'ID',
+            AllowUpdateAPI: fieldName !== 'ID',
+            Sequence: idx + 1,
+        })),
+    });
+}
+
+describe('EntityLifecyclePolicyEngine WriteAuthority policies', () => {
+    beforeEach(() => {
+        RegisterVotingEntityPolicies();
+    });
+
+    it('registers ServerOperationOnly WriteAuthority policies for ballot-box and tally entities', () => {
+        const ballotEntities = [
+            'MJ_BizApps_Voting: Cast Ballots',
+            'MJ_BizApps_Voting: Ballot Selections',
+            'MJ_BizApps_Voting: Contest Running Tallies',
+            'MJ_BizApps_Voting: Ballot Attributions',
+            'MJ_BizApps_Voting: Participations',
+            'MJ_BizApps_Voting: Ballot Submissions',
+            'MJ_BizApps_Voting: Vote Selections',
+            'MJ_BizApps_Voting: Anonymous Ballot Tokens',
+        ];
+        for (const entityName of ballotEntities) {
+            const info = buildEntityInfo(entityName, ['ID', 'Status']);
+            const policy = EntityLifecyclePolicyEngine.Instance.ResolvePolicy(info);
+            expect(policy?.writeAuthority?.mode, `${entityName} mode`).toBe('ServerOperationOnly');
+            expect(policy?.writeAuthority?.allowedOperations, `${entityName} allowedOperations`).toEqual([
+                ...BALLOT_BOX_ALLOWED_OPERATIONS,
+            ]);
+        }
+
+        const tallyEntities = [
+            'MJ_BizApps_Voting: Contest Results',
+            'MJ_BizApps_Voting: Contest Option Results',
+            'MJ_BizApps_Voting: Contest Tallies',
+        ];
+        for (const entityName of tallyEntities) {
+            const info = buildEntityInfo(entityName, ['ID', 'ContestID']);
+            const policy = EntityLifecyclePolicyEngine.Instance.ResolvePolicy(info);
+            expect(policy?.writeAuthority?.mode, `${entityName} mode`).toBe('ServerOperationOnly');
+            expect(policy?.writeAuthority?.allowedOperations, `${entityName} allowedOperations`).toEqual([
+                ...TALLY_ALLOWED_OPERATIONS,
+            ]);
+        }
+    });
+
+    it('enforces CheckWritePermissionGate and ValidateAsync via BallotBoxWriteGuard and TallyWriteGuard scopes', async () => {
+        const castBallotInfo = buildEntityInfo('MJ_BizApps_Voting: Cast Ballots', ['ID', 'ElectionID', 'Status']);
+        const ballot = new CastBallotEntityServer(castBallotInfo);
+        ballot.NewRecord();
+        const statusField = ballot.GetFieldByName('Status');
+        if (statusField) statusField.Value = 'Counted';
+
+        // Outside scope: refused by both CheckWritePermissionGate and ValidateAsync
+        const gateRefusal = EntityLifecyclePolicyEngine.Instance.CheckWritePermissionGate(ballot, 'Create', undefined, true);
+        expect(gateRefusal).toContain('only be created by the cast engine');
+
+        const outsideValidation = await ballot.ValidateAsync();
+        expect(outsideValidation.Success).toBe(false);
+        expect(outsideValidation.Errors.map((e) => e.Message).join(' ')).toContain('only be created by the cast engine');
+
+        // Inside BallotBoxWriteGuard: permitted
+        await BallotBoxWriteGuard.RunWithBallotBoxAccess(async () => {
+            expect(EntityLifecyclePolicyEngine.Instance.CheckWritePermissionGate(ballot, 'Create', undefined, true)).toBeNull();
+            const insideValidation = await ballot.ValidateAsync();
+            expect(insideValidation.Success).toBe(true);
+        });
+
+        // Inside TallyWriteGuard: Contest Results gate is permitted, Ballot Box gate remains refused
+        const contestResultInfo = buildEntityInfo('MJ_BizApps_Voting: Contest Results', ['ID', 'ContestID']);
+        const contestResult = new ContestResultEntityServer(contestResultInfo);
+        contestResult.NewRecord();
+        expect(EntityLifecyclePolicyEngine.Instance.CheckWritePermissionGate(contestResult, 'Create', undefined, true)).toContain(
+            'only be written by the tally engine'
+        );
+
+        await TallyWriteGuard.RunWithTallyAccess(async () => {
+            expect(EntityLifecyclePolicyEngine.Instance.CheckWritePermissionGate(contestResult, 'Create', undefined, true)).toBeNull();
+            expect(EntityLifecyclePolicyEngine.Instance.CheckWritePermissionGate(ballot, 'Create', undefined, true)).toContain(
+                'only be created by the cast engine'
+            );
+        });
+    });
+});
+
+interface MockElectionState {
+    ID: string;
+    Status: ElectionStatus;
+    RollFrozenAt: Date | null;
+}
+
+class MockVotingTransactionProvider {
+    public TransactionScopeCacheKey: string | null = 'tx-voting-batch-epoch-1';
+    public ElectionLoadCount = 0;
+    public ContestLoadCount = 0;
+    public ElectionState: MockElectionState = {
+        ID: 'elec-100',
+        Status: 'Draft',
+        RollFrozenAt: null,
+    };
+
+    private readonly _electionInfo = buildEntityInfo('MJ_BizApps_Voting: Elections', ['ID', 'Status', 'RollFrozenAt']);
+    private readonly _contestInfo = buildEntityInfo('MJ_BizApps_Voting: Contests', ['ID', 'ElectionID', 'Name']);
+    private readonly _optionInfo = buildEntityInfo('MJ_BizApps_Voting: Contest Options', ['ID', 'ContestID', 'Label']);
+    private readonly _voterInfo = buildEntityInfo('MJ_BizApps_Voting: Eligible Voters', [
+        'ID',
+        'ElectionID',
+        'Status',
+        'StatusReason',
+        'Weight',
+        'AddedAfterFreeze',
+    ]);
+
+    public EntityByName(name: string): EntityInfo | undefined {
+        const lower = name.trim().toLowerCase();
+        return [this._electionInfo, this._contestInfo, this._optionInfo, this._voterInfo].find(
+            (e) => e.Name.toLowerCase() === lower
+        );
+    }
+
+    public async GetEntityObject<T extends BaseEntity>(entityName: string, contextUser?: UserInfo): Promise<T> {
+        const lower = entityName.trim().toLowerCase();
+        if (lower === 'mj_bizapps_voting: elections') {
+            const entity = new BaseEntity(this._electionInfo, this as object as IMetadataProvider);
+            if (contextUser) entity.ContextCurrentUser = contextUser;
+            const self = this;
+            Object.defineProperty(entity, 'Status', {
+                get: () => entity.GetFieldByName('Status')?.Value as ElectionStatus,
+                set: (v: ElectionStatus) => {
+                    const f = entity.GetFieldByName('Status');
+                    if (f) f.Value = v;
+                },
+            });
+            Object.defineProperty(entity, 'RollFrozenAt', {
+                get: () => (entity.GetFieldByName('RollFrozenAt')?.Value as Date | null) ?? null,
+                set: (v: Date | null) => {
+                    const f = entity.GetFieldByName('RollFrozenAt');
+                    if (f) f.Value = v;
+                },
+            });
+            (entity as BaseEntity & { Load: (id: string) => Promise<boolean> }).Load = async (id: string): Promise<boolean> => {
+                self.ElectionLoadCount++;
+                if (id !== self.ElectionState.ID) return false;
+                const idField = entity.GetFieldByName('ID');
+                const statusField = entity.GetFieldByName('Status');
+                const frozenField = entity.GetFieldByName('RollFrozenAt');
+                if (idField) idField.Value = self.ElectionState.ID;
+                if (statusField) statusField.Value = self.ElectionState.Status;
+                if (frozenField) frozenField.Value = self.ElectionState.RollFrozenAt;
+                return true;
+            };
+            return entity as T;
+        }
+
+        if (lower === 'mj_bizapps_voting: contests') {
+            const contest = new ContestEntityServer(this._contestInfo, this as object as IMetadataProvider);
+            if (contextUser) contest.ContextCurrentUser = contextUser;
+            const self = this;
+            (contest as BaseEntity & { Load: (id: string) => Promise<boolean> }).Load = async (id: string): Promise<boolean> => {
+                self.ContestLoadCount++;
+                const idField = contest.GetFieldByName('ID');
+                const elecField = contest.GetFieldByName('ElectionID');
+                if (idField) idField.Value = id;
+                if (elecField) elecField.Value = self.ElectionState.ID;
+                return true;
+            };
+            return contest as object as T;
+        }
+
+        if (lower === 'mj_bizapps_voting: contest options') {
+            const option = new ContestOptionEntityServer(this._optionInfo, this as object as IMetadataProvider);
+            if (contextUser) option.ContextCurrentUser = contextUser;
+            return option as object as T;
+        }
+
+        const voter = new EligibleVoterEntityServer(this._voterInfo, this as object as IMetadataProvider);
+        if (contextUser) voter.ContextCurrentUser = contextUser;
+        return voter as object as T;
+    }
+}
+
+describe('CrossEntityPolicyEngine batch memoization for Contests, Contest Options, and Eligible Voters', () => {
+    const testUser = new UserInfo(null, {
+        ID: 'u-voting-policy',
+        Name: 'Voting Tester',
+        Email: 'voting@example.com',
+        IsActive: true,
+    });
+
+    beforeEach(() => {
+        CrossEntityPolicyEngine.Instance.ClearProgrammaticPolicies();
+        RegisterVotingEntityPolicies();
+    });
+
+    it('memoizes parent Election and Contest lookups across batch saves/deletes in a transaction and invalidates when Election mutates', async () => {
+        const provider = new MockVotingTransactionProvider();
+        const metadataProvider = provider as object as IMetadataProvider;
+
+        // 1. Validate 20 Contests, 20 Contest Options, and 20 Eligible Voters in the same transaction scope
+        const contests: ContestEntityServer[] = [];
+        for (let i = 0; i < 20; i++) {
+            const c = await provider.GetEntityObject<ContestEntityServer>('MJ_BizApps_Voting: Contests', testUser);
+            c.NewRecord();
+            const idF = c.GetFieldByName('ID');
+            const elecF = c.GetFieldByName('ElectionID');
+            const nameF = c.GetFieldByName('Name');
+            if (idF) idF.Value = `contest-${i + 1}`;
+            if (elecF) elecF.Value = 'elec-100';
+            if (nameF) nameF.Value = `Contest ${i + 1}`;
+            const res = await c.ValidateAsync();
+            expect(res.Success).toBe(true);
+            contests.push(c);
+        }
+
+        const options: ContestOptionEntityServer[] = [];
+        for (let i = 0; i < 20; i++) {
+            const opt = await provider.GetEntityObject<ContestOptionEntityServer>('MJ_BizApps_Voting: Contest Options', testUser);
+            opt.NewRecord();
+            const idF = opt.GetFieldByName('ID');
+            const contestF = opt.GetFieldByName('ContestID');
+            const labelF = opt.GetFieldByName('Label');
+            if (idF) idF.Value = `opt-${i + 1}`;
+            if (contestF) contestF.Value = 'contest-1';
+            if (labelF) labelF.Value = `Option ${i + 1}`;
+            const res = await opt.ValidateAsync();
+            expect(res.Success).toBe(true);
+            options.push(opt);
+        }
+
+        const voters: EligibleVoterEntityServer[] = [];
+        for (let i = 0; i < 20; i++) {
+            const v = await provider.GetEntityObject<EligibleVoterEntityServer>('MJ_BizApps_Voting: Eligible Voters', testUser);
+            v.NewRecord();
+            const idF = v.GetFieldByName('ID');
+            const elecF = v.GetFieldByName('ElectionID');
+            const addedF = v.GetFieldByName('AddedAfterFreeze');
+            if (idF) idF.Value = `voter-${i + 1}`;
+            if (elecF) elecF.Value = 'elec-100';
+            if (addedF) addedF.Value = false;
+            const res = await v.ValidateAsync();
+            expect(res.Success).toBe(true);
+            voters.push(v);
+        }
+
+        // All 60 child validations shared the memoized parent Election (1 load) and Contest (1 load)!
+        expect(provider.ElectionLoadCount).toBe(1);
+        expect(provider.ContestLoadCount).toBe(1);
+
+        // PreEvaluateBatch across all 60 items also reuses the transaction scope (still 1 Election load!)
+        const batchItems: CrossEntityBatchItem[] = [
+            ...contests.map((Entity) => ({ Entity, Operation: 'Create' as const })),
+            ...options.map((Entity) => ({ Entity, Operation: 'Create' as const })),
+            ...voters.map((Entity) => ({ Entity, Operation: 'Create' as const })),
+        ];
+        const batchErr = await CrossEntityPolicyEngine.Instance.PreEvaluateBatch(batchItems, metadataProvider, testUser);
+        expect(batchErr).toBeNull();
+        expect(provider.ElectionLoadCount).toBe(1);
+        expect(provider.ContestLoadCount).toBe(1);
+
+        // 2. Mutate parent Election to 'Open' with RollFrozenAt set and notify CrossEntityPolicyEngine
+        provider.ElectionState = {
+            ID: 'elec-100',
+            Status: 'Open',
+            RollFrozenAt: new Date(),
+        };
+        const mutatedElection = await provider.GetEntityObject<BaseEntity>('MJ_BizApps_Voting: Elections', testUser);
+        const elecIdField = mutatedElection.GetFieldByName('ID');
+        if (elecIdField) elecIdField.Value = 'elec-100';
+        CrossEntityPolicyEngine.Instance.NotifyEntityMutated(metadataProvider, mutatedElection, 'Update');
+
+        // Next Contest validation re-loads the mutated Election (ElectionLoadCount -> 2) and refuses!
+        const lockedContestRes = await contests[0].ValidateAsync();
+        expect(lockedContestRes.Success).toBe(false);
+        expect(lockedContestRes.Errors[0].Message).toContain('Open');
+        expect(provider.ElectionLoadCount).toBe(2);
+
+        // Next Contest Option validation reuses the newly cached 'Open' Election (still 2 loads!) and refuses!
+        const lockedOptionRes = await options[0].ValidateAsync();
+        expect(lockedOptionRes.Success).toBe(false);
+        expect(lockedOptionRes.Errors[0].Message).toContain('Open');
+        expect(provider.ElectionLoadCount).toBe(2);
+
+        // Next unflagged EligibleVoter validation reuses the newly cached frozen Election (still 2 loads!) and refuses!
+        const frozenVoterRes = await voters[0].ValidateAsync();
+        expect(frozenVoterRes.Success).toBe(false);
+        expect(frozenVoterRes.Errors[0].Source).toBe('AddedAfterFreeze');
+        expect(frozenVoterRes.Errors[0].Message).toContain('AddedAfterFreeze');
+        expect(provider.ElectionLoadCount).toBe(2);
     });
 });

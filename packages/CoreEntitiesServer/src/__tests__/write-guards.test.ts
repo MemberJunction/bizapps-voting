@@ -1,9 +1,17 @@
 /**
- * Tests for BallotBoxWriteGuard and TallyWriteGuard
+ * Tests for BallotBoxWriteGuard, TallyWriteGuard, and ServerOperationScopeManager integration
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { BallotBoxWriteGuard, TallyWriteGuard } from '../write-guards.js';
+import { describe, it, expect } from 'vitest';
+import { ServerOperationScopeManager } from '@memberjunction/core';
+import {
+    BALLOT_BOX_ALLOWED_OPERATIONS,
+    BALLOT_BOX_OPERATION_KEY,
+    BallotBoxWriteGuard,
+    TALLY_ALLOWED_OPERATIONS,
+    TALLY_OPERATION_KEY,
+    TallyWriteGuard,
+} from '../write-guards.js';
 
 describe('BallotBoxWriteGuard', () => {
     it('has no access outside RunWithBallotBoxAccess', () => {
@@ -137,5 +145,52 @@ describe('TallyWriteGuard', () => {
         });
 
         expect(results).toEqual([true, false, true, true, false]);
+    });
+});
+
+describe('ServerOperationScopeManager bridge', () => {
+    it('bridges BallotBoxWriteGuard and TallyWriteGuard onto ServerOperationScopeManager.Instance', async () => {
+        expect(ServerOperationScopeManager.Instance.IsOperationActive(BALLOT_BOX_ALLOWED_OPERATIONS)).toBe(false);
+        expect(ServerOperationScopeManager.Instance.IsOperationActive(TALLY_ALLOWED_OPERATIONS)).toBe(false);
+
+        await BallotBoxWriteGuard.RunWithBallotBoxAccess(async () => {
+            expect(ServerOperationScopeManager.Instance.IsOperationActive([BALLOT_BOX_OPERATION_KEY])).toBe(true);
+            expect(ServerOperationScopeManager.Instance.IsOperationActive(BALLOT_BOX_ALLOWED_OPERATIONS)).toBe(true);
+            expect(ServerOperationScopeManager.Instance.IsOperationActive(TALLY_ALLOWED_OPERATIONS)).toBe(false);
+        });
+
+        await TallyWriteGuard.RunWithTallyAccess(async () => {
+            expect(ServerOperationScopeManager.Instance.IsOperationActive([TALLY_OPERATION_KEY])).toBe(true);
+            expect(ServerOperationScopeManager.Instance.IsOperationActive(TALLY_ALLOWED_OPERATIONS)).toBe(true);
+            expect(ServerOperationScopeManager.Instance.IsOperationActive(BALLOT_BOX_ALLOWED_OPERATIONS)).toBe(false);
+        });
+    });
+
+    it('grants ballot-box and tally access when domain Remote Operations execute via ServerOperationScopeManager.RunWithAuthority', async () => {
+        await ServerOperationScopeManager.Instance.RunWithAuthority(
+            { operationKey: 'Voting.EnterPaperBallot', source: 'RemotableOperation' },
+            async () => {
+                expect(BallotBoxWriteGuard.HasBallotBoxAccess()).toBe(true);
+                expect(TallyWriteGuard.HasTallyAccess()).toBe(false);
+            }
+        );
+
+        await ServerOperationScopeManager.Instance.RunWithAuthority(
+            { operationKey: 'Voting.Tally', source: 'RemotableOperation' },
+            async () => {
+                expect(TallyWriteGuard.HasTallyAccess()).toBe(true);
+                expect(BallotBoxWriteGuard.HasBallotBoxAccess()).toBe(false);
+            }
+        );
+    });
+
+    it('masks outer authority inside RunInClientCrudBoundary so client CRUD cannot inherit engine authority', async () => {
+        await BallotBoxWriteGuard.RunWithBallotBoxAccess(async () => {
+            expect(BallotBoxWriteGuard.HasBallotBoxAccess()).toBe(true);
+            ServerOperationScopeManager.Instance.RunInClientCrudBoundary(() => {
+                expect(BallotBoxWriteGuard.HasBallotBoxAccess()).toBe(false);
+            });
+            expect(BallotBoxWriteGuard.HasBallotBoxAccess()).toBe(true);
+        });
     });
 });
