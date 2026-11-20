@@ -405,7 +405,7 @@ export class CredentialsTabComponent extends BaseElectionAdminTab implements OnC
                 VoterName: names.get(r.EligibleVoterID.toLowerCase()) ?? 'Unknown voter',
                 State: this.StateOf(r),
             }));
-            this.Total = res.TotalRowCount;
+            this.Total = res.TotalRowCount ?? res.Results.length;
         } catch (error) {
             LogError('[VotingElections] Issuance log load failed', undefined, error);
             this.LogError = error instanceof Error ? error.message : 'The issuance log could not be loaded.';
