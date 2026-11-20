@@ -1,4 +1,7 @@
-# The gate on the release itself: the PR from `next` into `main`.
+# The gate on the release itself: the Version Packages PR of a line. For the newest line that is
+# `changeset-release/main` -> `main`; for a line that releases from its own branch it is
+# `changeset-release/lts/X.Y` -> `lts/X.Y`. On a line branch, every other PR is a backport, which
+# carries changesets on purpose, so the jobs skip it (a skipped job satisfies a required check).
 #
 # Scoped by TRIGGER to `main` only, which is why there is no scope-computing `gate` job any
 # more. That job existed because three checks shared one awkward condition spanning two base
@@ -26,7 +29,7 @@ on:
     # `labeled`/`unlabeled`: two of these honour labels, so without them adding an exempt
     # label re-triggers nothing and removing one leaves a stale green.
     types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
-    branches: [main]
+    branches: [main, 'lts/**']
 
 permissions:
   contents: read
@@ -37,17 +40,17 @@ jobs:
   # that state — so this is the same assertion, moved to where it is cheap to act on.
   changesets:
     name: 'rr: changesets'
-    if: github.event.pull_request.draft == false && github.repository != 'MemberJunction/bizapps-voting'
+    if: github.event.pull_request.draft == false && github.repository != 'MemberJunction/open-app-template' && (github.base_ref == 'main' || startsWith(github.head_ref, 'changeset-release/'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: No changesets may be pending
         run: |
           PENDING=$(find .changeset -name "*.md" -not -name "README.md" 2>/dev/null | wc -l | tr -d ' ')
           if [ "$PENDING" -ne 0 ]; then
-            echo "::error::$PENDING changeset(s) are still pending. Versioning happens on next: merge the open \"Version Packages\" PR there first. Merging this would put unversioned work on main, and publish.yml would refuse to run."
+            echo "::error::$PENDING changeset(s) are still pending. A release PR must come from the line's Version Packages PR (version.yml), which consumes them. Merging this would put unversioned work on $GITHUB_BASE_REF, and publish.yml would refuse to run."
             find .changeset -name "*.md" -not -name "README.md" | sed 's/^/  /'
             exit 1
           fi
@@ -59,11 +62,11 @@ jobs:
   # is the backstop that judges what is actually about to be published.
   minor-bump:
     name: 'rr: minor bump'
-    if: github.event.pull_request.draft == false && github.repository != 'MemberJunction/bizapps-voting'
+    if: github.event.pull_request.draft == false && github.repository != 'MemberJunction/open-app-template' && (github.base_ref == 'main' || startsWith(github.head_ref, 'changeset-release/'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           fetch-tags: true # resolves the previous release via `git tag --list 'v*'`
@@ -77,11 +80,11 @@ jobs:
   # that by release time every change since the last tag has one.
   metadata-shipped:
     name: 'rr: metadata shipped'
-    if: github.event.pull_request.draft == false && github.repository != 'MemberJunction/bizapps-voting'
+    if: github.event.pull_request.draft == false && github.repository != 'MemberJunction/open-app-template' && (github.base_ref == 'main' || startsWith(github.head_ref, 'changeset-release/'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -95,17 +98,18 @@ jobs:
   # v* tag yet there is no release to compare against, so the check passes and says so.
   pg-counterparts:
     name: 'rr: pg counterparts'
-    if: github.event.pull_request.draft == false && github.repository != 'MemberJunction/bizapps-voting'
+    if: github.event.pull_request.draft == false && github.repository != 'MemberJunction/open-app-template' && (github.base_ref == 'main' || startsWith(github.head_ref, 'changeset-release/'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           fetch-tags: true
       - name: Every migration since the last release has a PostgreSQL counterpart
         run: |
-          LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1)
+          . ./ci/lib/last-release.sh
+          LAST_TAG=$(last_release_tag)
           if [ -z "$LAST_TAG" ]; then
             echo "No v* tag yet, so no release to compare against. Nothing to check."
             exit 0
@@ -115,11 +119,11 @@ jobs:
 
   release-base-current:
     name: 'rr: release base current'
-    if: github.event.pull_request.draft == false && github.repository != 'MemberJunction/bizapps-voting'
+    if: github.event.pull_request.draft == false && github.repository != 'MemberJunction/open-app-template' && (github.base_ref == 'main' || startsWith(github.head_ref, 'changeset-release/'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -129,11 +133,11 @@ jobs:
   # editing it breaks every database that ran it while a fresh one silently gets the new text.
   migration-immutability:
     name: 'rr: migration immutability'
-    if: github.event.pull_request.draft == false && github.repository != 'MemberJunction/bizapps-voting'
+    if: github.event.pull_request.draft == false && github.repository != 'MemberJunction/open-app-template' && (github.base_ref == 'main' || startsWith(github.head_ref, 'changeset-release/'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
@@ -158,14 +162,14 @@ jobs:
   # Costs ~3.5s for this repo's six packages.
   packages-on-npm:
     name: 'rr: packages on npm'
-    if: github.event.pull_request.draft == false && github.repository != 'MemberJunction/bizapps-voting'
+    if: github.event.pull_request.draft == false && github.repository != 'MemberJunction/open-app-template' && (github.base_ref == 'main' || startsWith(github.head_ref, 'changeset-release/'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # Pinned node so `npm view` is a known version rather than whatever the image ships.
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
 

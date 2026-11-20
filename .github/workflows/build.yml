@@ -9,7 +9,7 @@ on:
   # and metadata/ as well as packages/, so a filtered push let a merge that touched only those
   # land on `next` without a post-merge run.
   push:
-    branches: [next]
+    branches: [next, 'lts/**']
   pull_request:
     # `ready_for_review` is NOT in the default type set (opened/synchronize/reopened),
     # and the job below skips while the PR is a draft — without it, marking a PR ready
@@ -19,7 +19,7 @@ on:
     # `main`, and a workflow filtered out at the `on:` level creates no check run at all —
     # a required context would then sit Pending forever. The release PR is also the one
     # merge that most needs a build: it is what publishes to npm.
-    branches: [next, main]
+    branches: [next, main, 'lts/**']
 
 concurrency:
   group: build-${{ github.ref }}
@@ -45,12 +45,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # Must precede setup-node: `cache: 'pnpm'` needs pnpm already on PATH.
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: 'pnpm'
@@ -69,8 +69,13 @@ jobs:
       # the failure it exists to prevent, and exactly what happened: it could not detect a mis-cased
       # path at all. These fixtures drive the real script against throwaway repos, including the
       # mis-cased cases that fail without the fix.
+      # check-bump-level.sh is the `rr: minor bump` gate. With no `v*` tag it exits at its first
+      # line, and a repo that never publishes never has one, so these fixtures are the only run its
+      # comparison logic gets here — and they cover branches a real repo reaches once in years.
       - name: CI guard script tests
-        run: ./.github/scripts/__tests__/validate-package-lock-case.test.sh
+        run: |
+          ./.github/scripts/__tests__/validate-package-lock-case.test.sh
+          ./.github/scripts/__tests__/check-bump-level.test.sh
 
       # Specs for the migration guards (and any repo-specific *.spec.mjs placed next to them).
       # Plain node:test, no dependencies, so it runs before the install.

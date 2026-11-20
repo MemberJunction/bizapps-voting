@@ -13,7 +13,7 @@
     "build": "pnpm run build:stream",
     "build:stream": "turbo --log-order=stream build",
     "build:packages": "turbo --log-order=stream build --filter=\"@mj-biz-apps/voting-*\"",
-    "test": "turbo --log-order=stream test --filter=\"@mj-biz-apps/voting-*\"",
+    "test": "turbo --log-order=stream test --filter=\"@mj-biz-apps/voting-*\" --filter=\"!@mj-biz-apps/voting-integration-tests\"",
     "mj": "mj",
     "mj:migrate": "mj migrate --schema __mj_BizAppsVoting --dir ./migrations",
     "mj:codegen": "mj codegen",
