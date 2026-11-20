@@ -13,6 +13,8 @@
  * every @memberjunction/* package is a PEER (^X.Y.Z).
  */
 
+import type { BaseEntity } from '@memberjunction/core';
+
 // Entity server subclasses with invariants
 export * from './entity-servers.js';
 import {
@@ -30,11 +32,20 @@ import {
     ElectionTypeEntityServer,
     EligibleVoterEntityServer,
     ParticipationEntityServer,
+    RegisterVotingEntityPolicies,
 } from './entity-servers.js';
+import { type BaseElectionTypeServerDriver } from './drivers/base-election-type-server-driver.js';
 import { StandardsBallotServerDriver } from './drivers/standards-ballot-server-driver.js';
 
 // Write guards for ballot box and tally
-export { BallotBoxWriteGuard, TallyWriteGuard } from './write-guards.js';
+export {
+    BALLOT_BOX_ALLOWED_OPERATIONS,
+    BALLOT_BOX_OPERATION_KEY,
+    BallotBoxWriteGuard,
+    TALLY_ALLOWED_OPERATIONS,
+    TALLY_OPERATION_KEY,
+    TallyWriteGuard,
+} from './write-guards.js';
 
 // Drivers
 export { BaseElectionTypeServerDriver } from './drivers/base-election-type-server-driver.js';
@@ -97,7 +108,8 @@ export {
  * tree-shake a registration away.
  */
 export function LoadBizAppsVotingEntitiesServer(): void {
-    const classes: ReadonlyArray<unknown> = [
+    RegisterVotingEntityPolicies();
+    const classes = [
         ElectionEntityServer,
         ContestEntityServer,
         ContestOptionEntityServer,
@@ -113,6 +125,6 @@ export function LoadBizAppsVotingEntitiesServer(): void {
         ContestOptionResultEntityServer,
         ElectionTypeEntityServer,
         StandardsBallotServerDriver,
-    ];
+    ] as const;
     void classes;
 }

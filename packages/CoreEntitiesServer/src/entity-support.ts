@@ -7,6 +7,7 @@
 import {
     BaseEntity,
     BaseEntityResult,
+    CrossEntityPolicyEngine,
     type EntitySaveOptions,
     LogError,
     Metadata,
@@ -44,12 +45,24 @@ export function MetadataProviderOf(entity: BaseEntity): IMetadataProvider {
 /** A generated entity: a BaseEntity with its by-ID `Load`. */
 export type LoadableEntity = BaseEntity & { Load(ID: string): Promise<boolean> };
 
-/** Loads one row of another entity through the saving entity's provider and context user; null when it can't be read. */
+/**
+ * Loads one row of another entity through the saving entity's provider and context user, memoized on the active
+ * `CrossEntityPolicyEngine` transaction / `TransactionGroup` evaluation scope so batch child writes share a single parent read.
+ */
 export async function LoadRelated<T extends LoadableEntity>(entity: BaseEntity, entityName: string, id: string | null): Promise<T | null> {
     if (!id) return null;
     try {
-        const row = await MetadataProviderOf(entity).GetEntityObject<T>(entityName, entity.ContextCurrentUser);
-        return (await row.Load(id)) ? row : null;
+        const provider = MetadataProviderOf(entity);
+        const scope = CrossEntityPolicyEngine.Instance.ResolveScope(
+            provider,
+            entity.ContextCurrentUser,
+            entity.TransactionGroup
+        );
+        const cacheNamespace = `entity:${entityName.trim().toLowerCase()}`;
+        return await scope.GetOrLoad<T | null>(cacheNamespace, id, async () => {
+            const row = await provider.GetEntityObject<T>(entityName, entity.ContextCurrentUser);
+            return (await row.Load(id)) ? row : null;
+        });
     } catch (e) {
         LogError(`Voting: could not read ${entityName} ${id}: ${e instanceof Error ? e.message : String(e)}`);
         return null;
@@ -87,7 +100,7 @@ export async function ResolveElectionType(entity: BaseEntity, electionTypeId: st
     const parsed = ParseConfiguration<IElectionTypeConfiguration>(type.Configuration, `The configuration of election type "${type.Name}"`);
     if (parsed.Error) return { kind: 'refused', message: parsed.Error };
     const { driver, error } = ElectionTypeDriverRegistry.Instance.GetDriver(type);
-    if (!driver) return { kind: 'refused', message: error ?? 'The election type\'s driver could not be resolved.' };
+    if (!driver) return { kind: 'refused', message: error ?? "The election type's driver could not be resolved." };
     return { kind: 'resolved', type, typeConfig: parsed.Value, driver };
 }
 
@@ -137,6 +150,13 @@ export function ParentIdsOf(entity: BaseEntity, fieldName: string): string[] {
     if (!field) return [];
     const ids: string[] = [];
     if (typeof field.Value === 'string' && field.Value) ids.push(field.Value);
-    if (entity.IsSaved && field.Dirty && typeof field.OldValue === 'string' && field.OldValue) ids.push(field.OldValue);
+    if (
+        entity.IsSaved &&
+        typeof field.OldValue === 'string' &&
+        field.OldValue &&
+        !ids.includes(field.OldValue)
+    ) {
+        ids.push(field.OldValue);
+    }
     return ids;
 }

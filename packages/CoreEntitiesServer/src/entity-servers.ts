@@ -3,11 +3,27 @@
  * so every caller gets them. Each decision is a pure helper in `entity-invariants.ts`; the classes here only read the
  * entity, load the parent rows (with the saving entity's own provider and context user), and apply the verdict.
  *
+ * Write-authority gates for ballot-box and tally entities are registered declaratively on `EntityLifecyclePolicyEngine.Instance`,
+ * and parent-election lock policies for Contests, Contest Options, Election Anchors, and Eligible Voters are registered on
+ * `CrossEntityPolicyEngine.Instance` with transaction-scoped parent lookup memoization.
+ *
  * Every guarded class forces async validation on in `Save` (`WithValidation`), so a caller cannot skip a rule with
  * `SkipAsyncValidation: true`. A refused delete returns false with the reason on the result history, as MJ expects.
  */
 
-import { BaseEntity, EntityPermissionType, LogError, type ValidationResult } from '@memberjunction/core';
+import {
+    BaseEntity,
+    CrossEntityPolicyEngine,
+    EntityLifecyclePolicyEngine,
+    EntityPermissionType,
+    LogError,
+    ServerOperationScopeManager,
+    type CrossEntityBatchItem,
+    type CrossEntityPolicyItemContext,
+    type CrossEntityPolicyVerdict,
+    type EntityWriteOperation,
+    type ValidationResult,
+} from '@memberjunction/core';
 import { RegisterClass } from '@memberjunction/global';
 import {
     CanTransition,
@@ -35,7 +51,10 @@ import {
     type mjBizAppsVotingElectionEntity as ElectionEntity,
 } from '@mj-biz-apps/voting-entities';
 
-import { BallotBoxWriteGuard, TallyWriteGuard } from './write-guards.js';
+import {
+    BALLOT_BOX_ALLOWED_OPERATIONS,
+    TALLY_ALLOWED_OPERATIONS,
+} from './write-guards.js';
 import { ElectionTypeDriverRegistry } from './drivers/election-type-driver-registry.js';
 import {
     AsString,
@@ -60,6 +79,7 @@ import {
     LoadElection,
     LoadElectionOfContest,
     LoadElectionOfContestResult,
+    MetadataProviderOf,
     ParentIdsOf,
     Refuse,
     ResolveElectionType,
@@ -68,6 +88,12 @@ import {
 
 type SaveOptions = Parameters<BaseEntity['Save']>[0];
 type DeleteOptions = Parameters<BaseEntity['Delete']>[0];
+type DirtyOldValuesMap = ReturnType<typeof GetDirtyOldValues>;
+
+export const VOTING_CONTEST_PARENT_LOCK_POLICY_KEY = 'Voting.ContestParentElectionLock';
+export const VOTING_CONTEST_OPTION_PARENT_LOCK_POLICY_KEY = 'Voting.ContestOptionParentElectionLock';
+export const VOTING_ELECTION_ANCHOR_PARENT_LOCK_POLICY_KEY = 'Voting.ElectionAnchorParentElectionLock';
+export const VOTING_ELIGIBLE_VOTER_ROLL_LOCK_POLICY_KEY = 'Voting.EligibleVoterRollLock';
 
 // === Shared rules ===
 
@@ -102,6 +128,27 @@ async function deleteRefusal(
     return electionLockRefusal(entity, parentField, loadElection, what, 'delete');
 }
 
+/** Evaluates voter-roll freeze rules for a create or update on an EligibleVoter row. */
+async function evaluateEligibleVoterViolations(entity: BaseEntity, dirty: string[]): Promise<RuleViolation[]> {
+    const addedAfterFreezeField = entity.GetFieldByName('AddedAfterFreeze');
+    const addedAfterFreeze =
+        addedAfterFreezeField && typeof addedAfterFreezeField.Value === 'boolean'
+            ? addedAfterFreezeField.Value
+            : entity instanceof mjBizAppsVotingEligibleVoterEntity
+              ? Boolean(entity.AddedAfterFreeze)
+              : Boolean(addedAfterFreezeField?.Value);
+
+    const violations: RuleViolation[] = [];
+    for (const electionId of ParentIdsOf(entity, 'ElectionID')) {
+        const election = await LoadElection(entity, electionId);
+        if (!election) {
+            return [{ Field: 'ElectionID', Message: 'Voter change refused: the election could not be read.' }];
+        }
+        violations.push(...ComputeVoterRollViolations(!!election.RollFrozenAt, !entity.IsSaved, addedAfterFreeze, dirty));
+    }
+    return violations;
+}
+
 /** Applies each rule violation to the validation result. */
 function applyViolations(result: ValidationResult, violations: RuleViolation[]): ValidationResult {
     for (const v of violations) Refuse(result, v.Field, v.Message);
@@ -114,10 +161,184 @@ function refuseUpdate(entity: BaseEntity, result: ValidationResult, message: str
     return dirty.length > 0 ? Refuse(result, dirty[0], message) : result;
 }
 
-/** Refuses creating a row outside the ballot-box guard. */
-function requireBallotBoxForCreate(entity: BaseEntity, result: ValidationResult, message: string): ValidationResult {
-    return !entity.IsSaved && !BallotBoxWriteGuard.HasBallotBoxAccess() ? Refuse(result, 'ID', message) : result;
+/** Evaluates `EntityLifecyclePolicyEngine.Instance` write-authority gate for a server entity write. */
+function isServerWriteAllowedByPolicy(
+    entity: BaseEntity,
+    operation: EntityWriteOperation,
+    fallbackAllowedOperations: ReadonlyArray<string>
+): boolean {
+    if (entity.EntityInfo?.Name) {
+        const gateError = EntityLifecyclePolicyEngine.Instance.CheckWritePermissionGate(
+            entity,
+            operation,
+            ActingUser(entity) ?? undefined,
+            true
+        );
+        return gateError === null;
+    }
+    return ServerOperationScopeManager.Instance.IsOperationActive(fallbackAllowedOperations);
 }
+
+/** Refuses creating a row outside the ballot-box write-authority policy registered on `EntityLifecyclePolicyEngine.Instance`. */
+function requireBallotBoxForCreate(entity: BaseEntity, result: ValidationResult, message: string): ValidationResult {
+    if (entity.IsSaved) return result;
+    const allowed = isServerWriteAllowedByPolicy(entity, 'Create', BALLOT_BOX_ALLOWED_OPERATIONS);
+    return !allowed ? Refuse(result, 'ID', message) : result;
+}
+
+/**
+ * Registers declarative `WriteAuthority` lifecycle policies on `EntityLifecyclePolicyEngine.Instance` for ballot-box and
+ * tally entities, and parent-election state lock policies on `CrossEntityPolicyEngine.Instance` for Contests, Contest Options,
+ * Election Anchors, and Eligible Voters.
+ */
+export function RegisterVotingEntityPolicies(): void {
+    const ballotBoxEntities: ReadonlyArray<{ entityName: string; errorMessage: string }> = [
+        { entityName: 'MJ_BizApps_Voting: Cast Ballots', errorMessage: 'Ballots may only be created by the cast engine.' },
+        { entityName: 'MJ_BizApps_Voting: Ballot Selections', errorMessage: 'Ballot selections may only be created by the cast engine.' },
+        { entityName: 'MJ_BizApps_Voting: Contest Running Tallies', errorMessage: 'Running tallies may only be created by the cast engine.' },
+        { entityName: 'MJ_BizApps_Voting: Ballot Attributions', errorMessage: 'Ballot attributions may only be created by the cast engine.' },
+        { entityName: 'MJ_BizApps_Voting: Participations', errorMessage: 'Participation records may only be created by the cast engine.' },
+        { entityName: 'MJ_BizApps_Voting: Ballot Submissions', errorMessage: 'Ballots may only be created by the cast engine.' },
+        { entityName: 'MJ_BizApps_Voting: Vote Selections', errorMessage: 'Ballot selections may only be created by the cast engine.' },
+        { entityName: 'MJ_BizApps_Voting: Anonymous Ballot Tokens', errorMessage: 'Ballot tokens may only be created by the cast engine.' },
+    ];
+
+    for (const entry of ballotBoxEntities) {
+        EntityLifecyclePolicyEngine.Instance.RegisterPolicy(entry.entityName, {
+            writeAuthority: {
+                mode: 'ServerOperationOnly',
+                allowedOperations: [...BALLOT_BOX_ALLOWED_OPERATIONS],
+                errorMessage: entry.errorMessage,
+            },
+        });
+    }
+
+    const tallyEntities: ReadonlyArray<{ entityName: string; errorMessage: string }> = [
+        { entityName: 'MJ_BizApps_Voting: Contest Results', errorMessage: 'Results may only be written by the tally engine.' },
+        { entityName: 'MJ_BizApps_Voting: Contest Option Results', errorMessage: 'Results may only be written by the tally engine.' },
+        { entityName: 'MJ_BizApps_Voting: Contest Tallies', errorMessage: 'Results may only be written by the tally engine.' },
+    ];
+
+    for (const entry of tallyEntities) {
+        EntityLifecyclePolicyEngine.Instance.RegisterPolicy(entry.entityName, {
+            writeAuthority: {
+                mode: 'ServerOperationOnly',
+                allowedOperations: [...TALLY_ALLOWED_OPERATIONS],
+                errorMessage: entry.errorMessage,
+            },
+        });
+    }
+
+    EntityLifecyclePolicyEngine.Instance.RegisterPolicy('MJ_BizApps_Voting: Election Audit Events', {
+        writeAuthority: {
+            mode: 'AppendOnly',
+            errorMessage: 'Audit events are append-only and cannot be modified.',
+        },
+    });
+
+    const registerParentElectionLockPolicy = (
+        policyKey: string,
+        targetEntityName: string,
+        parentField: string,
+        loadParentElection: (e: BaseEntity, id: string | null) => Promise<ElectionEntity | null>,
+        what: string
+    ): void => {
+        const evaluateItem = async (entity: BaseEntity, operation: EntityWriteOperation): Promise<CrossEntityPolicyVerdict> => {
+            if (operation === 'Delete') {
+                const refusal = await deleteRefusal(entity, parentField, loadParentElection, what);
+                return refusal ? { Allowed: false, ErrorMessage: refusal, FieldName: parentField } : { Allowed: true };
+            }
+            if (entity.IsSaved && GetDirtyFieldNames(entity).length === 0) {
+                return { Allowed: true };
+            }
+            const refusal = await electionLockRefusal(
+                entity,
+                parentField,
+                loadParentElection,
+                what,
+                entity.IsSaved ? 'change' : 'create'
+            );
+            return refusal ? { Allowed: false, ErrorMessage: refusal, FieldName: parentField } : { Allowed: true };
+        };
+
+        CrossEntityPolicyEngine.Instance.RegisterPolicy({
+            PolicyKey: policyKey,
+            TargetEntityNames: [targetEntityName],
+            EvaluateBeforeSave: (ctx: CrossEntityPolicyItemContext) => evaluateItem(ctx.Entity, ctx.Operation),
+            EvaluateBeforeDelete: (ctx: CrossEntityPolicyItemContext) => evaluateItem(ctx.Entity, 'Delete'),
+            EvaluateBatch: async (items: ReadonlyArray<CrossEntityBatchItem>) => {
+                const verdicts = new Map<BaseEntity, CrossEntityPolicyVerdict>();
+                for (const item of items) {
+                    verdicts.set(item.Entity, await evaluateItem(item.Entity, item.Operation));
+                }
+                return verdicts;
+            },
+        });
+    };
+
+    registerParentElectionLockPolicy(
+        VOTING_CONTEST_PARENT_LOCK_POLICY_KEY,
+        'MJ_BizApps_Voting: Contests',
+        'ElectionID',
+        LoadElection,
+        'a contest'
+    );
+
+    registerParentElectionLockPolicy(
+        VOTING_CONTEST_OPTION_PARENT_LOCK_POLICY_KEY,
+        'MJ_BizApps_Voting: Contest Options',
+        'ContestID',
+        LoadElectionOfContest,
+        'a contest option'
+    );
+
+    registerParentElectionLockPolicy(
+        VOTING_ELECTION_ANCHOR_PARENT_LOCK_POLICY_KEY,
+        'MJ_BizApps_Voting: Election Anchors',
+        'ElectionID',
+        LoadElection,
+        'an election anchor'
+    );
+
+    const evaluateVoterItem = async (entity: BaseEntity, operation: EntityWriteOperation): Promise<CrossEntityPolicyVerdict> => {
+        if (operation === 'Delete') {
+            return {
+                Allowed: false,
+                ErrorMessage: 'Roll rows are never deleted; mark the voter Removed instead.',
+                FieldName: 'ID',
+            };
+        }
+        const dirty = GetDirtyFieldNames(entity);
+        if (entity.IsSaved && dirty.length === 0) {
+            return { Allowed: true };
+        }
+        const violations = await evaluateEligibleVoterViolations(entity, dirty);
+        if (violations.length > 0) {
+            return {
+                Allowed: false,
+                ErrorMessage: violations[0].Message,
+                FieldName: violations[0].Field,
+            };
+        }
+        return { Allowed: true };
+    };
+
+    CrossEntityPolicyEngine.Instance.RegisterPolicy({
+        PolicyKey: VOTING_ELIGIBLE_VOTER_ROLL_LOCK_POLICY_KEY,
+        TargetEntityNames: ['MJ_BizApps_Voting: Eligible Voters'],
+        EvaluateBeforeSave: (ctx: CrossEntityPolicyItemContext) => evaluateVoterItem(ctx.Entity, ctx.Operation),
+        EvaluateBeforeDelete: (ctx: CrossEntityPolicyItemContext) => evaluateVoterItem(ctx.Entity, 'Delete'),
+        EvaluateBatch: async (items: ReadonlyArray<CrossEntityBatchItem>) => {
+            const verdicts = new Map<BaseEntity, CrossEntityPolicyVerdict>();
+            for (const item of items) {
+                verdicts.set(item.Entity, await evaluateVoterItem(item.Entity, item.Operation));
+            }
+            return verdicts;
+        },
+    });
+}
+
+RegisterVotingEntityPolicies();
 
 // === Election ===
 
@@ -127,7 +348,7 @@ interface ElectionChangeReading {
     changed: boolean;
     oldStatus: ElectionStatus | null;
     newStatus: ElectionStatus;
-    oldValues: Record<string, unknown>;
+    oldValues: DirtyOldValuesMap;
 }
 
 @RegisterClass(BaseEntity, 'MJ_BizApps_Voting: Elections')
@@ -217,7 +438,13 @@ export class ElectionEntityServer extends mjBizAppsVotingElectionEntity {
     public override async Save(options?: SaveOptions): Promise<boolean> {
         const change = this.readChange();
         const ok = await super.Save(WithValidation(options));
-        if (!ok || !change.changed) return ok;
+        if (!ok) return false;
+        CrossEntityPolicyEngine.Instance.NotifyEntityMutated(
+            MetadataProviderOf(this),
+            this,
+            change.isNew ? 'Create' : 'Update'
+        );
+        if (!change.changed) return ok;
         return this.reactToChange(change);
     }
 
@@ -265,17 +492,43 @@ export class ContestEntityServer extends mjBizAppsVotingContestEntity {
     public override async ValidateAsync(): Promise<ValidationResult> {
         const result = await super.ValidateAsync();
         if (this.IsSaved && GetDirtyFieldNames(this).length === 0) return result;
-        const refusal = await electionLockRefusal(this, 'ElectionID', LoadElection, 'a contest', this.IsSaved ? 'change' : 'create');
+        const refusal = await CrossEntityPolicyEngine.Instance.EnforceBeforeSave(
+            this,
+            ActingUser(this) ?? undefined,
+            MetadataProviderOf(this)
+        );
         return refusal ? Refuse(result, 'ElectionID', refusal) : result;
     }
 
     public override async Save(options?: SaveOptions): Promise<boolean> {
-        return super.Save(WithValidation(options));
+        const isNew = !this.IsSaved;
+        const ok = await super.Save(WithValidation(options));
+        if (ok) {
+            CrossEntityPolicyEngine.Instance.NotifyEntityMutated(
+                MetadataProviderOf(this),
+                this,
+                isNew ? 'Create' : 'Update'
+            );
+        }
+        return ok;
     }
 
     public override async Delete(options?: DeleteOptions): Promise<boolean> {
-        const refusal = await deleteRefusal(this, 'ElectionID', LoadElection, 'a contest');
-        return refusal ? FailDelete(this, refusal) : super.Delete(options);
+        const refusal = await CrossEntityPolicyEngine.Instance.EnforceBeforeDelete(
+            this,
+            ActingUser(this) ?? undefined,
+            MetadataProviderOf(this)
+        );
+        if (refusal) return FailDelete(this, refusal);
+        const ok = await super.Delete(options);
+        if (ok) {
+            CrossEntityPolicyEngine.Instance.NotifyEntityMutated(
+                MetadataProviderOf(this),
+                this,
+                'Delete'
+            );
+        }
+        return ok;
     }
 }
 
@@ -288,7 +541,11 @@ export class ContestOptionEntityServer extends mjBizAppsVotingContestOptionEntit
     public override async ValidateAsync(): Promise<ValidationResult> {
         const result = await super.ValidateAsync();
         if (this.IsSaved && GetDirtyFieldNames(this).length === 0) return result;
-        const refusal = await electionLockRefusal(this, 'ContestID', LoadElectionOfContest, 'a contest option', this.IsSaved ? 'change' : 'create');
+        const refusal = await CrossEntityPolicyEngine.Instance.EnforceBeforeSave(
+            this,
+            ActingUser(this) ?? undefined,
+            MetadataProviderOf(this)
+        );
         return refusal ? Refuse(result, 'ContestID', refusal) : result;
     }
 
@@ -297,7 +554,11 @@ export class ContestOptionEntityServer extends mjBizAppsVotingContestOptionEntit
     }
 
     public override async Delete(options?: DeleteOptions): Promise<boolean> {
-        const refusal = await deleteRefusal(this, 'ContestID', LoadElectionOfContest, 'a contest option');
+        const refusal = await CrossEntityPolicyEngine.Instance.EnforceBeforeDelete(
+            this,
+            ActingUser(this) ?? undefined,
+            MetadataProviderOf(this)
+        );
         return refusal ? FailDelete(this, refusal) : super.Delete(options);
     }
 }
@@ -311,7 +572,11 @@ export class ElectionAnchorEntityServer extends mjBizAppsVotingElectionAnchorEnt
     public override async ValidateAsync(): Promise<ValidationResult> {
         const result = await super.ValidateAsync();
         if (this.IsSaved && GetDirtyFieldNames(this).length === 0) return result;
-        const refusal = await electionLockRefusal(this, 'ElectionID', LoadElection, 'an election anchor', this.IsSaved ? 'change' : 'create');
+        const refusal = await CrossEntityPolicyEngine.Instance.EnforceBeforeSave(
+            this,
+            ActingUser(this) ?? undefined,
+            MetadataProviderOf(this)
+        );
         return refusal ? Refuse(result, 'ElectionID', refusal) : result;
     }
 
@@ -320,7 +585,11 @@ export class ElectionAnchorEntityServer extends mjBizAppsVotingElectionAnchorEnt
     }
 
     public override async Delete(options?: DeleteOptions): Promise<boolean> {
-        const refusal = await deleteRefusal(this, 'ElectionID', LoadElection, 'an election anchor');
+        const refusal = await CrossEntityPolicyEngine.Instance.EnforceBeforeDelete(
+            this,
+            ActingUser(this) ?? undefined,
+            MetadataProviderOf(this)
+        );
         return refusal ? FailDelete(this, refusal) : super.Delete(options);
     }
 }
@@ -364,12 +633,8 @@ export class EligibleVoterEntityServer extends mjBizAppsVotingEligibleVoterEntit
         const result = await super.ValidateAsync();
         const dirty = GetDirtyFieldNames(this);
         if (this.IsSaved && dirty.length === 0) return result;
-        for (const electionId of ParentIdsOf(this, 'ElectionID')) {
-            const election = await LoadElection(this, electionId);
-            if (!election) return Refuse(result, 'ElectionID', 'Voter change refused: the election could not be read.');
-            applyViolations(result, ComputeVoterRollViolations(!!election.RollFrozenAt, !this.IsSaved, this.AddedAfterFreeze, dirty));
-        }
-        return result;
+        const violations = await evaluateEligibleVoterViolations(this, dirty);
+        return applyViolations(result, violations);
     }
 
     public override async Save(options?: SaveOptions): Promise<boolean> {
@@ -400,7 +665,7 @@ export class CastBallotEntityServer extends mjBizAppsVotingCastBallotEntity {
         if (this.IsSaved) {
             const dirty = GetDirtyFieldNames(this);
             if (dirty.length > 0) {
-                if (!BallotBoxWriteGuard.HasBallotBoxAccess()) {
+                if (!isServerWriteAllowedByPolicy(this, 'Update', BALLOT_BOX_ALLOWED_OPERATIONS)) {
                     Refuse(result, dirty[0], 'Ballots may only be changed by the cast engine.');
                 }
                 const oldStatus = AsString(GetOldFieldValue(this, 'Status'));
@@ -525,12 +790,26 @@ export class ContestResultEntityServer extends mjBizAppsVotingContestResultEntit
         const result = await super.ValidateAsync();
         if (this.IsSaved && GetDirtyFieldNames(this).length === 0) return result;
         const election = await LoadElectionOfContest(this, this.ContestID);
-        const refusal = DescribeResultWriteRefusal(TallyWriteGuard.HasTallyAccess(), election?.Status ?? null);
+        const hasTallyAuthority = isServerWriteAllowedByPolicy(
+            this,
+            this.IsSaved ? 'Update' : 'Create',
+            TALLY_ALLOWED_OPERATIONS
+        );
+        const refusal = DescribeResultWriteRefusal(hasTallyAuthority, election?.Status ?? null);
         return refusal ? Refuse(result, 'ContestID', refusal) : result;
     }
 
     public override async Save(options?: SaveOptions): Promise<boolean> {
-        return super.Save(WithValidation(options));
+        const isNew = !this.IsSaved;
+        const ok = await super.Save(WithValidation(options));
+        if (ok) {
+            CrossEntityPolicyEngine.Instance.NotifyEntityMutated(
+                MetadataProviderOf(this),
+                this,
+                isNew ? 'Create' : 'Update'
+            );
+        }
+        return ok;
     }
 }
 
@@ -544,7 +823,12 @@ export class ContestOptionResultEntityServer extends mjBizAppsVotingContestOptio
         const result = await super.ValidateAsync();
         if (this.IsSaved && GetDirtyFieldNames(this).length === 0) return result;
         const election = await LoadElectionOfContestResult(this, this.ContestResultID);
-        const refusal = DescribeResultWriteRefusal(TallyWriteGuard.HasTallyAccess(), election?.Status ?? null);
+        const hasTallyAuthority = isServerWriteAllowedByPolicy(
+            this,
+            this.IsSaved ? 'Update' : 'Create',
+            TALLY_ALLOWED_OPERATIONS
+        );
+        const refusal = DescribeResultWriteRefusal(hasTallyAuthority, election?.Status ?? null);
         return refusal ? Refuse(result, 'ContestResultID', refusal) : result;
     }
 
@@ -558,9 +842,17 @@ export class ContestOptionResultEntityServer extends mjBizAppsVotingContestOptio
 @RegisterClass(BaseEntity, 'MJ_BizApps_Voting: Election Types')
 export class ElectionTypeEntityServer extends mjBizAppsVotingElectionTypeEntity {
     public override async Save(options?: SaveOptions): Promise<boolean> {
+        const isNew = !this.IsSaved;
         const ok = await super.Save(options);
         // A type row may have changed its driver class: drop the cached driver instances
-        if (ok) ElectionTypeDriverRegistry.Instance.Clear();
+        if (ok) {
+            ElectionTypeDriverRegistry.Instance.Clear();
+            CrossEntityPolicyEngine.Instance.NotifyEntityMutated(
+                MetadataProviderOf(this),
+                this,
+                isNew ? 'Create' : 'Update'
+            );
+        }
         return ok;
     }
 }
