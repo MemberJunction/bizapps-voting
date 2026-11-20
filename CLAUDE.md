@@ -125,6 +125,10 @@ migrations, releasing) is in the README's "Development workflow" table.
 Metadata is the exception: a PR adds JSON only, and the `Metadata_Sync`
 migration is generated once per release (below).
 
+## Release lines
+
+`next` is built on MJ Edge and never publishes. Production releases come from release lines (`lts/<MJ major.minor>`), listed in `release-lines.json`. Land every change on `next` first, then add a `backport lts/X.Y` label; a PR that adds a migration needs a label for every open line, or its files listed as edge-only in `release-lines.json`. Never open a PR straight into a line or into `main`. Full rules, publishing and the line cut: [guides/RELEASE_LINES.md](guides/RELEASE_LINES.md).
+
 ## Metadata ships as release migrations
 
 `mj app install` and upgrades run migrations only. There is no metadata phase, by design. A record that exists only as JSON under `metadata/` reaches no host until a release ships it inside a migration.

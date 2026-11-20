@@ -18,7 +18,9 @@
 # baseline — a migration file rewritten without shipping anything new — and under this
 # pipeline over-bumping is close to free, because a version number is minted and published
 # in the same breath and skipping one is structurally impossible. Taking the minor is the
-# cheaper answer than an escape hatch people have to reason about.
+# cheaper answer than an escape hatch people have to reason about. The door's
+# `migration-changeset-exempt` label (a revert of unreleased work) deliberately does not reach
+# here: this check compares the last tag with HEAD, so a full revert already nets to nothing.
 set -euo pipefail
 
 # The "what changed that matters" logic is shared with the door check — see the header there.
@@ -53,13 +55,14 @@ set -euo pipefail
 #   compared          both sides parsed; counted only if they differ once every `sync` block is
 #                     stripped, so a rewritten checksum or a reserialized file is not a change.
 
-LAST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -1)
+. "$(dirname "$0")/lib/last-release.sh"
+LAST_TAG=$(last_release_tag)
 if [ -z "$LAST_TAG" ]; then
   echo "No v* tag yet — nothing to compare against"
   exit 0
 fi
 
-MIGRATIONS=$(git --no-pager diff --name-only "$LAST_TAG" HEAD -- migrations/ || true)
+MIGRATIONS=$(changed_migrations "$LAST_TAG" HEAD)
 METADATA=$(substantive_metadata_changes "$LAST_TAG" HEAD)
 
 RAW_METADATA=$(git --no-pager diff --name-only "$LAST_TAG" HEAD -- metadata/ || true)
@@ -81,7 +84,7 @@ VERSION=$(jq -r .version packages/Entities/package.json)
 PREV=${LAST_TAG#v}
 
 if [ "$VERSION" = "$PREV" ]; then
-  echo "::error::$CHANGED changed since $LAST_TAG but the version is still $VERSION. Nothing has been versioned yet — merge the Version Packages PR on next first."
+  echo "::error::$CHANGED changed since $LAST_TAG but the version is still $VERSION. Nothing has been versioned yet — this must be the line's Version Packages PR."
   printf '%s\n%s\n' "$MIGRATIONS" "$METADATA" | grep -v '^$' | sed 's/^/  /'
   exit 1
 fi
@@ -93,6 +96,6 @@ if [ "$NMAJ" -gt "$PMAJ" ] || { [ "$NMAJ" -eq "$PMAJ" ] && [ "$NMIN" -gt "$PMIN"
   exit 0
 fi
 
-echo "::error::This release bumps $PREV -> $VERSION, a patch, but $CHANGED changed since $LAST_TAG. A consumer upgrading on a patch would not expect the schema or the seeded metadata to change. Raise a minor changeset on next; the Version Packages PR regenerates itself at the corrected number, and merging that is the release. Changed:"
+echo "::error::This release bumps $PREV -> $VERSION, a patch, but $CHANGED changed since $LAST_TAG. A consumer upgrading on a patch would not expect the schema or the seeded metadata to change. Raise a minor changeset on next and backport it to the line; the Version Packages PR regenerates itself at the corrected number, and merging that is the release. Changed:"
 printf '%s\n%s\n' "$MIGRATIONS" "$METADATA" | grep -v '^$' | sed 's/^/  /'
 exit 1

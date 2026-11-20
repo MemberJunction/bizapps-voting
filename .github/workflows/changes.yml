@@ -1,8 +1,8 @@
-# The checks a migration must pass to enter `next`.
+# The checks a migration must pass to enter `next`, or a release line (`lts/X.Y`) by backport.
 #
 # Scoped by TRIGGER, not by a job-level `if:`. Required status checks are configured per
-# branch, and these are required on `next` only, so the workflow simply does not run on PRs
-# into `main`. That is safe precisely because nothing requires these contexts there — a
+# branch, and these are required on `next` and the line branches, so the workflow simply does not
+# run on PRs into `main`. That is safe precisely because nothing requires these contexts there — a
 # workflow filtered out at the `on:` level creates NO check run, which would leave a required
 # context Pending forever. Scope and requirement have to agree; here they do.
 #
@@ -18,11 +18,12 @@ on:
     # `ready_for_review` is NOT in the default type set (opened/synchronize/reopened), and the
     # jobs below skip while the PR is a draft — without it, marking a PR ready would not
     # re-trigger anything and the checks would never report.
-    # `labeled`/`unlabeled` matter because `migration immutability` honours a label: without
-    # them, adding `migration-immutability-exempt` to a red PR re-triggers nothing (you have to
-    # push a no-op commit), and REMOVING it leaves the stale green standing.
+    # `labeled`/`unlabeled` matter because `migration immutability` and `migration changeset`
+    # each honour a label: without them, adding `migration-immutability-exempt` or
+    # `migration-changeset-exempt` to a red PR re-triggers nothing (you have to push a no-op
+    # commit), and REMOVING one leaves the stale green standing.
     types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
-    branches: [next]
+    branches: [next, 'lts/**']
 
 concurrency:
   group: changes-${{ github.ref }}
@@ -43,11 +44,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
 
@@ -58,7 +59,7 @@ jobs:
       #         value can disagree with the merge ref's own base parent, and when it does, a
       #         two-dot diff between them spans commits this PR never touched — `--name-only`
       #         cannot tell such a difference from an addition. Observed, not theoretical: run
-      #         33709181459 on #80 reported
+      #         a CI run on a PR reported
       #         `V202608241515__v5.36.x__Regen_Organization_People_SPs.sql` as changed by a PR
       #         that adds no migrations. Recomputing the merge base here is immune to it.
       #         (In the ordinary case the two agree — on a pull_request event HEAD is GitHub's
@@ -115,8 +116,12 @@ jobs:
           PG_COUNTERPART_LEVEL: warning
         run: ./.github/scripts/check-pg-counterpart.sh ${{ steps.mb.outputs.sha }} HEAD
 
+      # `next` only. On a line, a backported migration is the same file with the same timestamp as on
+      # `next`, so it is often older than the line's newest one, and backports can merge out of
+      # order. `lines: migrations` (release-lines-gates.yml) checks order on a line instead: no
+      # shared migration may be skipped past.
       - name: Validate migration timestamps are newer than existing
-        if: steps.migration_check.outputs.has_migrations == 'true'
+        if: steps.migration_check.outputs.has_migrations == 'true' && github.base_ref == 'next'
         run: |
           # Watermark is the base TIP, not the merge base — see the note on the step above.
           MAX_EXISTING=$(git show ${{ steps.mb.outputs.tip }}:migrations/ 2>/dev/null | \
@@ -144,16 +149,28 @@ jobs:
   # nobody. Both are wired up on purpose: this is the first net, rr: minor bump is the second.
   #
   # The cost is the case it over-fires on: a comment fix inside a migration, or a second
-  # migration in a window a minor already covers. Both now simply take the minor. There is no
-  # exemption label: under this pipeline a version number is minted and published in the same
-  # breath, so over-bumping is close to free and cheaper than a hatch people must reason about.
+  # migration in a window a minor already covers. Both now simply take the minor: under this
+  # pipeline a version number is minted and published in the same breath, so over-bumping is
+  # close to free.
+  #
+  # One case is not an over-bump but a wrong answer: a PR that REVERTS unreleased migration or
+  # metadata work. Its own diff touches migrations/, yet nothing differs from the last release,
+  # so a minor here would ship a minor release with nothing in it. `migration-changeset-exempt`
+  # covers that, only at this door, and only when a Maintain or Admin added it: rr: minor bump and rr: metadata shipped judge the net
+  # change since the last tag and read no label, so a mislabelled real change is still caught.
   migration-changeset:
     name: 'migration changeset'
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # The two reads let the check find who added `migration-changeset-exempt` (the PR's events)
+    # and look up their repository role; only Maintain or Admin may use the label.
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
@@ -167,6 +184,10 @@ jobs:
       # self-test is what makes a green run mean something. It also pins the quote-style cases
       # that the previous inline regex got wrong.
       - name: Migrations require a minor or major changeset
+        env:
+          MIGRATION_CHANGESET_EXEMPT: ${{ contains(github.event.pull_request.labels.*.name, 'migration-changeset-exempt') }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           ./.github/scripts/check-migration-changeset.sh --self-test
           ./.github/scripts/check-migration-changeset.sh ${{ steps.mb.outputs.sha }} HEAD
@@ -184,7 +205,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
@@ -206,7 +227,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Every script a workflow calls must exist
         run: ./.github/scripts/check-script-references.sh
 
@@ -233,8 +254,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
       - name: Install sqlcmd (if available)
