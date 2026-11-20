@@ -497,7 +497,7 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
                 throw new Error(res.ErrorMessage || 'The roll could not be loaded.');
             }
             this.Voters = res.Results;
-            this.Total = res.TotalRowCount;
+            this.Total = res.TotalRowCount ?? res.Results.length;
         } catch (error) {
             LogError('[VotingElections] Roll load failed', undefined, error);
             this.LoadError = error instanceof Error ? error.message : 'The roll could not be loaded.';
