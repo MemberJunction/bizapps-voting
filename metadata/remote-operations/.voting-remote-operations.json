@@ -1,0 +1,669 @@
+[
+  {
+    "fields": {
+      "Name": "Get My Ballot",
+      "OperationKey": "Voting.GetMyBallot",
+      "Description": "Retrieve the ballot style for the calling voter's election. Returns the contest layout, options, and submission rules as a BallotStyle object. The hash allows the client to detect style changes between preview and submission.",
+      "InputTypeName": "VotingGetMyBallotInput",
+      "InputTypeDefinition": "@file:types/voting-get-my-ballot.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingGetMyBallotOutput",
+      "OutputTypeDefinition": "@file:types/voting-get-my-ballot.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:vote",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": true
+    },
+    "primaryKey": {
+      "ID": "6F95FD05-3177-4786-B4CD-FE3AF0790A2E"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Cast Ballot",
+      "OperationKey": "Voting.CastBallot",
+      "Description": "Record a voter's ballot selections for an election. Writes the poll book (Participation record, unique by voter) and ballot box (CastBallot, no voter link, encrypted Selections) in one all-or-nothing transaction. Returns a receipt code. Ballots carry no time in any secrecy mode.",
+      "InputTypeName": "VotingCastBallotInput",
+      "InputTypeDefinition": "@file:types/voting-cast-ballot.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingCastBallotOutput",
+      "OutputTypeDefinition": "@file:types/voting-cast-ballot.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:vote",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": true
+    },
+    "primaryKey": {
+      "ID": "055334A1-39DF-4784-97F7-D19D83B594C0"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Get My Participation",
+      "OperationKey": "Voting.GetMyParticipation",
+      "Description": "Check whether the calling voter has voted in an election, and by which channel (Online, Paper, Proxy, InPerson). Does not reveal what they voted.",
+      "InputTypeName": "VotingGetMyParticipationInput",
+      "InputTypeDefinition": "@file:types/voting-get-my-participation.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingGetMyParticipationOutput",
+      "OutputTypeDefinition": "@file:types/voting-get-my-participation.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:vote",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": true
+    },
+    "primaryKey": {
+      "ID": "90747209-08ED-4D34-A68A-C353A8B77FB4"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Submit Proxy",
+      "OperationKey": "Voting.SubmitProxy",
+      "Description": "Designate another eligible voter as a proxy to vote on the caller's behalf. Returns the ProxyDesignationID and records the scope-limited instruction (e.g., voting class, issue filter) if provided.",
+      "InputTypeName": "VotingSubmitProxyInput",
+      "InputTypeDefinition": "@file:types/voting-submit-proxy.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingSubmitProxyOutput",
+      "OutputTypeDefinition": "@file:types/voting-submit-proxy.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:vote",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": true
+    },
+    "primaryKey": {
+      "ID": "0D0DD9CB-E1B1-4D08-8672-6613DD166785"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Submit Nomination",
+      "OperationKey": "Voting.SubmitNomination",
+      "Description": "Nominate a candidate for a contest during the Nominations phase. Records the nomination and optionally a candidate statement. Returns the NominationID.",
+      "InputTypeName": "VotingSubmitNominationInput",
+      "InputTypeDefinition": "@file:types/voting-submit-nomination.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingSubmitNominationOutput",
+      "OutputTypeDefinition": "@file:types/voting-submit-nomination.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:vote",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": true
+    },
+    "primaryKey": {
+      "ID": "2831B6C4-5C22-4CDF-AE9C-277EDB056482"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Get Results",
+      "OperationKey": "Voting.GetResults",
+      "Description": "Retrieve election results, subject to the election's ResultsTiming and ResultsAudience settings. For ranked contests after tallying, includes round-by-round detail. Never returns per-ballot data.",
+      "InputTypeName": "VotingGetResultsInput",
+      "InputTypeDefinition": "@file:types/voting-get-results.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingGetResultsOutput",
+      "OutputTypeDefinition": "@file:types/voting-get-results.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:vote",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": true
+    },
+    "primaryKey": {
+      "ID": "EF18C529-4BB4-4AE9-A976-8C2E93FC7197"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Verify Receipt",
+      "OperationKey": "Voting.VerifyReceipt",
+      "Description": "Verify that a receipt code issued during CastBallot corresponds to a ballot recorded in this election. Returns whether the receipt was found and counted.",
+      "InputTypeName": "VotingVerifyReceiptInput",
+      "InputTypeDefinition": "@file:types/voting-verify-receipt.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingVerifyReceiptOutput",
+      "OutputTypeDefinition": "@file:types/voting-verify-receipt.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:vote",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": true
+    },
+    "primaryKey": {
+      "ID": "BA7FC3D1-018F-486E-9E06-58659801EA29"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Create Election",
+      "OperationKey": "Voting.CreateElection",
+      "Description": "Create a new election with contests, options, eligibility source, and election-type-specific configuration. Enters Draft status. Returns the ElectionID.",
+      "InputTypeName": "VotingCreateElectionInput",
+      "InputTypeDefinition": "@file:types/voting-create-election.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingCreateElectionOutput",
+      "OutputTypeDefinition": "@file:types/voting-create-election.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "AF4E3BF0-29F3-4402-9BC7-4B2B83EB7392"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Update Election",
+      "OperationKey": "Voting.UpdateElection",
+      "Description": "Update an election's configuration, timing, secrecy mode, or results settings. Some changes are allowed only in certain statuses (e.g., contests may not be modified after opening). Returns the updated ElectionID.",
+      "InputTypeName": "VotingUpdateElectionInput",
+      "InputTypeDefinition": "@file:types/voting-update-election.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingUpdateElectionOutput",
+      "OutputTypeDefinition": "@file:types/voting-update-election.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "D595BEA3-8223-4782-8D31-FEF0438C14F5"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Freeze Roll",
+      "OperationKey": "Voting.FreezeRoll",
+      "Description": "Snapshot the eligible voter roll at a record date. Populates EligibleVoter rows from the configured EligibilitySource (entity query or CSV). Returns the voter count and a roll hash for verification.",
+      "InputTypeName": "VotingFreezeRollInput",
+      "InputTypeDefinition": "@file:types/voting-freeze-roll.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingFreezeRollOutput",
+      "OutputTypeDefinition": "@file:types/voting-freeze-roll.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "3E5D1422-CC15-42DE-95A7-532807D574A8"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Amend Roll",
+      "OperationKey": "Voting.AmendRoll",
+      "Description": "Add or remove eligible voters from a frozen roll. Records changes in EligibleVoter with reason trails. Returns counts of added and removed voters.",
+      "InputTypeName": "VotingAmendRollInput",
+      "InputTypeDefinition": "@file:types/voting-amend-roll.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingAmendRollOutput",
+      "OutputTypeDefinition": "@file:types/voting-amend-roll.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "51105223-CC52-4277-B58A-601AC28010BE"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Challenge Voter",
+      "OperationKey": "Voting.ChallengeVoter",
+      "Description": "Challenge the eligibility of a voter on the roll, with a reason. Optionally decide the challenge (Uphold removes them, Reject keeps them eligible). Records audit trail.",
+      "InputTypeName": "VotingChallengeVoterInput",
+      "InputTypeDefinition": "@file:types/voting-challenge-voter.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingChallengeVoterOutput",
+      "OutputTypeDefinition": "@file:types/voting-challenge-voter.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "F6E38711-5621-423E-B028-8E70E1FDA897"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Issue Credentials",
+      "OperationKey": "Voting.IssueCredentials",
+      "Description": "Issue voter credentials (magic links, control numbers, or asserted identities) for eligible voters. Method code (e.g., 'emailed-link', 'host-assertion') determines the mechanism. Returns counts of issued and skipped voters.",
+      "InputTypeName": "VotingIssueCredentialsInput",
+      "InputTypeDefinition": "@file:types/voting-issue-credentials.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingIssueCredentialsOutput",
+      "OutputTypeDefinition": "@file:types/voting-issue-credentials.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "65111F39-9CA3-422E-BCA3-C2F8E514F78B"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Open Election",
+      "OperationKey": "Voting.OpenElection",
+      "Description": "Transition an election from Ready to Open, allowing voter submissions to begin. May trigger credential issuance and reminder scheduling.",
+      "InputTypeName": "VotingOpenElectionInput",
+      "InputTypeDefinition": "@file:types/voting-open-election.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingOpenElectionOutput",
+      "OutputTypeDefinition": "@file:types/voting-open-election.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "214BE1FD-2CA5-4CD3-A59F-1E0A30FEA023"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Close Election",
+      "OperationKey": "Voting.CloseElection",
+      "Description": "Transition an election from Open to Closed. After this, no further ballots are accepted. Triggers turnout calculation and readies the system for tallying.",
+      "InputTypeName": "VotingCloseElectionInput",
+      "InputTypeDefinition": "@file:types/voting-close-election.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingCloseElectionOutput",
+      "OutputTypeDefinition": "@file:types/voting-close-election.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "3075BC53-6ED6-4190-8D6F-F7C2F0394426"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Cancel Election",
+      "OperationKey": "Voting.CancelElection",
+      "Description": "Cancel an election at any point before certification. Records the reason and transitions all ballots to void. Voters and candidates are notified.",
+      "InputTypeName": "VotingCancelElectionInput",
+      "InputTypeDefinition": "@file:types/voting-cancel-election.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingCancelElectionOutput",
+      "OutputTypeDefinition": "@file:types/voting-cancel-election.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "F1AB39C9-F3FD-4C4F-B6BE-C0AA06C38A52"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Get Turnout",
+      "OperationKey": "Voting.GetTurnout",
+      "Description": "Retrieve turnout statistics after the election closes: eligible voter count, votes cast, turnout percentage, quorum status, and breakdowns by channel and credential method.",
+      "InputTypeName": "VotingGetTurnoutInput",
+      "InputTypeDefinition": "@file:types/voting-get-turnout.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingGetTurnoutOutput",
+      "OutputTypeDefinition": "@file:types/voting-get-turnout.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "2D55122C-476D-4AFC-BE39-AF6C01823B3A"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Enter Paper Ballot",
+      "OperationKey": "Voting.EnterPaperBallot",
+      "Description": "Record a paper or in-person ballot cast by a voter using a control number or staff entry. Validates the control number, marks participation, and records the ballot.",
+      "InputTypeName": "VotingEnterPaperBallotInput",
+      "InputTypeDefinition": "@file:types/voting-enter-paper-ballot.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingEnterPaperBallotOutput",
+      "OutputTypeDefinition": "@file:types/voting-enter-paper-ballot.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "1BA4BA60-D251-424B-8ED7-53B552E6CD07"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Tally",
+      "OperationKey": "Voting.Tally",
+      "Description": "Execute the tally for all contests in a closed election. Applies the chosen tally method, resolves ties, and produces outcomes. Returns the tally status and per-contest results. Optionally accepts a TieBreakSeed.",
+      "InputTypeName": "VotingTallyInput",
+      "InputTypeDefinition": "@file:types/voting-tally.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingTallyOutput",
+      "OutputTypeDefinition": "@file:types/voting-tally.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "651AD346-5225-4AEB-933E-5D17CB4EBB80"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Certify",
+      "OperationKey": "Voting.Certify",
+      "Description": "Certify the election results after tallying. Produces an immutable record of the outcome, turnout, method applied, and inspector signatures. Transitions the election to Certified.",
+      "InputTypeName": "VotingCertifyInput",
+      "InputTypeDefinition": "@file:types/voting-certify.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingCertifyOutput",
+      "OutputTypeDefinition": "@file:types/voting-certify.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "64A77479-987A-461D-AE9A-B0838E407254"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Decide Nomination",
+      "OperationKey": "Voting.DecideNomination",
+      "Description": "Approve or reject a submitted nomination. Optional notes are recorded. If approved and a ContestOptionID is not supplied, a new candidate option is created. Updates the nomination status.",
+      "InputTypeName": "VotingDecideNominationInput",
+      "InputTypeDefinition": "@file:types/voting-decide-nomination.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingDecideNominationOutput",
+      "OutputTypeDefinition": "@file:types/voting-decide-nomination.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "E96E95BF-A82A-459A-8E41-96EE429F6476"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Resolve Comment",
+      "OperationKey": "Voting.ResolveComment",
+      "Description": "Respond to a ballot comment (in Open or Confidential mode). Records the disposition (e.g., acknowledged, addressed) and optional response text. Creates a BallotCommentResolution record.",
+      "InputTypeName": "VotingResolveCommentInput",
+      "InputTypeDefinition": "@file:types/voting-resolve-comment.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingResolveCommentOutput",
+      "OutputTypeDefinition": "@file:types/voting-resolve-comment.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "779E637E-EB8A-4E23-971F-B38ED8C0E0A9"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Create Trustee Keys",
+      "OperationKey": "Voting.CreateTrusteeKeys",
+      "Description": "Generate an election key pair and split the private key among trustees using Shamir's secret sharing (k-of-n threshold). Returns the public key and a list of shares (each share issued ONCE, never stored). Used for high-assurance elections only.",
+      "InputTypeName": "VotingCreateTrusteeKeysInput",
+      "InputTypeDefinition": "@file:types/voting-create-trustee-keys.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingCreateTrusteeKeysOutput",
+      "OutputTypeDefinition": "@file:types/voting-create-trustee-keys.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "77A9F7C3-C914-4C25-A1A5-167A1CB69F4C"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Submit Key Share",
+      "OperationKey": "Voting.SubmitKeyShare",
+      "Description": "Submit a trustee's share of the election private key during the tally ceremony. Once k shares are received, trustees can reconstruct the key to decrypt ballots for tallying.",
+      "InputTypeName": "VotingSubmitKeyShareInput",
+      "InputTypeDefinition": "@file:types/voting-submit-key-share.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingSubmitKeyShareOutput",
+      "OutputTypeDefinition": "@file:types/voting-submit-key-share.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:trustee",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "D84BEBE1-F182-4EC6-9A18-4EA4800E99C6"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Issue Control Numbers",
+      "OperationKey": "Voting.IssueControlNumbers",
+      "Description": "Generate control numbers for paper and proxy ballots. Only each number's SHA-256 is stored; the plain numbers are returned once and cannot be shown again.",
+      "InputTypeName": "VotingIssueControlNumbersInput",
+      "InputTypeDefinition": "@file:types/voting-issue-control-numbers.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingIssueControlNumbersOutput",
+      "OutputTypeDefinition": "@file:types/voting-issue-control-numbers.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "A21E82F4-5F19-4F2F-99E5-2647A029447B"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Issue Second Factor PINs",
+      "OperationKey": "Voting.IssueSecondFactorPins",
+      "Description": "Generate a PIN for each voter for the second-factor credential method. Only a salted hash is stored; the plain PINs are returned once for out-of-band delivery.",
+      "InputTypeName": "VotingIssueSecondFactorPinsInput",
+      "InputTypeDefinition": "@file:types/voting-issue-second-factor-pins.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingIssueSecondFactorPinsOutput",
+      "OutputTypeDefinition": "@file:types/voting-issue-second-factor-pins.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "54EF54E6-E3FE-4F72-8973-8FEE3AF81C82"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Open Nominations",
+      "OperationKey": "Voting.OpenNominations",
+      "Description": "Move a Draft election into Nominations so nominations can be submitted. Refused when the election has no office contest or the nomination window has already closed.",
+      "InputTypeName": "VotingOpenNominationsInput",
+      "InputTypeDefinition": "@file:types/voting-open-nominations.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingOpenNominationsOutput",
+      "OutputTypeDefinition": "@file:types/voting-open-nominations.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "3AA3A0FC-04A3-409C-B268-673A77CB05B7"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Close Nominations",
+      "OperationKey": "Voting.CloseNominations",
+      "Description": "Move an election from Nominations to Ready, ending the nomination period.",
+      "InputTypeName": "VotingCloseNominationsInput",
+      "InputTypeDefinition": "@file:types/voting-close-nominations.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingCloseNominationsOutput",
+      "OutputTypeDefinition": "@file:types/voting-close-nominations.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "2A0ED65D-04BE-4723-8A9D-34384A6FD54F"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Decide Proxy",
+      "OperationKey": "Voting.DecideProxy",
+      "Description": "Accept or reject a Pending proxy designation, any time before the election closes. Notes are recorded in the audit trail.",
+      "InputTypeName": "VotingDecideProxyInput",
+      "InputTypeDefinition": "@file:types/voting-decide-proxy.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingDecideProxyOutput",
+      "OutputTypeDefinition": "@file:types/voting-decide-proxy.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "761F1A40-F0B1-48E3-BFBF-587AD3C7C6BB"
+    }
+  }
+]

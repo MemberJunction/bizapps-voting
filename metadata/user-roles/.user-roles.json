@@ -1,0 +1,15 @@
+[
+  {
+    "_comments": [
+      "Grants MJ's system user (the fixed, well-known system user ID every MJ install shares) the",
+      "'Voting Ballot Engine' role. The voting engines read and write the ballot box only as the system user."
+    ],
+    "fields": {
+      "UserID": "ECAFCCEC-6A37-EF11-86D4-000D3A4E707E",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine"
+    },
+    "primaryKey": {
+      "ID": "7CE14160-0286-45A0-9B38-A3A11CF9DAA0"
+    }
+  }
+]

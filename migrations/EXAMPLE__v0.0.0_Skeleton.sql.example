@@ -1,0 +1,41 @@
+-- ============================================================
+-- <YourApp>: <what this migration does> (v<X.Y.x>)
+--
+-- INERT EXAMPLE — this file's name ends in `.example`, so Skyway never picks it
+-- up. Copy it to a real migration name and delete the leading `EXAMPLE_`:
+--
+--     migrations/V<YYYYMMDDHHMM>__v<X.Y.x>_<Description>.sql
+--
+-- The timestamp is UTC now, and must be strictly greater than every existing
+-- migration's (CI enforces that on PRs). See migrations/_README.md for the naming
+-- rules and docs/template-docs/codegen-and-metadata-migrations.md for the loop.
+-- ============================================================
+
+-- Your schema objects. Use the placeholder, NEVER a hardcoded schema name — the
+-- same file has to apply to whatever schema the app is installed into:
+--
+-- CREATE TABLE ${flyway:defaultSchema}.Widget (
+--     ID UNIQUEIDENTIFIER NOT NULL DEFAULT NEWSEQUENTIALID(),
+--     Name NVARCHAR(200) NOT NULL,
+--     Status NVARCHAR(20) NOT NULL DEFAULT 'Active',
+--     CONSTRAINT PK_Widget PRIMARY KEY (ID),
+--     CONSTRAINT CK_Widget_Status CHECK (Status IN ('Active', 'Inactive'))
+-- )
+-- GO
+--
+-- Rows in MJ core tables use the ${mjSchema} placeholder (never a literal `__mj`), with
+-- HARDCODED UUIDs. Metadata records normally ship in the release's Metadata_Sync seed instead:
+--
+-- INSERT INTO ${mjSchema}.Application (ID, Name, Description)
+--   VALUES ('00000000-0000-0000-0000-000000000000', 'BizApps Voting', '<...>')
+-- GO
+
+-- REMEMBER (docs/template-docs/codegen-and-metadata-migrations.md):
+--   * no __mj_CreatedAt/__mj_UpdatedAt columns, and no FK indexes — CodeGen adds
+--     both after entity registration; declaring them here collides with it
+--   * hardcoded UUIDs for any metadata rows (never NEWID()) — a clean install has
+--     to reproduce the same IDs everywhere
+--   * after this migration: run CodeGen, then commit the regenerated code AND the
+--     CodeGen-emitted SQL folded into this (or a follow-up) migration
+--   * add a changeset: `pnpm exec changeset` (>= minor whenever a migration is added)
+--   * never edit this file once it has been applied anywhere — add a new migration

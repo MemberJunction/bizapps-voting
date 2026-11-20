@@ -1,0 +1,588 @@
+[
+  {
+    "Key": "motion-confidential",
+    "Name": "World: motion-confidential",
+    "Type": "motion",
+    "Secrecy": "Confidential",
+    "Tier": "Standard",
+    "Timing": "AfterClose",
+    "Audience": "Voters",
+    "Roll": "individual",
+    "Freeze": false,
+    "Configuration": {},
+    "Purpose": "baseline confidential motion; revote allowed",
+    "Contests": [
+      {
+        "Name": "Adopt the annual budget",
+        "Kind": "Motion",
+        "TallyMethodCode": "majority",
+        "Threshold": "Majority",
+        "ThresholdBasis": "VotesCast",
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Yes"
+          },
+          {
+            "Label": "No"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Key": "motion-open-live",
+    "Name": "World: motion-open-live",
+    "Type": "motion",
+    "Secrecy": "Open",
+    "Tier": "Standard",
+    "Timing": "Live",
+    "Audience": "Eligible",
+    "Roll": "individual",
+    "Freeze": false,
+    "Configuration": {
+      "ResultsMinCast": 3
+    },
+    "Purpose": "open secrecy (attributed ballots), live results",
+    "Contests": [
+      {
+        "Name": "Endorse the open statement",
+        "Kind": "Motion",
+        "TallyMethodCode": "plurality",
+        "Threshold": "Majority",
+        "ThresholdBasis": "VotesCast",
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Yes"
+          },
+          {
+            "Label": "No"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Key": "motion-weighted",
+    "Name": "World: motion-weighted",
+    "Type": "motion",
+    "Secrecy": "Confidential",
+    "Tier": "Standard",
+    "Timing": "AfterClose",
+    "Audience": "Voters",
+    "Roll": "all",
+    "Freeze": true,
+    "Configuration": {},
+    "Purpose": "weighted roll: corporate members carry weight 3",
+    "Contests": [
+      {
+        "Name": "Approve the dues schedule",
+        "Kind": "Motion",
+        "TallyMethodCode": "majority",
+        "Threshold": "Majority",
+        "ThresholdBasis": "VotesCast",
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Yes"
+          },
+          {
+            "Label": "No"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Key": "motion-admins-only",
+    "Name": "World: motion-admins-only",
+    "Type": "motion",
+    "Secrecy": "Confidential",
+    "Tier": "Standard",
+    "Timing": "AdministratorsOnly",
+    "Audience": "Administrators",
+    "Roll": "personas",
+    "Freeze": false,
+    "Configuration": {},
+    "Purpose": "results restricted to administrators",
+    "Contests": [
+      {
+        "Name": "Release the audit",
+        "Kind": "Motion",
+        "TallyMethodCode": "majority",
+        "Threshold": "Majority",
+        "ThresholdBasis": "VotesCast",
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Yes"
+          },
+          {
+            "Label": "No"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Key": "amendment-twothirds",
+    "Name": "World: amendment-twothirds",
+    "Type": "amendment",
+    "Secrecy": "Secret",
+    "Tier": "Standard",
+    "Timing": "AfterClose",
+    "Audience": "HostMembers",
+    "Roll": "all",
+    "Freeze": false,
+    "Configuration": {
+      "Quorum": {
+        "Kind": "Percent",
+        "Value": 50
+      }
+    },
+    "Purpose": "two-thirds of the eligible roll, 50 percent quorum, host-member audience",
+    "Contests": [
+      {
+        "Name": "Amend Article IV",
+        "Kind": "Amendment",
+        "TallyMethodCode": "majority",
+        "Threshold": "TwoThirds",
+        "ThresholdBasis": "Eligible",
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Yes"
+          },
+          {
+            "Label": "No"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Key": "referendum-aftervoting",
+    "Name": "World: referendum-aftervoting",
+    "Type": "referendum",
+    "Secrecy": "Secret",
+    "Tier": "Standard",
+    "Timing": "AfterVoting",
+    "Audience": "Eligible",
+    "Roll": "individual",
+    "Freeze": false,
+    "Configuration": {},
+    "Purpose": "results shown to a voter once they have voted",
+    "Contests": [
+      {
+        "Name": "Relocate the annual meeting",
+        "Kind": "Question",
+        "TallyMethodCode": "majority",
+        "Threshold": "ThreeFifths",
+        "ThresholdBasis": "VotesCast",
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Yes"
+          },
+          {
+            "Label": "No"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Key": "ratification-custom",
+    "Name": "World: ratification-custom",
+    "Type": "ratification",
+    "Secrecy": "Secret",
+    "Tier": "Standard",
+    "Timing": "AfterClose",
+    "Audience": "Public",
+    "Roll": "all",
+    "Freeze": false,
+    "Configuration": {},
+    "Purpose": "custom 55 percent threshold, public results",
+    "Contests": [
+      {
+        "Name": "Ratify the board slate",
+        "Kind": "Question",
+        "TallyMethodCode": "majority",
+        "Threshold": "Custom",
+        "ThresholdBasis": "VotesCast",
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Yes"
+          },
+          {
+            "Label": "No"
+          }
+        ],
+        "CustomThreshold": 0.55
+      }
+    ]
+  },
+  {
+    "Key": "poll-live-revote",
+    "Name": "World: poll-live-revote",
+    "Type": "poll",
+    "Secrecy": "Confidential",
+    "Tier": "Standard",
+    "Timing": "Live",
+    "Audience": "Voters",
+    "Roll": "personas",
+    "Freeze": false,
+    "Configuration": {
+      "AllowRevote": true,
+      "ResultsMinCast": 2
+    },
+    "Purpose": "live poll with revote",
+    "Contests": [
+      {
+        "Name": "Lunch: pizza?",
+        "Kind": "Question",
+        "TallyMethodCode": "plurality",
+        "Threshold": "None",
+        "ThresholdBasis": "VotesCast",
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Yes"
+          },
+          {
+            "Label": "No"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Key": "standards-open",
+    "Name": "World: standards-open",
+    "Type": "standards-ballot",
+    "Secrecy": "Open",
+    "Tier": "Standard",
+    "Timing": "AfterClose",
+    "Audience": "Public",
+    "Roll": "corporate",
+    "Freeze": false,
+    "Configuration": {},
+    "Purpose": "open standards ballot (comments, attributed)",
+    "Contests": [
+      {
+        "Name": "Standard 42 draft 3",
+        "Kind": "StandardsItem",
+        "TallyMethodCode": "majority",
+        "Threshold": "Majority",
+        "ThresholdBasis": "VotesCast",
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Approve"
+          },
+          {
+            "Label": "Disapprove"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Key": "board-plurality",
+    "Name": "World: board-plurality",
+    "Type": "board-election",
+    "Secrecy": "Secret",
+    "Tier": "Standard",
+    "Timing": "AfterClose",
+    "Audience": "Voters",
+    "Roll": "all",
+    "Freeze": false,
+    "Configuration": {
+      "Quorum": {
+        "Kind": "Count",
+        "Value": 10
+      }
+    },
+    "Purpose": "three-seat plurality, count quorum",
+    "Contests": [
+      {
+        "Name": "Board of directors",
+        "Kind": "Office",
+        "TallyMethodCode": "plurality",
+        "Seats": 3,
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Ada"
+          },
+          {
+            "Label": "Bruno"
+          },
+          {
+            "Label": "Chiara"
+          },
+          {
+            "Label": "Dmitri"
+          },
+          {
+            "Label": "Esme"
+          },
+          {
+            "Label": "Farid"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Key": "board-majority",
+    "Name": "World: board-majority",
+    "Type": "board-election",
+    "Secrecy": "Secret",
+    "Tier": "Standard",
+    "Timing": "AfterClose",
+    "Audience": "Voters",
+    "Roll": "all",
+    "Freeze": false,
+    "Configuration": {},
+    "Purpose": "single-seat majority office",
+    "Contests": [
+      {
+        "Name": "President",
+        "Kind": "Office",
+        "TallyMethodCode": "majority",
+        "Seats": 1,
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Ada"
+          },
+          {
+            "Label": "Bruno"
+          },
+          {
+            "Label": "Chiara"
+          }
+        ],
+        "Threshold": "Majority"
+      }
+    ]
+  },
+  {
+    "Key": "board-irv",
+    "Name": "World: board-irv",
+    "Type": "board-election",
+    "Secrecy": "Secret",
+    "Tier": "Standard",
+    "Timing": "AfterClose",
+    "Audience": "Voters",
+    "Roll": "all",
+    "Freeze": false,
+    "Configuration": {},
+    "Purpose": "instant runoff",
+    "Contests": [
+      {
+        "Name": "Chair (ranked)",
+        "Kind": "Office",
+        "TallyMethodCode": "irv",
+        "Seats": 1,
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Ada"
+          },
+          {
+            "Label": "Bruno"
+          },
+          {
+            "Label": "Chiara"
+          },
+          {
+            "Label": "Dmitri"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Key": "org-stv",
+    "Name": "World: org-stv",
+    "Type": "organization-election",
+    "Secrecy": "Secret",
+    "Tier": "Standard",
+    "Timing": "AfterClose",
+    "Audience": "Administrators",
+    "Roll": "all",
+    "Freeze": false,
+    "Configuration": {
+      "Quorum": {
+        "Kind": "Percent",
+        "Value": 40
+      }
+    },
+    "Purpose": "three-seat Scottish STV, percent quorum, administrators audience",
+    "Contests": [
+      {
+        "Name": "Council (STV)",
+        "Kind": "Office",
+        "TallyMethodCode": "stv",
+        "Seats": 3,
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Ada"
+          },
+          {
+            "Label": "Bruno"
+          },
+          {
+            "Label": "Chiara"
+          },
+          {
+            "Label": "Dmitri"
+          },
+          {
+            "Label": "Esme"
+          },
+          {
+            "Label": "Farid"
+          },
+          {
+            "Label": "Greta"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Key": "org-approval",
+    "Name": "World: org-approval",
+    "Type": "organization-election",
+    "Secrecy": "Secret",
+    "Tier": "Standard",
+    "Timing": "AfterClose",
+    "Audience": "Eligible",
+    "Roll": "students",
+    "Freeze": false,
+    "Configuration": {},
+    "Purpose": "two-seat approval",
+    "Contests": [
+      {
+        "Name": "Panel (approval)",
+        "Kind": "Office",
+        "TallyMethodCode": "approval",
+        "Seats": 2,
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Ada"
+          },
+          {
+            "Label": "Bruno"
+          },
+          {
+            "Label": "Chiara"
+          },
+          {
+            "Label": "Dmitri"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Key": "highassurance-motion",
+    "Name": "World: highassurance-motion",
+    "Type": "motion",
+    "Secrecy": "Secret",
+    "Tier": "HighAssurance",
+    "Timing": "AfterClose",
+    "Audience": "Voters",
+    "Roll": "personas",
+    "Freeze": false,
+    "Configuration": {},
+    "Purpose": "tier B (trustee key shares); keys not yet created",
+    "Contests": [
+      {
+        "Name": "Approve the merger",
+        "Kind": "Motion",
+        "TallyMethodCode": "majority",
+        "Threshold": "Majority",
+        "ThresholdBasis": "VotesCast",
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Yes"
+          },
+          {
+            "Label": "No"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Key": "verifiable-motion",
+    "Name": "World: verifiable-motion",
+    "Type": "motion",
+    "Secrecy": "Secret",
+    "Tier": "Verifiable",
+    "Timing": "AfterClose",
+    "Audience": "Voters",
+    "Roll": "personas",
+    "Freeze": false,
+    "Configuration": {},
+    "Purpose": "verifiable tier: creatable, cannot open without a provider",
+    "Contests": [
+      {
+        "Name": "Approve the charter",
+        "Kind": "Motion",
+        "TallyMethodCode": "majority",
+        "Threshold": "Majority",
+        "ThresholdBasis": "VotesCast",
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Yes"
+          },
+          {
+            "Label": "No"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Key": "frozen-roll",
+    "Name": "World: frozen-roll",
+    "Type": "motion",
+    "Secrecy": "Confidential",
+    "Tier": "Standard",
+    "Timing": "AfterClose",
+    "Audience": "Voters",
+    "Roll": "personas",
+    "Freeze": true,
+    "Configuration": {},
+    "Purpose": "roll frozen but never opened",
+    "Contests": [
+      {
+        "Name": "Confirm the minutes",
+        "Kind": "Motion",
+        "TallyMethodCode": "majority",
+        "Threshold": "Majority",
+        "ThresholdBasis": "VotesCast",
+        "AllowAbstain": true,
+        "Options": [
+          {
+            "Label": "Yes"
+          },
+          {
+            "Label": "No"
+          }
+        ]
+      }
+    ]
+  }
+]

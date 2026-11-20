@@ -1,0 +1,59 @@
+[
+  {
+    "fields": {
+      "Name": "BizApps Voting",
+      "Description": "Elections, ballots and motions: server-authoritative voting with secret-by-construction design, pluggable tally methods and extensible election types.",
+      "Icon": "fa-solid fa-check-to-slot",
+      "Color": "#264FAF",
+      "DefaultForNewUser": false,
+      "DefaultSequence": 1000,
+      "SchemaAutoAddNewEntities": "__mj_BizAppsVoting",
+      "Path": "mjbizappsvoting",
+      "DefaultNavItems": [
+        {
+          "Label": "Elections",
+          "Icon": "fa-solid fa-check-to-slot",
+          "ResourceType": "Custom",
+          "DriverClass": "VotingElectionsResource",
+          "isDefault": true
+        },
+        {
+          "Label": "My Ballot",
+          "Icon": "fa-solid fa-person-booth",
+          "ResourceType": "Custom",
+          "DriverClass": "VotingBallotResource"
+        },
+        {
+          "Label": "Election Types",
+          "Icon": "fa-solid fa-list",
+          "ResourceType": "Custom",
+          "DriverClass": "VotingElectionTypesResource"
+        },
+        {
+          "Label": "Results & Certification",
+          "Icon": "fa-solid fa-chart-pie",
+          "ResourceType": "Custom",
+          "DriverClass": "VotingResultsResource"
+        },
+        {
+          "Label": "Settings",
+          "Icon": "fa-solid fa-gear",
+          "ResourceType": "Custom",
+          "DriverClass": "VotingSettingsResource"
+        },
+        {
+          "Label": "Trustee Share",
+          "Icon": "fa-solid fa-key",
+          "ResourceType": "Custom",
+          "DriverClass": "VotingTrusteeShareResource"
+        }
+      ]
+    },
+    "relatedEntities": {
+      "MJ: Application Entities": []
+    },
+    "primaryKey": {
+      "ID": "FACF0063-4D99-45D4-94F3-0C3CA7A04374"
+    }
+  }
+]

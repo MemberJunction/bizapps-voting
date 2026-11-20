@@ -1,0 +1,15 @@
+[
+  {
+    "fields": {
+      "Name": "Voting Reminder Sender",
+      "Description": "Reminds eligible voters who have not voted when an Open election crosses a reminder threshold (days before close, from the election's Configuration.Reminders or this job's DaysBeforeClose). Optional Configuration: { \"DaysBeforeClose\": number[], \"ProviderName\": string, \"From\": string, \"BallotUrl\": string }.",
+      "DriverClass": "ReminderSenderJob",
+      "DomainRunEntity": null,
+      "DomainRunEntityFKey": null,
+      "NotificationsAvailable": true
+    },
+    "primaryKey": {
+      "ID": "7BC4504F-8588-4555-8D08-CA50AD0A625A"
+    }
+  }
+]

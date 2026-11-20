@@ -1,0 +1,203 @@
+[
+  {
+    "fields": {
+      "Name": "Motion",
+      "Code": "motion",
+      "Description": "Motion voting for board and committee meetings",
+      "IconClass": "fa-solid fa-check",
+      "Status": "Active",
+      "ServerDriverClass": null,
+      "UIDriverClass": null,
+      "ElectionExtensionEntityID": null,
+      "Configuration": {
+        "SecrecyMode": "Confidential",
+        "ResultsTiming": "AfterClose",
+        "ResultsAudience": "Voters",
+        "AllowRevote": true,
+        "AllowedContestKinds": ["Motion"],
+        "DefaultTallyMethodCode": "majority",
+        "AllowedCredentialMethodCodes": ["mj-session"],
+        "OverridableKeys": ["ResultsTiming", "ResultsAudience", "ResultsMinCast", "AllowRevote", "AllowedCredentialMethodCodes"]
+      }
+    },
+    "primaryKey": {
+      "ID": "CEE4DA95-96CA-4F92-9965-0281EDCD105C"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Board Election",
+      "Code": "board-election",
+      "Description": "Officer and director election for board seats",
+      "IconClass": "fa-solid fa-users",
+      "Status": "Active",
+      "ServerDriverClass": null,
+      "UIDriverClass": null,
+      "ElectionExtensionEntityID": null,
+      "Configuration": {
+        "SecrecyMode": "Secret",
+        "ResultsTiming": "AfterClose",
+        "ResultsAudience": "Voters",
+        "AllowRevote": false,
+        "AllowedContestKinds": ["Office"],
+        "DefaultTallyMethodCode": "plurality",
+        "AllowedCredentialMethodCodes": ["emailed-link", "host-assertion", "sso", "mj-session"],
+        "OverridableKeys": ["ResultsTiming", "ResultsAudience", "ResultsMinCast"]
+      }
+    },
+    "primaryKey": {
+      "ID": "2BD100E4-474E-46C4-8137-7DA3416FA26E"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Organization-wide Election",
+      "Code": "organization-election",
+      "Description": "Member or constituent election on significant matters",
+      "IconClass": "fa-solid fa-building",
+      "Status": "Active",
+      "ServerDriverClass": null,
+      "UIDriverClass": null,
+      "ElectionExtensionEntityID": null,
+      "Configuration": {
+        "SecrecyMode": "Secret",
+        "ResultsTiming": "AfterClose",
+        "ResultsAudience": "Voters",
+        "AllowRevote": false,
+        "AllowedContestKinds": ["Office"],
+        "DefaultTallyMethodCode": "plurality",
+        "AllowedCredentialMethodCodes": ["emailed-link", "host-assertion", "sso", "mj-session"],
+        "OverridableKeys": ["ResultsTiming", "ResultsAudience", "ResultsMinCast"]
+      }
+    },
+    "primaryKey": {
+      "ID": "AB2D85D9-7549-4EE3-A73B-07ECEC9D8811"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Charter/Bylaw Amendment",
+      "Code": "amendment",
+      "Description": "Amendment to governing documents",
+      "IconClass": "fa-solid fa-file-contract",
+      "Status": "Active",
+      "ServerDriverClass": null,
+      "UIDriverClass": null,
+      "ElectionExtensionEntityID": null,
+      "Configuration": {
+        "SecrecyMode": "Secret",
+        "ResultsTiming": "AfterClose",
+        "ResultsAudience": "Voters",
+        "AllowRevote": false,
+        "AllowedContestKinds": ["Amendment"],
+        "DefaultTallyMethodCode": "majority",
+        "AllowedCredentialMethodCodes": ["emailed-link", "host-assertion", "sso", "mj-session"],
+        "OverridableKeys": ["ResultsTiming", "ResultsAudience", "ResultsMinCast"]
+      }
+    },
+    "primaryKey": {
+      "ID": "A02B97DE-5704-4850-9EBB-2C55EF4BA6EE"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Referendum",
+      "Code": "referendum",
+      "Description": "Question put directly to voters",
+      "IconClass": "fa-solid fa-diagram-project",
+      "Status": "Active",
+      "ServerDriverClass": null,
+      "UIDriverClass": null,
+      "ElectionExtensionEntityID": null,
+      "Configuration": {
+        "SecrecyMode": "Secret",
+        "ResultsTiming": "AfterClose",
+        "ResultsAudience": "Voters",
+        "AllowRevote": false,
+        "AllowedContestKinds": ["Question"],
+        "DefaultTallyMethodCode": "majority",
+        "AllowedCredentialMethodCodes": ["emailed-link", "host-assertion", "sso", "mj-session"],
+        "OverridableKeys": ["ResultsTiming", "ResultsAudience", "ResultsMinCast"]
+      }
+    },
+    "primaryKey": {
+      "ID": "F8D267FE-34F9-42F2-BC77-CF6AAF1AB6DD"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Ratification",
+      "Code": "ratification",
+      "Description": "Ratification of labor agreements or contracts",
+      "IconClass": "fa-solid fa-handshake",
+      "Status": "Active",
+      "ServerDriverClass": null,
+      "UIDriverClass": null,
+      "ElectionExtensionEntityID": null,
+      "Configuration": {
+        "SecrecyMode": "Secret",
+        "ResultsTiming": "AfterClose",
+        "ResultsAudience": "Voters",
+        "AllowRevote": false,
+        "AllowedContestKinds": ["Question"],
+        "DefaultTallyMethodCode": "majority",
+        "AllowedCredentialMethodCodes": ["emailed-link", "host-assertion", "sso", "mj-session"],
+        "OverridableKeys": ["ResultsTiming", "ResultsAudience", "ResultsMinCast"]
+      }
+    },
+    "primaryKey": {
+      "ID": "5293DADB-5B66-4DF7-ACA9-53AAC6DEAEA3"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Poll",
+      "Code": "poll",
+      "Description": "Quick team or group poll with live results",
+      "IconClass": "fa-solid fa-chart-pie",
+      "Status": "Active",
+      "ServerDriverClass": null,
+      "UIDriverClass": null,
+      "ElectionExtensionEntityID": null,
+      "Configuration": {
+        "SecrecyMode": "Secret",
+        "ResultsTiming": "Live",
+        "ResultsAudience": "Voters",
+        "ResultsMinCast": 5,
+        "AllowRevote": true,
+        "AllowedContestKinds": ["Motion", "Question"],
+        "DefaultTallyMethodCode": "plurality",
+        "AllowedCredentialMethodCodes": ["mj-session", "emailed-link"],
+        "OverridableKeys": ["ResultsTiming", "ResultsAudience", "ResultsMinCast", "AllowRevote", "AllowedCredentialMethodCodes"]
+      }
+    },
+    "primaryKey": {
+      "ID": "1E56BA8E-3B12-4B3B-B121-DCFCF60C3016"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Standards Ballot",
+      "Code": "standards-ballot",
+      "Description": "Standards organization ballot with document commentary and resolution",
+      "IconClass": "fa-solid fa-check-to-slot",
+      "Status": "Active",
+      "ServerDriverClass": "StandardsBallotServerDriver",
+      "UIDriverClass": "StandardsBallotUIDriver",
+      "ElectionExtensionEntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Standards Ballot Elections",
+      "Configuration": {
+        "SecrecyMode": "Open",
+        "ResultsTiming": "AfterClose",
+        "ResultsAudience": "Public",
+        "AllowRevote": false,
+        "AllowedContestKinds": ["StandardsItem"],
+        "DefaultTallyMethodCode": "majority",
+        "AllowedCredentialMethodCodes": ["mj-session"],
+        "OverridableKeys": ["ResultsTiming", "ResultsAudience", "ResultsMinCast"]
+      }
+    },
+    "primaryKey": {
+      "ID": "95C64849-04E4-47F9-8E69-0388C928F451"
+    }
+  }
+]
