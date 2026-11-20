@@ -1,6 +1,6 @@
 {
   "name": "@mj-biz-apps/voting-server",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Server bootstrap package - loaded by MJAPI at startup via the manifest's startupExport. TODO(template): rename.",
   "main": "dist/index.js",
@@ -32,11 +32,11 @@
   },
   "license": "BUSL-1.1",
   "dependencies": {
-    "@mj-biz-apps/voting-actions": "0.0.0",
-    "@mj-biz-apps/voting-core-entities-server": "0.0.0",
-    "@mj-biz-apps/voting-entities": "0.0.0",
+    "@mj-biz-apps/voting-actions": "1.0.0",
+    "@mj-biz-apps/voting-core-entities-server": "1.0.0",
+    "@mj-biz-apps/voting-entities": "1.0.0",
     "class-validator": "^0.14.3",
-    "@mj-biz-apps/voting-engine-base": "0.0.0",
+    "@mj-biz-apps/voting-engine-base": "1.0.0",
     "body-parser": "^2.2.0"
   },
   "peerDependencies": {
