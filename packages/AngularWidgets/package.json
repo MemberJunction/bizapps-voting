@@ -43,6 +43,7 @@
     "@memberjunction/core": "6.3.0-edge.1",
     "@memberjunction/global": "6.3.0-edge.1",
     "@memberjunction/ng-base-types": "6.3.0-edge.1",
+    "rxjs": "7.8.2",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18",
     "esbuild": "^0.27.2",
