@@ -122,6 +122,22 @@ and `SecondFactor` from the request, and refuses the codes `sso` and `mj-session
 other inputs needs edge changes. Shipped: `emailed-link`, `host-assertion`, `sso`, `mj-session`, `second-factor`. Base
 class in `dist/credentials`.
 
+## Host-driven ballot entry and roll-call reads
+
+Host apps with their own officer authorization (for example, a chair recording in-person votes for a governing body) can call
+the server engines directly from a host server service after running the host's own authorization check:
+
+- **`CastEngine.Instance.CastForVoter(params, ctx)`** records a non-online ballot (`InPerson`, `Paper`, or `Proxy`) in one
+  call: it resolves the eligible voter by `EligibleVoterID` or `SourceKey`, builds that voter's ballot style hash, casts
+  through `CastEngine.Cast` as the system principal, and writes a `BallotEntered` audit event with `{ Channel, EligibleVoterID }`.
+  The entering user (`EnteredByUserID`, defaulting to `ActorIdFor(ctx)`) is recorded on `Participations.EnteredByUserID` and
+  as the audit event's `ActorUserID` — never on `Cast Ballots`. **The host owns authorization on this path**: the engine does
+  not check `Voting Administrator` membership because it raises to the system principal internally.
+- **`ResultsEngine.Instance.GetRollCall(electionID, ctx)`** returns per-contest named selections for **`Open`-secrecy,
+  Standard-tier** elections whose roll is frozen (decrypting counted attributed ballots while Open/Closed, and reading
+  `Ballot Selections` after tally). `Confidential` and `Secret` elections are refused unconditionally. **The host owns
+  authorization on this path**; the `Voting.GetRollCall` Remote Operation checks `Voting Administrator` or `Election Inspector`.
+
 ## Metadata
 
 Seed rows live in `metadata/` (`election-types`, `tally-methods`, `eligibility-source-types`, `voter-credential-methods`,

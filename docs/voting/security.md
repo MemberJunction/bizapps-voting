@@ -94,9 +94,10 @@ operation cannot read them with the caller's permissions. Every voter operation 
 `operations/operation-support.ts`:
 
 1. `OpenVoterSession(electionId, caller)` authorizes the caller from claims the platform already verified. A guest's signed
-   scope must name exactly this election and a voter who is still `Eligible` on its roll. A member is matched through the
-   Person linked to their MJ user (`LinkedUserID`, then email) to an `Eligible` roll entry. No match returns `null` and the
-   operation answers `You are not on the roll for this election.`
+   scope must name exactly this election and a voter who is still `Eligible` on its roll. A member is matched through
+   Common's `ResolvePersonIDForUser` (the user's own People or People-subtype link first, then deprecated `People.LinkedUserID`,
+   falling back to email only when the user carries no People link) to an `Eligible` roll entry. No match returns `null` and
+   the operation answers `You are not on the roll for this election.`
 2. The roll and Person lookups for that match run as the system principal (`VoterIdentityResolver`); only the matched
    `EligibleVoterID` leaves.
 3. The session's `Engine` context (same provider, system user) is handed to the engines, keyed by the session's own
@@ -112,14 +113,22 @@ Election Inspector, the signer writes the certification and certifier rows as th
 the last required signature's move of the election to `Certified` (plus the type driver's `OnResultsCertified`) runs as the
 system principal, since inspectors hold only R on Elections (`CertificationEngine.markElectionCertified`).
 
+Named roll-call reads (`Voting.GetRollCall` / `ResultsEngine.GetRollCall`) are restricted to **`Open`-secrecy, Standard-tier**
+elections with a frozen roll; `Confidential` and `Secret` elections are refused unconditionally before any ballot-box or
+attribution table is touched (`wire-secrecy.X14`). The Remote Operation authorizes `Voting Administrator` and
+`Election Inspector` and reads `Ballot Attributions`, `Cast Ballots` (decrypting while Open/Closed) or `Ballot Selections`
+(after tally) as the system principal. A host service calling `ResultsEngine.Instance.GetRollCall` directly owns its own
+caller authorization.
+
 Audit attribution: the system context a voter operation runs under keeps the authorized caller as its `Actor`
 (`SystemContext`, `VotingContext.Actor`), and `ElectionAudit.Record` names that caller: `ActorUserID` is the member's MJ user,
 and a guest ballot session (whose principal is not a stored user) is recorded in the event's details as
-`ActorEligibleVoterID`. Only events that already existed get an actor; the cast writes no audit event, and no event carries
-ballot content (`wire-secrecy.X06`), so naming the actor reveals nothing the poll book does not already hold. The plain
-system user (scheduled jobs, the public edge before sign-in) is still recorded as no actor. Administrative operations run as
-the administrator, who is named as before; the certification's status move, made as the system principal, names the
-signer.
+`ActorEligibleVoterID`. Self-cast ballots write no audit event; entered ballots (`CastEngine.CastForVoter`, including `Voting.EnterPaperBallot`) write a
+`BallotEntered` audit event naming the entering user as `ActorUserID` and carrying only `{ Channel, EligibleVoterID }` (never
+selections, receipt codes, or ballot IDs, `wire-secrecy.X06`), so naming the actor reveals nothing the poll book does not
+already hold. The plain system user (scheduled jobs, the public edge before sign-in) is still recorded as no actor.
+Administrative operations run as the administrator, who is named as before; the certification's status move, made as the
+system principal, names the signer.
 
 ## API scopes
 

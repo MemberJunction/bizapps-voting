@@ -392,6 +392,29 @@
   },
   {
     "fields": {
+      "Name": "Get Roll Call",
+      "OperationKey": "Voting.GetRollCall",
+      "Description": "Retrieve named per-voter selections for an Open-secrecy election. Refused for Confidential and Secret elections. While Open or Closed, decrypts attributed ballots; after tallying, reads Ballot Selections.",
+      "InputTypeName": "VotingGetRollCallInput",
+      "InputTypeDefinition": "@file:types/voting-get-roll-call.input.ts",
+      "InputTypeIsArray": false,
+      "OutputTypeName": "VotingGetRollCallOutput",
+      "OutputTypeDefinition": "@file:types/voting-get-roll-call.output.ts",
+      "OutputTypeIsArray": false,
+      "ExecutionMode": "Sync",
+      "RequiredScope": "voting:admin",
+      "RequiresSystemUser": false,
+      "GenerationType": "Manual",
+      "CodeApprovalStatus": "Approved",
+      "Status": "Active",
+      "AllowScopedPrincipal": false
+    },
+    "primaryKey": {
+      "ID": "4A8016F8-DF93-4ED7-87AE-5EEC716A2C1B"
+    }
+  },
+  {
+    "fields": {
       "Name": "Enter Paper Ballot",
       "OperationKey": "Voting.EnterPaperBallot",
       "Description": "Record a paper or in-person ballot cast by a voter using a control number or staff entry. Validates the control number, marks participation, and records the ballot.",

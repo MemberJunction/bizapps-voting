@@ -20,7 +20,7 @@
     "@memberjunction/graphql-dataprovider": ">=6.2.1 <6.3.0",
     "@memberjunction/sqlserver-dataprovider": ">=6.2.1 <6.3.0",
     "@memberjunction/testing-integration": ">=6.2.1 <6.3.0",
-    "@mj-biz-apps/common-entities": "^5.51.0",
+    "@mj-biz-apps/common-entities": "^5.59.0",
     "@mj-biz-apps/voting-core-entities-server": "0.0.0",
     "@mj-biz-apps/voting-engine-base": "0.0.0",
     "@mj-biz-apps/voting-entities": "0.0.0",

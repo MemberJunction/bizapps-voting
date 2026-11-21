@@ -10,6 +10,7 @@
 
 import { UUIDsEqual } from '@memberjunction/global';
 import type { UserInfo } from '@memberjunction/core';
+import { LinkedPersonRecordID, ResolvePersonIDForUser } from '@mj-biz-apps/common-entities';
 import { IsGuestPrincipal, ParseGuestResource } from './principal.js';
 import { type mjBizAppsVotingEligibleVoterEntity } from '@mj-biz-apps/voting-entities';
 import { type VotingContext, RunViewOf } from './types.js';
@@ -53,7 +54,9 @@ export class VoterIdentityResolver {
 
     /**
      * Guest principal: the scope's ResourceType must be the ballot session type and its election must be this election.
-     * MJ session: the Person linked to the user (LinkedUserID, else email), then that Person's Eligible roll entry. Null when not on the roll.
+     * MJ session: the Person resolved via Common's ResolvePersonIDForUser (the user's own People link first, then
+     * deprecated People.LinkedUserID, falling back to email only when the user has no People link), then that Person's
+     * Eligible roll entry. Null when not on the roll.
      */
     public static async Resolve(electionID: string, ctx: VotingContext): Promise<VoterIdentity | null> {
         const user = ctx.ContextUser;
@@ -114,17 +117,12 @@ export class VoterIdentityResolver {
 
     /** The Person behind the calling user: `user` supplies the claims, `reader` (the system context) runs the lookups. */
     private static async findPersonID(user: UserInfo, reader: VotingContext): Promise<string | null> {
-        const rv = RunViewOf(reader);
-        if (user.ID) {
-            const linked = await rv.RunView<{ ID: string }>(
-                { EntityName: PEOPLE_ENTITY, ExtraFilter: `LinkedUserID = ${SqlLiteral(user.ID)}`, Fields: ['ID'], MaxRows: 1, ResultType: 'simple' },
-                reader.ContextUser
-            );
-            if (linked.Success && linked.Results[0]) return linked.Results[0].ID;
-        }
+        const linkedID = await ResolvePersonIDForUser(user, reader.Provider, reader.ContextUser);
+        if (linkedID) return linkedID;
+        if (LinkedPersonRecordID(user, reader.Provider)) return null;
         const email = user.Email?.trim();
         if (!email) return null;
-        const byEmail = await rv.RunView<{ ID: string }>(
+        const byEmail = await RunViewOf(reader).RunView<{ ID: string }>(
             { EntityName: PEOPLE_ENTITY, ExtraFilter: `LOWER(Email) = ${SqlLiteral(email.toLowerCase())}`, Fields: ['ID'], MaxRows: 1, ResultType: 'simple' },
             reader.ContextUser
         );
