@@ -13,22 +13,25 @@
 import { BaseSingleton } from '@memberjunction/global';
 import { VotingEngineBase } from '@mj-biz-apps/voting-engine-base';
 import {
+    type ParticipationChannel,
     type VotingContestOutcome,
     type VotingGetResultsOutput,
+    type VotingRollCallContest,
     type VotingTallyOptionResult,
     type VotingTallyRound,
     type mjBizAppsVotingElectionEntity,
     type mjBizAppsVotingResultSnapshotEntity,
     ResultsVisible,
 } from '@mj-biz-apps/voting-entities';
+import { DecryptSelections } from '../crypto/selection-crypto.js';
 import { ElectionAudit } from '../shared/audit.js';
-import { LoadElectionGraph, OptionsOf, TallyCodeOf } from '../shared/election-graph.js';
+import { type ElectionGraph, LoadElectionGraph, OptionsOf, TallyCodeOf, VotingClassFilterOf } from '../shared/election-graph.js';
 import { SystemContext } from '../shared/system-user.js';
 import { type EngineResult, type VotingContext, Fail, IsFailure, Ok, PassFailure, RunViewOf } from '../shared/types.js';
 import { SqlLiteral } from '../shared/voter-identity.js';
 import { ErrorText, LoadElectionEntity, SaveOrThrow } from './person-support.js';
 import { IsRankedMethod } from './ballot-style-builder.js';
-import { ContestNotesOf } from './tally-pipeline.js';
+import { ContestNotesOf, ParseSubmission } from './tally-pipeline.js';
 import {
     type ClassCount,
     type RunningTallyRow,
@@ -42,15 +45,39 @@ import {
     ShouldPublishSnapshot,
     SnapshotToContestOutcomes,
 } from './results-policy.js';
+import {
+    type ContestVoteRecord,
+    type DecryptedAttributedBallot,
+    type RollCallAttributionRow,
+    type RollCallParticipationRow,
+    type RollCallVoterRow,
+    type StoredSelectionRow,
+    AssembleRollCall,
+    RollCallRefusal,
+    UsesMaterializedSelections,
+    VotesFromSelectionRows,
+    VotesFromSubmissions,
+} from './roll-call-policy.js';
 
 const PARTICIPATIONS_ENTITY = 'MJ_BizApps_Voting: Participations';
 const ELIGIBLE_VOTERS_ENTITY = 'MJ_BizApps_Voting: Eligible Voters';
 const SNAPSHOTS_ENTITY = 'MJ_BizApps_Voting: Result Snapshots';
 const RUNNING_TALLIES_ENTITY = 'MJ_BizApps_Voting: Contest Running Tallies';
 const CAST_BALLOTS_ENTITY = 'MJ_BizApps_Voting: Cast Ballots';
+const BALLOT_ATTRIBUTIONS_ENTITY = 'MJ_BizApps_Voting: Ballot Attributions';
+const BALLOT_SELECTIONS_ENTITY = 'MJ_BizApps_Voting: Ballot Selections';
 const CONTESTS_ENTITY = 'MJ_BizApps_Voting: Contests';
 const CONTEST_RESULTS_ENTITY = 'MJ_BizApps_Voting: Contest Results';
 const CONTEST_OPTION_RESULTS_ENTITY = 'MJ_BizApps_Voting: Contest Option Results';
+
+const ROLL_CALL_IN_BATCH_SIZE = 200;
+
+/** Named per-voter selections for an Open-secrecy election. */
+export interface RollCallSummary {
+    ElectionID: string;
+    Status: string;
+    Contests: VotingRollCallContest[];
+}
 
 /** Who is asking, as far as the visibility rule cares. The operation fills this from the session and the roll. */
 export interface ResultsViewer {
@@ -373,6 +400,178 @@ export class ResultsEngine extends BaseSingleton<ResultsEngine> {
                 graph.Configuration.Quorum
             )
         );
+    }
+
+    // --- GetRollCall -------------------------------------------------------------------------------------------------------
+
+    /**
+     * Named per-voter selections for an Open-secrecy election. Refused unconditionally for Confidential and Secret
+     * elections before any ballot-box or attribution table is touched.
+     *
+     * While Open or Closed, decrypts counted attributed ballots (Standard tier). After Tallied or Certified, reads
+     * materialized Ballot Selections. Reads run as the system principal because Ballot Attributions, Cast Ballots, and
+     * Ballot Selections are closed to every other role; callers (Voting.GetRollCall or a host service) own authorization.
+     */
+    public async GetRollCall(electionID: string, ctx: VotingContext): Promise<EngineResult<RollCallSummary>> {
+        const sys = SystemContext(ctx);
+        const loaded = await LoadElectionGraph(electionID, sys);
+        if (IsFailure(loaded)) return PassFailure(loaded);
+        const graph = loaded.Value;
+        const election = graph.Election;
+
+        const refusal = RollCallRefusal(election.SecrecyMode, election.Status, election.RollFrozenAt, election.AssuranceTier);
+        if (refusal) return Fail(refusal.Code, refusal.Message);
+
+        const rv = RunViewOf(sys);
+        const votersRes = await rv.RunView<RollCallVoterRow>(
+            {
+                EntityName: ELIGIBLE_VOTERS_ENTITY,
+                ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)}`,
+                Fields: ['ID', 'PersonID', 'SourceKey', 'VotingClass', 'Weight', 'Status'],
+                ResultType: 'simple',
+                BypassCache: true,
+            },
+            sys.ContextUser
+        );
+        if (!votersRes.Success) return Fail('LoadFailed', 'The voter roll could not be read.');
+
+        const partsRes = await rv.RunView<{
+            ID: string;
+            EligibleVoterID: string;
+            Channel: ParticipationChannel;
+            EnteredByUserID: string | null;
+            CastAt: Date | string;
+        }>(
+            {
+                EntityName: PARTICIPATIONS_ENTITY,
+                ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)}`,
+                Fields: ['ID', 'EligibleVoterID', 'Channel', 'EnteredByUserID', 'CastAt'],
+                ResultType: 'simple',
+                BypassCache: true,
+            },
+            sys.ContextUser
+        );
+        if (!partsRes.Success) return Fail('LoadFailed', 'The poll book could not be read.');
+
+        const participations: RollCallParticipationRow[] = partsRes.Results;
+        let attributions: RollCallAttributionRow[] = [];
+        const countedBallotIDs = new Set<string>();
+        let votesByBallotID: Map<string, Map<string, ContestVoteRecord>> = new Map();
+
+        if (participations.length > 0) {
+            const useSelections = UsesMaterializedSelections(election.Status);
+            const ballotsRes = await rv.RunView<{ ID: string; Selections?: string }>(
+                {
+                    EntityName: CAST_BALLOTS_ENTITY,
+                    ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)} AND Status = 'Counted'`,
+                    Fields: useSelections ? ['ID'] : ['ID', 'Selections'],
+                    ResultType: 'simple',
+                    BypassCache: true,
+                },
+                sys.ContextUser
+            );
+            if (!ballotsRes.Success) return Fail('LoadFailed', 'The ballot box could not be read.');
+
+            const countedRows = ballotsRes.Results;
+            for (const b of countedRows) countedBallotIDs.add(b.ID.toLowerCase());
+
+            if (countedRows.length > 0) {
+                const rawIDs = countedRows.map((b) => b.ID);
+                const attrsRes = await this.loadRollCallAttributions(rawIDs, sys);
+                if (IsFailure(attrsRes)) return PassFailure(attrsRes);
+                attributions = attrsRes.Value;
+
+                if (useSelections) {
+                    const selsRes = await this.loadRollCallSelections(rawIDs, sys);
+                    if (IsFailure(selsRes)) return PassFailure(selsRes);
+                    votesByBallotID = VotesFromSelectionRows(selsRes.Value);
+                } else {
+                    const attributedIDs = new Set(attributions.map((a) => a.CastBallotID.toLowerCase()));
+                    const decryptedRes = await this.decryptRollCallBallots(
+                        countedRows.filter((b) => attributedIDs.has(b.ID.toLowerCase())),
+                        graph
+                    );
+                    if (IsFailure(decryptedRes)) return PassFailure(decryptedRes);
+                    votesByBallotID = VotesFromSubmissions(decryptedRes.Value);
+                }
+            }
+        }
+
+        const contests = AssembleRollCall({
+            Contests: graph.Contests.map((c) => ({
+                ID: c.ID,
+                Name: c.Name,
+                VotingClassFilter: VotingClassFilterOf(graph, c.ID),
+            })),
+            Voters: votersRes.Results,
+            Participations: participations,
+            Attributions: attributions,
+            CountedBallotIDs: countedBallotIDs,
+            VotesByBallotID: votesByBallotID,
+        });
+
+        return Ok({ ElectionID: election.ID, Status: election.Status, Contests: contests });
+    }
+
+    private async loadRollCallAttributions(ballotIDs: readonly string[], sys: VotingContext): Promise<EngineResult<RollCallAttributionRow[]>> {
+        const rv = RunViewOf(sys);
+        const rows: RollCallAttributionRow[] = [];
+        for (let i = 0; i < ballotIDs.length; i += ROLL_CALL_IN_BATCH_SIZE) {
+            const batch = ballotIDs.slice(i, i + ROLL_CALL_IN_BATCH_SIZE).map(SqlLiteral).join(',');
+            const res = await rv.RunView<RollCallAttributionRow>(
+                {
+                    EntityName: BALLOT_ATTRIBUTIONS_ENTITY,
+                    ExtraFilter: `CastBallotID IN (${batch})`,
+                    Fields: ['ParticipationID', 'CastBallotID'],
+                    ResultType: 'simple',
+                    BypassCache: true,
+                },
+                sys.ContextUser
+            );
+            if (!res.Success) return Fail('LoadFailed', 'The ballot attributions could not be read.');
+            rows.push(...res.Results);
+        }
+        return Ok(rows);
+    }
+
+    private async loadRollCallSelections(ballotIDs: readonly string[], sys: VotingContext): Promise<EngineResult<StoredSelectionRow[]>> {
+        const rv = RunViewOf(sys);
+        const rows: StoredSelectionRow[] = [];
+        for (let i = 0; i < ballotIDs.length; i += ROLL_CALL_IN_BATCH_SIZE) {
+            const batch = ballotIDs.slice(i, i + ROLL_CALL_IN_BATCH_SIZE).map(SqlLiteral).join(',');
+            const res = await rv.RunView<StoredSelectionRow>(
+                {
+                    EntityName: BALLOT_SELECTIONS_ENTITY,
+                    ExtraFilter: `CastBallotID IN (${batch})`,
+                    Fields: ['CastBallotID', 'ContestID', 'ContestOptionID', 'Rank', 'WriteInText', 'IsAbstain'],
+                    ResultType: 'simple',
+                    BypassCache: true,
+                },
+                sys.ContextUser
+            );
+            if (!res.Success) return Fail('LoadFailed', 'The ballot selections could not be read.');
+            rows.push(...res.Results);
+        }
+        return Ok(rows);
+    }
+
+    private async decryptRollCallBallots(
+        ballots: ReadonlyArray<{ ID: string; Selections?: string }>,
+        graph: ElectionGraph
+    ): Promise<EngineResult<DecryptedAttributedBallot[]>> {
+        const out: DecryptedAttributedBallot[] = [];
+        for (const row of ballots) {
+            if (!row.Selections) return Fail('DecryptFailed', 'One or more ballots could not be opened.');
+            try {
+                const json = await DecryptSelections(row.Selections, graph);
+                const submission = ParseSubmission(json);
+                if (!submission) return Fail('DecryptFailed', 'One or more ballots could not be opened.');
+                out.push({ CastBallotID: row.ID, Submission: submission });
+            } catch {
+                return Fail('DecryptFailed', 'One or more ballots could not be opened.');
+            }
+        }
+        return Ok(out);
     }
 
     // --- Shared reads ----------------------------------------------------------------------------------------------------------

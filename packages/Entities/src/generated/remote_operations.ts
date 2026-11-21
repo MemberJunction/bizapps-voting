@@ -572,6 +572,55 @@ export interface VotingGetResultsOutput {
 }
 
 /**
+ * Input for `Voting.GetRollCall`.
+ *
+ * NO import statements — definitions are emitted verbatim.
+ */
+export interface VotingGetRollCallInput {
+  /** The Open-secrecy election whose named roll call to retrieve. */
+  ElectionID: string;
+}
+
+/**
+ * Output for `Voting.GetRollCall`.
+ *
+ * NO import statements — definitions are emitted verbatim.
+ */
+export interface VotingRollCallSelection {
+  OptionID: string;
+  Rank?: number;
+  WriteInText?: string;
+}
+
+export interface VotingRollCallEntry {
+  EligibleVoterID: string;
+  PersonID: string;
+  SourceKey: string | null;
+  VotingClass: string | null;
+  Weight: number;
+  HasVoted: boolean;
+  Abstain: boolean;
+  Selections: VotingRollCallSelection[];
+  Channel?: 'Online' | 'Paper' | 'Proxy' | 'InPerson';
+  EnteredByUserID?: string | null;
+  CastAt?: string;
+}
+
+export interface VotingRollCallContest {
+  ContestID: string;
+  ContestName: string;
+  Entries: VotingRollCallEntry[];
+}
+
+export interface VotingGetRollCallOutput {
+  Success: boolean;
+  Message?: string;
+  ElectionID?: string;
+  Status?: string;
+  Contests?: VotingRollCallContest[];
+}
+
+/**
  * Input for `Voting.GetTurnout`.
  *
  * NO import statements — definitions are emitted verbatim.
@@ -931,6 +980,7 @@ export class VotingAmendRollOperation extends BaseRemotableOperation<VotingAmend
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_d9734025f529e1a8";
 }
 
 // ============================================================
@@ -947,6 +997,7 @@ export class VotingCancelElectionOperation extends BaseRemotableOperation<Voting
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_a84cc32386dc4f7b";
 }
 
 // ============================================================
@@ -963,6 +1014,7 @@ export class VotingCastBallotOperation extends BaseRemotableOperation<VotingCast
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:vote";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_e64cd9e7e677cb56";
 }
 
 // ============================================================
@@ -979,6 +1031,7 @@ export class VotingCertifyOperation extends BaseRemotableOperation<VotingCertify
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_0fed91696044de2e";
 }
 
 // ============================================================
@@ -995,6 +1048,7 @@ export class VotingChallengeVoterOperation extends BaseRemotableOperation<Voting
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_2bc95d258b9b874d";
 }
 
 // ============================================================
@@ -1011,6 +1065,7 @@ export class VotingCloseElectionOperation extends BaseRemotableOperation<VotingC
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_7305d9ad8813259b";
 }
 
 // ============================================================
@@ -1027,6 +1082,7 @@ export class VotingCloseNominationsOperation extends BaseRemotableOperation<Voti
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_6d8a86f392cb9931";
 }
 
 // ============================================================
@@ -1043,6 +1099,7 @@ export class VotingCreateElectionOperation extends BaseRemotableOperation<Voting
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_7827acdf2dbaf7f9";
 }
 
 // ============================================================
@@ -1059,6 +1116,7 @@ export class VotingCreateTrusteeKeysOperation extends BaseRemotableOperation<Vot
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_5f3ad0b9c8a499f2";
 }
 
 // ============================================================
@@ -1075,6 +1133,7 @@ export class VotingDecideNominationOperation extends BaseRemotableOperation<Voti
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_d8d7b89fc8b87504";
 }
 
 // ============================================================
@@ -1091,6 +1150,7 @@ export class VotingDecideProxyOperation extends BaseRemotableOperation<VotingDec
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_74202d1cc7d4f8d3";
 }
 
 // ============================================================
@@ -1107,6 +1167,7 @@ export class VotingEnterPaperBallotOperation extends BaseRemotableOperation<Voti
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_7f36bbfe1901dedd";
 }
 
 // ============================================================
@@ -1123,6 +1184,7 @@ export class VotingFreezeRollOperation extends BaseRemotableOperation<VotingFree
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_e7bd4f7c526967a7";
 }
 
 // ============================================================
@@ -1139,6 +1201,7 @@ export class VotingGetMyBallotOperation extends BaseRemotableOperation<VotingGet
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:vote";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_ba8982ec121539ea";
 }
 
 // ============================================================
@@ -1155,6 +1218,7 @@ export class VotingGetMyParticipationOperation extends BaseRemotableOperation<Vo
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:vote";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_98af35d47588eef1";
 }
 
 // ============================================================
@@ -1171,6 +1235,24 @@ export class VotingGetResultsOperation extends BaseRemotableOperation<VotingGetR
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:vote";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_91a85cd47b2a6ff9";
+}
+
+// ============================================================
+// Voting.GetRollCall — Get Roll Call
+// ============================================================
+/**
+ * Get Roll Call
+ * Retrieve named per-voter selections for an Open-secrecy election. Refused for Confidential and Secret elections. While Open or Closed, decrypts attributed ballots; after tallying, reads Ballot Selections.
+ * GenerationType=Manual — the server body is supplied by a hand-authored subclass registered
+ * under 'Voting.GetRollCall'. This generated base provides the typed contract only (client-safe).
+ */
+export class VotingGetRollCallOperation extends BaseRemotableOperation<VotingGetRollCallInput, VotingGetRollCallOutput> {
+    public readonly OperationKey = "Voting.GetRollCall";
+    public readonly ExecutionMode = 'Sync' as const;
+    public readonly RequiredScope = "voting:admin";
+    public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_04f84883808272bc";
 }
 
 // ============================================================
@@ -1187,6 +1269,7 @@ export class VotingGetTurnoutOperation extends BaseRemotableOperation<VotingGetT
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_f76d9225eb27a912";
 }
 
 // ============================================================
@@ -1203,6 +1286,7 @@ export class VotingIssueControlNumbersOperation extends BaseRemotableOperation<V
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_2da8405f3322f744";
 }
 
 // ============================================================
@@ -1219,6 +1303,7 @@ export class VotingIssueCredentialsOperation extends BaseRemotableOperation<Voti
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_87205ee80e0ef07a";
 }
 
 // ============================================================
@@ -1235,6 +1320,7 @@ export class VotingIssueSecondFactorPinsOperation extends BaseRemotableOperation
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_82ddf7c37a0f5eaa";
 }
 
 // ============================================================
@@ -1251,6 +1337,7 @@ export class VotingOpenElectionOperation extends BaseRemotableOperation<VotingOp
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_305d2f815f104253";
 }
 
 // ============================================================
@@ -1267,6 +1354,7 @@ export class VotingOpenNominationsOperation extends BaseRemotableOperation<Votin
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_6cc1284b0708a837";
 }
 
 // ============================================================
@@ -1283,6 +1371,7 @@ export class VotingResolveCommentOperation extends BaseRemotableOperation<Voting
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_4a380c76775cdd24";
 }
 
 // ============================================================
@@ -1299,6 +1388,7 @@ export class VotingSubmitKeyShareOperation extends BaseRemotableOperation<Voting
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:trustee";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_b902cdc4ee64791b";
 }
 
 // ============================================================
@@ -1315,6 +1405,7 @@ export class VotingSubmitNominationOperation extends BaseRemotableOperation<Voti
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:vote";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_d379f9b644b3964b";
 }
 
 // ============================================================
@@ -1331,6 +1422,7 @@ export class VotingSubmitProxyOperation extends BaseRemotableOperation<VotingSub
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:vote";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_c4daccf2b863a122";
 }
 
 // ============================================================
@@ -1347,6 +1439,7 @@ export class VotingTallyOperation extends BaseRemotableOperation<VotingTallyInpu
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_7b4b82a825e812c0";
 }
 
 // ============================================================
@@ -1363,6 +1456,7 @@ export class VotingUpdateElectionOperation extends BaseRemotableOperation<Voting
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:admin";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_625a6a4ca2e48660";
 }
 
 // ============================================================
@@ -1379,5 +1473,6 @@ export class VotingVerifyReceiptOperation extends BaseRemotableOperation<VotingV
     public readonly ExecutionMode = 'Sync' as const;
     public readonly RequiredScope = "voting:vote";
     public readonly RequiresSystemUser = false;
+    public readonly ContractFingerprint = "ro_fp_37a551e3a6373a36";
 }
 

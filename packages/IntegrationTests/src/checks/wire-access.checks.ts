@@ -2,7 +2,7 @@
  * wire-access: the access MATRIX of BizApps Voting over the wire. The tables below ARE the specification of the intended
  * permission model; a mismatch is a finding (or a stale spec), never something to paper over.
  *
- *   A01..A09  all 29 Remote Operations x one identity column each (system, admin, inspector, member on the roll, member
+ *   A01..A09  all 30 Remote Operations x one identity column each (system, admin, inspector, member on the roll, member
  *             NOT on the roll, outsider without a Person, guest session of this election, guest session of ANOTHER
  *             election, trustee): FORBIDDEN by the operation's Authorize, or it RUNS (and, where the model says so, the
  *             logical refusal carries the right reason)
@@ -38,6 +38,7 @@ import {
     VotingGetMyBallotOperation,
     VotingGetMyParticipationOperation,
     VotingGetResultsOperation,
+    VotingGetRollCallOperation,
     VotingGetTurnoutOperation,
     VotingIssueControlNumbersOperation,
     VotingIssueCredentialsOperation,
@@ -146,6 +147,7 @@ const OPS: readonly OpSpec[] = [
     { Key: 'Voting.GetMyBallot', Gate: 'voter', RollChecked: true, Run: (c, w) => c.Call(new VotingGetMyBallotOperation(), { ElectionID: w.A.ElectionID }) },
     { Key: 'Voting.GetMyParticipation', Gate: 'voter', RollChecked: true, Run: (c, w) => c.Call(new VotingGetMyParticipationOperation(), { ElectionID: w.A.ElectionID }) },
     { Key: 'Voting.GetResults', Gate: 'voter', Run: (c, w) => c.Call(new VotingGetResultsOperation(), { ElectionID: w.A.ElectionID }) },
+    { Key: 'Voting.GetRollCall', Gate: 'admin+inspector', Run: (c) => c.Call(new VotingGetRollCallOperation(), { ElectionID: none() }) },
     { Key: 'Voting.GetTurnout', Gate: 'admin+inspector', Run: (c) => c.Call(new VotingGetTurnoutOperation(), { ElectionID: none() }) },
     { Key: 'Voting.IssueControlNumbers', Gate: 'admin', Run: (c) => c.Call(new VotingIssueControlNumbersOperation(), { ElectionID: none() }) },
     { Key: 'Voting.IssueCredentials', Gate: 'admin', Run: (c) => c.Call(new VotingIssueCredentialsOperation(), { ElectionID: none(), MethodCode: 'emailed-link' }) },

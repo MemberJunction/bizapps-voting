@@ -39,6 +39,7 @@ import {
     type mjBizAppsVotingProxyDesignationEntity,
 } from '@mj-biz-apps/voting-entities';
 import { DecryptSelections, EncryptSelections, SelectionCryptoError } from '../crypto/selection-crypto.js';
+import { ActorIdFor, ElectionAudit } from '../shared/audit.js';
 import { type ElectionGraph, LoadElectionGraph } from '../shared/election-graph.js';
 import { SystemContext } from '../shared/system-user.js';
 import { BeginTransaction, type EngineResult, Fail, IsFailure, Ok, PassFailure, RunViewOf, type VotingContext } from '../shared/types.js';
@@ -191,6 +192,47 @@ export interface CastParams {
     Language?: string;
 }
 
+export interface CastForVoterParams {
+    ElectionID: string;
+    /** Roll entry ID. Supply EligibleVoterID or SourceKey (if both are given they must match). */
+    EligibleVoterID?: string;
+    /** Host-specific roll key (for example a membership ID). Supply SourceKey or EligibleVoterID. */
+    SourceKey?: string;
+    Submission: BallotSubmission;
+    /** Channel for the entered ballot. Defaults to 'InPerson'; 'Online' is refused (online ballots are self-cast). */
+    Channel?: Exclude<ParticipationChannel, 'Online'>;
+    /** Required when Channel is 'Proxy'. */
+    ProxyDesignationID?: string;
+    /**
+     * MJ user entering the ballot (recorded on Participations.EnteredByUserID and as the audit event actor).
+     * Defaults to ActorIdFor(ctx) — either ctx.Actor.UserID or a non-system ctx.ContextUser.ID.
+     */
+    EnteredByUserID?: string;
+    /** Ballot language used when building the voter's style hash. Defaults to 'en'. */
+    Language?: string;
+}
+
+const ENTERED_CHANNELS: ReadonlySet<string> = new Set(['InPerson', 'Paper', 'Proxy']);
+
+/** Pure pre-check for CastForVoter before any database read. */
+export function ValidateCastForVoterInput(
+    p: Pick<CastForVoterParams, 'ElectionID' | 'EligibleVoterID' | 'SourceKey' | 'Channel'>,
+    enteredByUserID: string | null
+): RuleFailure | null {
+    if (!p.ElectionID?.trim()) return { Code: 'ElectionRequired', Message: 'ElectionID is required.' };
+    if (!p.EligibleVoterID?.trim() && !p.SourceKey?.trim()) {
+        return { Code: 'VoterRequired', Message: 'Either EligibleVoterID or SourceKey is required.' };
+    }
+    const channel = p.Channel ?? 'InPerson';
+    if (!ENTERED_CHANNELS.has(channel)) {
+        return { Code: 'InvalidChannel', Message: 'CastForVoter accepts only InPerson, Paper, or Proxy channels.' };
+    }
+    if (!enteredByUserID?.trim()) {
+        return { Code: 'EnteredByRequired', Message: 'An entered ballot requires EnteredByUserID (the user entering the ballot).' };
+    }
+    return null;
+}
+
 export interface MyParticipation {
     HasVoted: boolean;
     Channel?: ParticipationChannel;
@@ -272,6 +314,63 @@ export class CastEngine extends BaseSingleton<CastEngine> {
         }
     }
 
+    /**
+     * Host entry of a non-online ballot (defaults to InPerson) in one call: resolves the voter on the election's roll
+     * by EligibleVoterID or SourceKey, builds that voter's ballot style hash, casts via Cast, and writes a BallotEntered
+     * audit event naming the entering user as actor (never carrying selections, receipt, or ballot ID).
+     *
+     * Raises to the system principal internally, matching Cast; the host owns authorization on this path.
+     */
+    public async CastForVoter(
+        p: CastForVoterParams,
+        ctx: VotingContext
+    ): Promise<EngineResult<{ ReceiptCode: string; EligibleVoterID: string }>> {
+        const channel: Exclude<ParticipationChannel, 'Online'> = p.Channel ?? 'InPerson';
+        const enteredByUserID = p.EnteredByUserID?.trim() || ActorIdFor(ctx);
+        const inputFailure = ValidateCastForVoterInput(p, enteredByUserID);
+        if (inputFailure) return Fail(inputFailure.Code, inputFailure.Message);
+
+        const baseSys = SystemContext(ctx);
+        const sys: VotingContext = {
+            ContextUser: baseSys.ContextUser,
+            Provider: baseSys.Provider,
+            Actor: { UserID: enteredByUserID! },
+        };
+
+        const graphRes = await LoadElectionGraph(p.ElectionID, sys);
+        if (IsFailure(graphRes)) return PassFailure(graphRes);
+        const graph = graphRes.Value;
+
+        const voterRes = await this.resolveRollEntryForHostCast(graph.Election.ID, p.EligibleVoterID, p.SourceKey, sys);
+        if (IsFailure(voterRes)) return PassFailure(voterRes);
+        const voter = voterRes.Value;
+
+        const language = p.Language ?? DEFAULT_BALLOT_LANGUAGE;
+        const style = await BallotStyleBuilder.Instance.Build(graph, voter.VotingClass, language, sys);
+
+        const castRes = await this.Cast(
+            {
+                ElectionID: graph.Election.ID,
+                EligibleVoterID: voter.ID,
+                BallotStyleHash: style.Hash,
+                Submission: p.Submission,
+                Channel: channel,
+                ProxyDesignationID: p.ProxyDesignationID,
+                EnteredByUserID: enteredByUserID!,
+                Language: language,
+            },
+            sys
+        );
+        if (IsFailure(castRes)) return PassFailure(castRes);
+
+        await ElectionAudit.Record(sys, graph.Election.ID, 'BallotEntered', {
+            Channel: channel,
+            EligibleVoterID: voter.ID,
+        });
+
+        return Ok({ ReceiptCode: castRes.Value.ReceiptCode, EligibleVoterID: voter.ID });
+    }
+
     /** The voter's own poll-book state. */
     public async GetMyParticipation(electionID: string, eligibleVoterID: string, ctx: VotingContext): Promise<EngineResult<MyParticipation>> {
         const graphRes = await LoadElectionGraph(electionID, ctx);
@@ -314,6 +413,41 @@ export class CastEngine extends BaseSingleton<CastEngine> {
     private async loadVoter(id: string, sys: VotingContext): Promise<mjBizAppsVotingEligibleVoterEntity | null> {
         const voter = await sys.Provider.GetEntityObject<mjBizAppsVotingEligibleVoterEntity>(ELIGIBLE_VOTERS, sys.ContextUser);
         return (await voter.Load(id)) ? voter : null;
+    }
+
+    private async resolveRollEntryForHostCast(
+        electionID: string,
+        eligibleVoterID: string | undefined,
+        sourceKey: string | undefined,
+        sys: VotingContext
+    ): Promise<EngineResult<{ ID: string; VotingClass: string | null }>> {
+        const trimmedID = eligibleVoterID?.trim();
+        const trimmedKey = sourceKey?.trim();
+        if (trimmedID) {
+            const voter = await this.loadVoter(trimmedID, sys);
+            if (!voter || !UUIDsEqual(voter.ElectionID, electionID) || voter.Status !== 'Eligible') {
+                return Fail('NotEligible', 'The voter is not eligible in this election.');
+            }
+            if (trimmedKey && voter.SourceKey !== trimmedKey) {
+                return Fail('VoterMismatch', 'The supplied EligibleVoterID and SourceKey do not refer to the same roll entry.');
+            }
+            return Ok({ ID: voter.ID, VotingClass: voter.VotingClass });
+        }
+        const res = await RunViewOf(sys).RunView<{ ID: string; VotingClass: string | null }>(
+            {
+                EntityName: ELIGIBLE_VOTERS,
+                ExtraFilter: `ElectionID = ${SqlLiteral(electionID)} AND SourceKey = ${SqlLiteral(trimmedKey!)} AND Status = 'Eligible'`,
+                Fields: ['ID', 'VotingClass'],
+                MaxRows: 2,
+                ResultType: 'simple',
+                BypassCache: true,
+            },
+            sys.ContextUser
+        );
+        if (!res.Success) return Fail('LookupFailed', 'The voter roll could not be read.');
+        if (res.Results.length === 0) return Fail('NotEligible', 'The voter is not eligible in this election.');
+        if (res.Results.length > 1) return Fail('AmbiguousVoter', 'More than one eligible roll entry matches that SourceKey.');
+        return Ok(res.Results[0]);
     }
 
     private async loadProxy(id: string, sys: VotingContext): Promise<mjBizAppsVotingProxyDesignationEntity | null> {

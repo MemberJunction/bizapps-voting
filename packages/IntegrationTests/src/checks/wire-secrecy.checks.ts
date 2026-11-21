@@ -17,6 +17,8 @@
  *   X12  credential secrets are unreadable to non-administrators
  *   X13  what a member CAN read of a frozen election row: the eligibility source settings are reduced to a marker and a
  *        digest (no emails, no selection criteria), Configuration holds documented keys only; an undeclared key is refused
+ *   X14  GetRollCall is refused for Secret and Confidential (open and tallied) and for non-admin/non-inspector callers;
+ *        on Open elections administrators and inspectors see each voter's named choice both while open and after tally
  *
  * Six generated people vote in each of three elections (Secret, Confidential, Open) in a known order, one per second.
  */
@@ -29,6 +31,7 @@ import {
     VotingCreateElectionOperation,
     VotingGetMyBallotOperation,
     VotingGetResultsOperation,
+    VotingGetRollCallOperation,
     VotingGetTurnoutOperation,
     VotingTallyOperation,
     VotingVerifyReceiptOperation,
@@ -616,6 +619,94 @@ const checks: NamedCheck[] = [
             });
             Assert(refused.Success && refused.Output?.Success === false, 'a Configuration with an undeclared key is declined');
             Assert((refused.Output?.Message ?? '').includes('AdminNotes'), `the refusal names the key (got "${refused.Output?.Message ?? ''}")`);
+        },
+    },
+    {
+        Id: `${BUNDLE}.X14`,
+        Name: 'X14 - GetRollCall is refused for Secret/Confidential and non-admin/inspector callers; succeeds on Open elections both while open and after tally',
+        Fn: async () => {
+            const w = W();
+            await EnsureTallied();
+            const inspector = await w.Cast.As('inspector');
+            const problems: string[] = [];
+
+            // 1. After tally: Secret and Confidential MUST be refused for both admin and inspector, with zero entries returned.
+            for (const e of [w.S, w.C]) {
+                for (const [who, client] of [['admin', w.Admin], ['inspector', inspector]] as const) {
+                    const r = await client.Call(new VotingGetRollCallOperation(), { ElectionID: e.E.ElectionID });
+                    if (r.Output?.Success === true) problems.push(`${e.Mode} (tallied): ${who} got Success from GetRollCall`);
+                    if ((r.Output?.Contests ?? []).length > 0) problems.push(`${e.Mode} (tallied): ${who} received contest rows from GetRollCall`);
+                }
+            }
+
+            // 2. After tally: Open election returns every voter's named selection to admin and inspector.
+            for (const [who, client] of [['admin', w.Admin], ['inspector', inspector]] as const) {
+                const r = await client.Call(new VotingGetRollCallOperation(), { ElectionID: w.O.E.ElectionID });
+                if (!(r.Success && r.Output?.Success === true)) {
+                    problems.push(`Open (tallied): ${who} could not call GetRollCall: ${Describe(r)}`);
+                } else {
+                    const entries = r.Output.Contests?.[0]?.Entries ?? [];
+                    if (entries.length !== 6) problems.push(`Open (tallied): ${who} saw ${entries.length} entries, expected 6`);
+                    const voted = entries.filter((entry) => entry.HasVoted && entry.Selections.length === 1);
+                    if (voted.length !== 6) problems.push(`Open (tallied): ${who} saw ${voted.length} voted entries, expected 6`);
+                }
+            }
+
+            // 3. Non-admin / non-inspector callers are refused even on an Open election.
+            for (const who of ['member1', 'outsider', 'trustee1'] as const) {
+                const r = await (await w.Cast.As(who)).Call(new VotingGetRollCallOperation(), { ElectionID: w.O.E.ElectionID });
+                if (r.Success && r.Output?.Success === true) problems.push(`Open (tallied): ${who} was allowed to call GetRollCall`);
+            }
+            const guestClient = w.Guests.get(`${w.O.E.Slug}/${w.O.Casts[0].Label}`) as WireClient;
+            const asGuest = await guestClient.Call(new VotingGetRollCallOperation(), { ElectionID: w.O.E.ElectionID });
+            if (asGuest.Success && asGuest.Output?.Success === true) problems.push('Open (tallied): guest session was allowed to call GetRollCall');
+
+            // 4. While Open (before tally): Open decrypts attributed ballots; Confidential is still refused.
+            const liveOpen = await BuildWorldElection(w.Cast, w.Admin, {
+                Voters: w.People.slice(0, 2),
+                SecrecyMode: 'Open',
+                ResultsTiming: 'AfterClose',
+                ResultsAudience: 'Eligible',
+                SlugPrefix: 'wire-rco',
+            });
+            const liveConf = await BuildWorldElection(w.Cast, w.Admin, {
+                Voters: w.People.slice(0, 2),
+                SecrecyMode: 'Confidential',
+                ResultsTiming: 'AfterClose',
+                ResultsAudience: 'Eligible',
+                SlugPrefix: 'wire-rcc',
+            });
+            try {
+                const gOpen = await GuestFor(liveOpen, w.People[0].Label);
+                const castOpen = await CastWith(gOpen, liveOpen.ElectionID, 0);
+                if (!castOpen.Success) problems.push(`live Open cast failed: ${castOpen.Message}`);
+
+                const gConf = await GuestFor(liveConf, w.People[0].Label);
+                const castConf = await CastWith(gConf, liveConf.ElectionID, 0);
+                if (!castConf.Success) problems.push(`live Confidential cast failed: ${castConf.Message}`);
+
+                const openWhileOpen = await w.Admin.Call(new VotingGetRollCallOperation(), { ElectionID: liveOpen.ElectionID });
+                if (!(openWhileOpen.Success && openWhileOpen.Output?.Success === true)) {
+                    problems.push(`Open (live): admin could not read roll call while open: ${Describe(openWhileOpen)}`);
+                } else {
+                    const entries = openWhileOpen.Output.Contests?.[0]?.Entries ?? [];
+                    const voted = entries.filter((e) => e.HasVoted && e.Selections.length === 1);
+                    const unvoted = entries.filter((e) => !e.HasVoted && e.Selections.length === 0);
+                    if (entries.length !== 2 || voted.length !== 1 || unvoted.length !== 1) {
+                        problems.push(`Open (live): expected 1 voted + 1 unvoted of 2, got ${voted.length} voted / ${unvoted.length} unvoted of ${entries.length}`);
+                    }
+                }
+
+                const confWhileOpen = await w.Admin.Call(new VotingGetRollCallOperation(), { ElectionID: liveConf.ElectionID });
+                if (confWhileOpen.Output?.Success === true || (confWhileOpen.Output?.Contests ?? []).length > 0) {
+                    problems.push('Confidential (live): admin obtained roll-call data while open');
+                }
+            } finally {
+                await CloseWorldElection(w.Admin, liveOpen);
+                await CloseWorldElection(w.Admin, liveConf);
+            }
+
+            Assert(problems.length === 0, problems.join('\n         - '));
         },
     },
 ];

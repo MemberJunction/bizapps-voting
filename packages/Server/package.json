@@ -54,11 +54,13 @@
     "@memberjunction/scheduling-engine": "^6.3.0-edge.1",
     "@memberjunction/scheduling-base-types": "^6.3.0-edge.1",
     "@memberjunction/actions": "^6.3.0-edge.1",
-    "@memberjunction/actions-base": "^6.3.0-edge.1"
+    "@memberjunction/actions-base": "^6.3.0-edge.1",
+    "@mj-biz-apps/common-entities": "^5.59.0"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
     "vitest": "^4.0.18",
+    "@mj-biz-apps/common-entities": "5.67.2",
     "@memberjunction/core": "6.3.0-edge.1",
     "@memberjunction/global": "6.3.0-edge.1",
     "@memberjunction/core-entities": "6.3.0-edge.1",
