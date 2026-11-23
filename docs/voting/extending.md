@@ -129,13 +129,18 @@ the server engines directly from a host server service after running the host's 
 
 - **`CastEngine.Instance.CastForVoter(params, ctx)`** records a non-online ballot (`InPerson`, `Paper`, or `Proxy`) in one
   call: it resolves the eligible voter by `EligibleVoterID` or `SourceKey`, builds that voter's ballot style hash, casts
-  through `CastEngine.Cast` as the system principal, and writes a `BallotEntered` audit event with `{ Channel, EligibleVoterID }`.
-  The entering user (`EnteredByUserID`, defaulting to `ActorIdFor(ctx)`) is recorded on `Participations.EnteredByUserID` and
-  as the audit event's `ActorUserID` — never on `Cast Ballots`. **The host owns authorization on this path**: the engine does
-  not check `Voting Administrator` membership because it raises to the system principal internally.
+  through `CastEngine.Cast` as the system principal, and writes a `BallotEntered` audit event with `{ Channel, EligibleVoterID }`
+  (plus `OverrideOnline: true` when overriding a self-cast online ballot). The entering user (`EnteredByUserID`, defaulting
+  to `ActorIdFor(ctx)`) is recorded on `Participations.EnteredByUserID` and as the audit event's `ActorUserID` — never on
+  `Cast Ballots`. By default, `CastForVoter` refuses to overwrite an existing `Online` participation on a revote unless
+  `AllowOverrideOnline: true` is passed; on any revote, the poll-book `Participation` row keeps the first cast's `Channel`,
+  `EnteredByUserID`, and `CastAt` while `BallotEntered` records the subsequent host entry. **The host owns authorization on
+  this path**: the engine does not check `Voting Administrator` membership because it raises to the system principal internally.
 - **`ResultsEngine.Instance.GetRollCall(electionID, ctx)`** returns per-contest named selections for **`Open`-secrecy,
-  Standard-tier** elections whose roll is frozen (decrypting counted attributed ballots while Open/Closed, and reading
-  `Ballot Selections` after tally). `Confidential` and `Secret` elections are refused unconditionally. **The host owns
+  Standard-tier** elections whose roll is frozen. Before `Tallied`/`Certified`, live decryption honors `ResultsTiming`
+  (`Live` or `AdministratorsOnly` only; `AfterClose` and `AfterVoting` are refused until tallied). After tally, materialized
+  `Ballot Selections` are read regardless of timing. `Confidential` and `Secret` elections are refused unconditionally. Every
+  successful read writes a `RollCallViewed` audit event naming the actor without ballot choices. **The host owns
   authorization on this path**; the `Voting.GetRollCall` Remote Operation checks `Voting Administrator` or `Election Inspector`.
 
 ## Metadata

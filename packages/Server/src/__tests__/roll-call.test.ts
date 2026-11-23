@@ -24,6 +24,15 @@ vi.mock('../shared/election-graph.js', async (importOriginal) => {
     };
 });
 
+const mockAuditRecord = vi.fn();
+vi.mock('../shared/audit.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../shared/audit.js')>();
+    return {
+        ...actual,
+        ElectionAudit: { Record: (...args: unknown[]) => mockAuditRecord(...args) },
+    };
+});
+
 import { EncryptSelections } from '../crypto/selection-crypto.js';
 import type { ElectionGraph } from '../shared/election-graph.js';
 import type { VotingContext } from '../shared/types.js';
@@ -54,7 +63,9 @@ const B1 = '77777777-7777-7777-7777-777777777771';
 const B2 = '77777777-7777-7777-7777-777777777772';
 const CHAIR = '88888888-8888-8888-8888-888888888881';
 
-function fakeGraph(overrides: { SecrecyMode?: string; Status?: string; RollFrozenAt?: Date | null; AssuranceTier?: string } = {}): ElectionGraph {
+function fakeGraph(
+    overrides: { SecrecyMode?: string; Status?: string; RollFrozenAt?: Date | null; AssuranceTier?: string; ResultsTiming?: string } = {}
+): ElectionGraph {
     return {
         Election: {
             ID: E1,
@@ -62,6 +73,7 @@ function fakeGraph(overrides: { SecrecyMode?: string; Status?: string; RollFroze
             Status: overrides.Status ?? 'Open',
             RollFrozenAt: 'RollFrozenAt' in overrides ? overrides.RollFrozenAt : new Date('2026-11-20T12:00:00Z'),
             AssuranceTier: overrides.AssuranceTier ?? 'Standard',
+            ResultsTiming: overrides.ResultsTiming ?? 'AdministratorsOnly',
             ElectionPublicKey: null,
         } as unknown as ElectionGraph['Election'],
         ElectionType: { ID: 'type-1', Code: 'motion' } as unknown as ElectionGraph['ElectionType'],
@@ -85,27 +97,41 @@ function stubProvider(tables: Record<string, unknown[]>): { Provider: VotingCont
     return { Provider: provider as unknown as VotingContext['Provider'], Touched: touched };
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuditRecord.mockResolvedValue(undefined);
+});
 
 describe('RollCallRefusal', () => {
     const frozen = new Date('2026-11-20T12:00:00Z');
 
     it('refuses Confidential and Secret unconditionally', () => {
-        expect(RollCallRefusal('Confidential', 'Open', frozen, 'Standard')?.Code).toBe('NotOpenBallot');
-        expect(RollCallRefusal('Confidential', 'Tallied', frozen, 'Standard')?.Code).toBe('NotOpenBallot');
-        expect(RollCallRefusal('Secret', 'Open', frozen, 'Standard')?.Code).toBe('NotOpenBallot');
-        expect(RollCallRefusal('Secret', 'Certified', frozen, 'Standard')?.Code).toBe('NotOpenBallot');
+        expect(RollCallRefusal('Confidential', 'Open', frozen, 'Standard', 'Live')?.Code).toBe('NotOpenBallot');
+        expect(RollCallRefusal('Confidential', 'Tallied', frozen, 'Standard', 'AfterClose')?.Code).toBe('NotOpenBallot');
+        expect(RollCallRefusal('Secret', 'Open', frozen, 'Standard', 'AdministratorsOnly')?.Code).toBe('NotOpenBallot');
+        expect(RollCallRefusal('Secret', 'Certified', frozen, 'Standard', 'AfterClose')?.Code).toBe('NotOpenBallot');
     });
 
     it('refuses an unfrozen roll and non-Standard assurance tiers', () => {
-        expect(RollCallRefusal('Open', 'Draft', null, 'Standard')?.Code).toBe('RollNotFrozen');
-        expect(RollCallRefusal('Open', 'Open', frozen, 'HighAssurance')?.Code).toBe('TierNotSupported');
-        expect(RollCallRefusal('Open', 'Tallied', frozen, 'Verifiable')?.Code).toBe('TierNotSupported');
+        expect(RollCallRefusal('Open', 'Draft', null, 'Standard', 'Live')?.Code).toBe('RollNotFrozen');
+        expect(RollCallRefusal('Open', 'Open', frozen, 'HighAssurance', 'Live')?.Code).toBe('TierNotSupported');
+        expect(RollCallRefusal('Open', 'Tallied', frozen, 'Verifiable', 'AfterClose')?.Code).toBe('TierNotSupported');
     });
 
-    it('allows Open + frozen + Standard in Ready, Open, Closed, Tallied, Certified', () => {
-        for (const status of ['Ready', 'Open', 'Closed', 'Tallied', 'Certified']) {
-            expect(RollCallRefusal('Open', status, frozen, 'Standard')).toBeNull();
+    it('refuses pre-tally reads when ResultsTiming is AfterClose or AfterVoting, and allows Live and AdministratorsOnly', () => {
+        for (const status of ['Ready', 'Open', 'Closed']) {
+            expect(RollCallRefusal('Open', status, frozen, 'Standard', 'AfterClose')?.Code).toBe('ResultsNotVisible');
+            expect(RollCallRefusal('Open', status, frozen, 'Standard', 'AfterVoting')?.Code).toBe('ResultsNotVisible');
+            expect(RollCallRefusal('Open', status, frozen, 'Standard', 'Live')).toBeNull();
+            expect(RollCallRefusal('Open', status, frozen, 'Standard', 'AdministratorsOnly')).toBeNull();
+        }
+    });
+
+    it('allows Tallied and Certified regardless of ResultsTiming', () => {
+        for (const status of ['Tallied', 'Certified']) {
+            for (const timing of ['AfterClose', 'AfterVoting', 'Live', 'AdministratorsOnly']) {
+                expect(RollCallRefusal('Open', status, frozen, 'Standard', timing)).toBeNull();
+            }
         }
         expect(UsesMaterializedSelections('Open')).toBe(false);
         expect(UsesMaterializedSelections('Closed')).toBe(false);
@@ -124,10 +150,10 @@ describe('AssembleRollCall (pure)', () => {
         { ID: PART1, EligibleVoterID: V1, Channel: 'InPerson' as const, EnteredByUserID: CHAIR, CastAt: '2026-11-20T15:00:00.000Z' },
         { ID: PART2, EligibleVoterID: V2, Channel: 'Online' as const, EnteredByUserID: null, CastAt: '2026-11-20T15:05:00.000Z' },
     ];
-    // PART1 revoted: B_OLD was superseded, B1 is Counted.
+    // PART1 revoted: B1 (Counted) deliberately precedes B_OLD (Superseded) so ignoring Superseded is proven, not order-dependent.
     const attributions = [
-        { ParticipationID: PART1, CastBallotID: B_OLD },
         { ParticipationID: PART1, CastBallotID: B1 },
+        { ParticipationID: PART1, CastBallotID: B_OLD },
         { ParticipationID: PART2, CastBallotID: B2 },
     ];
 
@@ -233,17 +259,33 @@ describe('ResultsEngine.GetRollCall', () => {
 
     it('refuses Confidential and Secret without touching roll, poll book, attributions, or ballot box', async () => {
         for (const mode of ['Confidential', 'Secret']) {
-            mockLoadElectionGraph.mockResolvedValueOnce({ Success: true, Value: fakeGraph({ SecrecyMode: mode }) });
+            mockLoadElectionGraph.mockResolvedValueOnce({ Success: true, Value: fakeGraph({ SecrecyMode: mode, ResultsTiming: 'Live' }) });
             const { Provider, Touched } = stubProvider({});
             const res = await ResultsEngine.Instance.GetRollCall(E1, { ContextUser: callerUser, Provider });
             expect(res.Success).toBe(false);
             if (!res.Success) expect(res.Code).toBe('NotOpenBallot');
             expect(Touched).toEqual([]);
+            expect(mockAuditRecord).not.toHaveBeenCalled();
         }
     });
 
-    it('decrypts counted attributed ballots while Open (and reflects revote)', async () => {
-        const graph = fakeGraph({ SecrecyMode: 'Open', Status: 'Open' });
+    it('refuses Open elections while Open or Closed when ResultsTiming is AfterClose without touching ballot tables', async () => {
+        for (const status of ['Open', 'Closed']) {
+            mockLoadElectionGraph.mockResolvedValueOnce({
+                Success: true,
+                Value: fakeGraph({ SecrecyMode: 'Open', Status: status, ResultsTiming: 'AfterClose' }),
+            });
+            const { Provider, Touched } = stubProvider({});
+            const res = await ResultsEngine.Instance.GetRollCall(E1, { ContextUser: callerUser, Provider });
+            expect(res.Success).toBe(false);
+            if (!res.Success) expect(res.Code).toBe('ResultsNotVisible');
+            expect(Touched).toEqual([]);
+            expect(mockAuditRecord).not.toHaveBeenCalled();
+        }
+    });
+
+    it('decrypts counted attributed ballots while Open when ResultsTiming allows it, reflects revote, and audits RollCallViewed', async () => {
+        const graph = fakeGraph({ SecrecyMode: 'Open', Status: 'Open', ResultsTiming: 'AdministratorsOnly' });
         mockLoadElectionGraph.mockResolvedValueOnce({ Success: true, Value: graph });
 
         const sub1: BallotSubmission = { Contests: [{ ContestID: C1, Selections: [{ OptionID: OPT_YES }] }] };
@@ -266,8 +308,8 @@ describe('ResultsEngine.GetRollCall', () => {
                 { ID: B2, Selections: enc2 },
             ],
             'MJ_BizApps_Voting: Ballot Attributions': [
-                { ParticipationID: PART1, CastBallotID: B_OLD },
                 { ParticipationID: PART1, CastBallotID: B1 },
+                { ParticipationID: PART1, CastBallotID: B_OLD },
                 { ParticipationID: PART2, CastBallotID: B2 },
             ],
         });
@@ -300,10 +342,18 @@ describe('ResultsEngine.GetRollCall', () => {
             });
         }
         expect(Touched).not.toContain('MJ_BizApps_Voting: Ballot Selections');
+        expect(mockAuditRecord).toHaveBeenCalledTimes(1);
+        const [auditCtx, electionID, eventType, details] = mockAuditRecord.mock.calls[0];
+        expect(auditCtx.Actor).toEqual({ UserID: CHAIR });
+        expect(electionID).toBe(E1);
+        expect(eventType).toBe('RollCallViewed');
+        expect(details).toEqual({ Status: 'Open', ResultsTiming: 'AdministratorsOnly', Live: true });
+        expect(JSON.stringify(details)).not.toContain(OPT_YES);
+        expect(JSON.stringify(details)).not.toContain(V1);
     });
 
-    it('reads materialized Ballot Selections after Tallied without decrypting Cast Ballots', async () => {
-        const graph = fakeGraph({ SecrecyMode: 'Open', Status: 'Tallied' });
+    it('reads materialized Ballot Selections after Tallied (even for AfterClose) without decrypting Cast Ballots and audits RollCallViewed', async () => {
+        const graph = fakeGraph({ SecrecyMode: 'Open', Status: 'Tallied', ResultsTiming: 'AfterClose' });
         mockLoadElectionGraph.mockResolvedValueOnce({ Success: true, Value: graph });
 
         const { Provider, Touched } = stubProvider({
@@ -328,5 +378,8 @@ describe('ResultsEngine.GetRollCall', () => {
             expect(res.Value.Contests[0].Entries[0].Selections).toEqual([{ OptionID: OPT_NO }]);
         }
         expect(Touched).toContain('MJ_BizApps_Voting: Ballot Selections');
+        expect(mockAuditRecord).toHaveBeenCalledTimes(1);
+        expect(mockAuditRecord.mock.calls[0][2]).toBe('RollCallViewed');
+        expect(mockAuditRecord.mock.calls[0][3]).toEqual({ Status: 'Tallied', ResultsTiming: 'AfterClose', Live: false });
     });
 });

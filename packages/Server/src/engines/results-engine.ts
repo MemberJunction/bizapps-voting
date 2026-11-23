@@ -419,7 +419,13 @@ export class ResultsEngine extends BaseSingleton<ResultsEngine> {
         const graph = loaded.Value;
         const election = graph.Election;
 
-        const refusal = RollCallRefusal(election.SecrecyMode, election.Status, election.RollFrozenAt, election.AssuranceTier);
+        const refusal = RollCallRefusal(
+            election.SecrecyMode,
+            election.Status,
+            election.RollFrozenAt,
+            election.AssuranceTier,
+            election.ResultsTiming
+        );
         if (refusal) return Fail(refusal.Code, refusal.Message);
 
         const rv = RunViewOf(sys);
@@ -497,6 +503,7 @@ export class ResultsEngine extends BaseSingleton<ResultsEngine> {
             }
         }
 
+        const useSelections = UsesMaterializedSelections(election.Status);
         const contests = AssembleRollCall({
             Contests: graph.Contests.map((c) => ({
                 ID: c.ID,
@@ -508,6 +515,12 @@ export class ResultsEngine extends BaseSingleton<ResultsEngine> {
             Attributions: attributions,
             CountedBallotIDs: countedBallotIDs,
             VotesByBallotID: votesByBallotID,
+        });
+
+        await ElectionAudit.Record(sys, election.ID, 'RollCallViewed', {
+            Status: election.Status,
+            ResultsTiming: election.ResultsTiming,
+            Live: !useSelections,
         });
 
         return Ok({ ElectionID: election.ID, Status: election.Status, Contests: contests });

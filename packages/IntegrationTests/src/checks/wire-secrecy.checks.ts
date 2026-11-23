@@ -661,48 +661,66 @@ const checks: NamedCheck[] = [
             const asGuest = await guestClient.Call(new VotingGetRollCallOperation(), { ElectionID: w.O.E.ElectionID });
             if (asGuest.Success && asGuest.Output?.Success === true) problems.push('Open (tallied): guest session was allowed to call GetRollCall');
 
-            // 4. While Open (before tally): Open decrypts attributed ballots; Confidential is still refused.
-            const liveOpen = await BuildWorldElection(w.Cast, w.Admin, {
+            // 4. While Open (before tally): Open respects ResultsTiming (AfterClose refused; AdministratorsOnly decrypts
+            //    attributed ballots); Confidential is refused regardless of timing.
+            const liveOpenAfterClose = await BuildWorldElection(w.Cast, w.Admin, {
                 Voters: w.People.slice(0, 2),
                 SecrecyMode: 'Open',
                 ResultsTiming: 'AfterClose',
+                ResultsAudience: 'Eligible',
+                SlugPrefix: 'wire-rca',
+            });
+            const liveOpenAdmin = await BuildWorldElection(w.Cast, w.Admin, {
+                Voters: w.People.slice(0, 2),
+                SecrecyMode: 'Open',
+                ResultsTiming: 'AdministratorsOnly',
                 ResultsAudience: 'Eligible',
                 SlugPrefix: 'wire-rco',
             });
             const liveConf = await BuildWorldElection(w.Cast, w.Admin, {
                 Voters: w.People.slice(0, 2),
                 SecrecyMode: 'Confidential',
-                ResultsTiming: 'AfterClose',
+                ResultsTiming: 'AdministratorsOnly',
                 ResultsAudience: 'Eligible',
                 SlugPrefix: 'wire-rcc',
             });
             try {
-                const gOpen = await GuestFor(liveOpen, w.People[0].Label);
-                const castOpen = await CastWith(gOpen, liveOpen.ElectionID, 0);
-                if (!castOpen.Success) problems.push(`live Open cast failed: ${castOpen.Message}`);
+                const gAfterClose = await GuestFor(liveOpenAfterClose, w.People[0].Label);
+                const castAfterClose = await CastWith(gAfterClose, liveOpenAfterClose.ElectionID, 0);
+                if (!castAfterClose.Success) problems.push(`live Open (AfterClose) cast failed: ${castAfterClose.Message}`);
+
+                const gOpen = await GuestFor(liveOpenAdmin, w.People[0].Label);
+                const castOpen = await CastWith(gOpen, liveOpenAdmin.ElectionID, 0);
+                if (!castOpen.Success) problems.push(`live Open (AdministratorsOnly) cast failed: ${castOpen.Message}`);
 
                 const gConf = await GuestFor(liveConf, w.People[0].Label);
                 const castConf = await CastWith(gConf, liveConf.ElectionID, 0);
                 if (!castConf.Success) problems.push(`live Confidential cast failed: ${castConf.Message}`);
 
-                const openWhileOpen = await w.Admin.Call(new VotingGetRollCallOperation(), { ElectionID: liveOpen.ElectionID });
+                const afterCloseWhileOpen = await w.Admin.Call(new VotingGetRollCallOperation(), { ElectionID: liveOpenAfterClose.ElectionID });
+                if (afterCloseWhileOpen.Output?.Success === true || (afterCloseWhileOpen.Output?.Contests ?? []).length > 0) {
+                    problems.push('Open (live, AfterClose): admin obtained roll-call data before tally');
+                }
+
+                const openWhileOpen = await w.Admin.Call(new VotingGetRollCallOperation(), { ElectionID: liveOpenAdmin.ElectionID });
                 if (!(openWhileOpen.Success && openWhileOpen.Output?.Success === true)) {
-                    problems.push(`Open (live): admin could not read roll call while open: ${Describe(openWhileOpen)}`);
+                    problems.push(`Open (live, AdministratorsOnly): admin could not read roll call while open: ${Describe(openWhileOpen)}`);
                 } else {
                     const entries = openWhileOpen.Output.Contests?.[0]?.Entries ?? [];
                     const voted = entries.filter((e) => e.HasVoted && e.Selections.length === 1);
                     const unvoted = entries.filter((e) => !e.HasVoted && e.Selections.length === 0);
                     if (entries.length !== 2 || voted.length !== 1 || unvoted.length !== 1) {
-                        problems.push(`Open (live): expected 1 voted + 1 unvoted of 2, got ${voted.length} voted / ${unvoted.length} unvoted of ${entries.length}`);
+                        problems.push(`Open (live, AdministratorsOnly): expected 1 voted + 1 unvoted of 2, got ${voted.length} voted / ${unvoted.length} unvoted of ${entries.length}`);
                     }
                 }
 
                 const confWhileOpen = await w.Admin.Call(new VotingGetRollCallOperation(), { ElectionID: liveConf.ElectionID });
                 if (confWhileOpen.Output?.Success === true || (confWhileOpen.Output?.Contests ?? []).length > 0) {
-                    problems.push('Confidential (live): admin obtained roll-call data while open');
+                    problems.push('Confidential (live, AdministratorsOnly): admin obtained roll-call data while open');
                 }
             } finally {
-                await CloseWorldElection(w.Admin, liveOpen);
+                await CloseWorldElection(w.Admin, liveOpenAfterClose);
+                await CloseWorldElection(w.Admin, liveOpenAdmin);
                 await CloseWorldElection(w.Admin, liveConf);
             }
 
