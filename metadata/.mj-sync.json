@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "push": {
+    "autoCreateMissingRecords": true
+  },
+  "directoryOrder": [
+    "schema-info",
+    "applications",
+    "roles",
+    "row-level-security-filters",
+    "entity-permissions",
+    "user-roles",
+    "api-scopes",
+    "api-application-scopes"
+  ]
+}

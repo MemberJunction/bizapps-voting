@@ -1,0 +1,29 @@
+[
+  {
+    "fields": {
+      "Name": "Voting Administrator",
+      "Description": "Administer elections: create, configure, open, close, tally and certify votes. Issue credentials and manage voter rolls."
+    },
+    "primaryKey": {
+      "ID": "EDA2BC1F-52A2-4E26-AC66-359759CF3F6E"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Election Inspector",
+      "Description": "Observe election administration: view turnout and results after close, verify receipts and participate in ballot reconciliation and certification."
+    },
+    "primaryKey": {
+      "ID": "F64DACF3-0A57-4B79-83D4-FBB9DCF9C7D4"
+    }
+  },
+  {
+    "fields": {
+      "Name": "Voting Ballot Engine",
+      "Description": "Held ONLY by the MemberJunction system user. The voting engines act as the system principal for voter-facing operations (which authorize the caller first), the public ballot edge and scheduled jobs; this role grants what they read and write: the ballot-box entities (Cast Ballots, Ballot Selections, Contest Running Tallies, Ballot Attributions), the poll book (create and read only), the audit trail (create and read only) and the rest of the voting tables they touch, with no DELETE except on Ballot Comments. No person, API key or other role may hold it: the voter-identifying and ballot-box tables are created with no other role permissions, so this role is what keeps every other principal out."
+    },
+    "primaryKey": {
+      "ID": "EAD218D5-C932-49DA-9A36-140B913FD587"
+    }
+  }
+]

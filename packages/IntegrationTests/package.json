@@ -1,0 +1,38 @@
+{
+  "name": "@mj-biz-apps/voting-integration-tests",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Integration tiers for BizApps Voting: (1) database-backed vitest suite (engines against a real SQL Server, incl. unlinkability) and (2) the over-the-wire GraphQL tier (multi-persona client, persona provisioning, wire check bundles). Never published; not part of mj-app.json.",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:integration": "vitest run",
+    "provision:personas": "node dist/provision/run.js"
+  },
+  "license": "BUSL-1.1",
+  "dependencies": {
+    "@memberjunction/api-keys": ">=6.2.1 <6.3.0",
+    "@memberjunction/core": ">=6.2.1 <6.3.0",
+    "@memberjunction/core-entities": ">=6.2.1 <6.3.0",
+    "@memberjunction/generic-database-provider": ">=6.2.1 <6.3.0",
+    "@memberjunction/global": ">=6.2.1 <6.3.0",
+    "@memberjunction/graphql-dataprovider": ">=6.2.1 <6.3.0",
+    "@memberjunction/sqlserver-dataprovider": ">=6.2.1 <6.3.0",
+    "@memberjunction/testing-integration": ">=6.2.1 <6.3.0",
+    "@mj-biz-apps/common-entities": "^5.59.0",
+    "@mj-biz-apps/voting-core-entities-server": "1.0.0",
+    "@mj-biz-apps/voting-engine-base": "1.0.0",
+    "@mj-biz-apps/voting-entities": "1.0.0",
+    "@mj-biz-apps/voting-server": "1.0.0",
+    "dotenv": "^17.2.4"
+  },
+  "devDependencies": {
+    "@types/mssql": "12.3.0",
+    "@types/node": "24.10.11",
+    "mssql": "^12.2.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18",
+    "playwright": "^1.58.1"
+  }
+}

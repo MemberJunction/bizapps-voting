@@ -1,0 +1,15 @@
+[
+  {
+    "fields": {
+      "Name": "Voting Result Snapshot Publisher",
+      "Description": "Publishes running-results snapshots for Open elections that show running results, subject to each election's batch policy (minimum ballots, refresh thresholds, weight-class suppression).",
+      "DriverClass": "ResultSnapshotPublisherJob",
+      "DomainRunEntity": null,
+      "DomainRunEntityFKey": null,
+      "NotificationsAvailable": true
+    },
+    "primaryKey": {
+      "ID": "6A0F751A-EE29-43EA-B2A8-9FA843189BDE"
+    }
+  }
+]

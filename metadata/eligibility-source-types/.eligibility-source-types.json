@@ -1,0 +1,39 @@
+[
+  {
+    "fields": {
+      "Name": "Entity Query",
+      "Code": "entity-query",
+      "Description": "Build voter roll from an MJ entity query (membership roster, employee list, owner register, etc.)",
+      "DriverClass": "EntityQueryEligibilitySource",
+      "Status": "Active",
+      "Configuration": {
+        "EntityName": "",
+        "ExtraFilter": "",
+        "PersonIDField": "PersonID",
+        "VotingClassField": null,
+        "WeightField": null,
+        "SourceKeyField": null,
+        "RepresentingOrganizationIDField": null
+      }
+    },
+    "primaryKey": {
+      "ID": "CAE3B603-D8C9-4E66-8835-80B4F3AA3A6F"
+    }
+  },
+  {
+    "fields": {
+      "Name": "CSV Upload",
+      "Code": "csv",
+      "Description": "Build voter roll from uploaded or inline CSV with columns: Email, SourceKey, VotingClass, Weight, RepresentingOrganization",
+      "DriverClass": "CsvEligibilitySource",
+      "Status": "Active",
+      "Configuration": {
+        "FileID": null,
+        "Rows": []
+      }
+    },
+    "primaryKey": {
+      "ID": "E729E746-4C3B-49B4-B6BA-7B5C2A443F0E"
+    }
+  }
+]

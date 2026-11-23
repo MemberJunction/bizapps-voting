@@ -1,0 +1,64 @@
+[
+  {
+    "_comments": [
+      "API SCOPES FOR THE VOTING REMOTE OPERATIONS. Every operation in metadata/remote-operations declares RequiredScope voting:vote,",
+      "voting:admin or voting:trustee. Without these rows an API key can never be issued for them and every scoped call is refused.",
+      "A parent `voting` with one child per audience, as MJ lays out its own scopes. The MJAPI application ceiling that lets a key",
+      "carry them is metadata/api-application-scopes. A scope only lets a key REACH the operation: the operation then authorizes the",
+      "caller itself (roll entry or session binding for voter operations, Voting Administrator / Election Inspector for the rest)."
+    ],
+    "fields": {
+      "Name": "voting",
+      "FullPath": "voting",
+      "Category": "Voting",
+      "Description": "Parent scope for Voting remote operations",
+      "IsActive": true
+    },
+    "primaryKey": {
+      "ID": "F0F412F2-4A59-46B3-B240-E5A275CA7938"
+    },
+    "relatedEntities": {
+      "MJ: API Scopes": [
+        {
+          "fields": {
+            "ParentID": "@parent:ID",
+            "Name": "vote",
+            "FullPath": "voting:vote",
+            "Category": "Voting",
+            "Description": "Voter operations: get the ballot, cast, check participation, verify a receipt, view results, designate a proxy, submit a nomination. The caller must still be on the election's roll (or hold a guest ballot session bound to that election and voter).",
+            "IsActive": true
+          },
+          "primaryKey": {
+            "ID": "9CF319C4-ED0A-4C17-87C9-5E692A67D7CB"
+          }
+        },
+        {
+          "fields": {
+            "ParentID": "@parent:ID",
+            "Name": "admin",
+            "FullPath": "voting:admin",
+            "Category": "Voting",
+            "Description": "Election administration: create and run elections, freeze and amend the roll, issue credentials, open, close, tally and certify, decide nominations and proxies, resolve comments, read turnout, enter paper ballots. The caller must still hold the Voting Administrator role (Election Inspector for the read and certify operations).",
+            "IsActive": true
+          },
+          "primaryKey": {
+            "ID": "8B02C268-3D9A-4E0C-BC63-D717B30C64D2"
+          }
+        },
+        {
+          "fields": {
+            "ParentID": "@parent:ID",
+            "Name": "trustee",
+            "FullPath": "voting:trustee",
+            "Category": "Voting",
+            "Description": "Trustee operations: submit a key share to reconstruct the election key of a High assurance election. The caller must still be a trustee of that election.",
+            "IsActive": true
+          },
+          "primaryKey": {
+            "ID": "80418E7F-EE54-4000-B82A-448A95EE2008"
+          }
+        }
+      ]
+    }
+  }
+]

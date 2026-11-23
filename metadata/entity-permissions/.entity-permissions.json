@@ -1,0 +1,64 @@
+[
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Cast Ballots",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "4B436FFD-63E4-4490-A000-46BBD42EC896"
+    },
+    "_comments": [
+      "The ONLY permission rows on the ballot-box entities. CodeGen created them with no role permissions",
+      "(codegen/additional-schema-info.json AutoAddPermissions: false); MJ's permission check has no system-user",
+      "bypass, so the engines' system user needs a role. 'Voting Ballot Engine' is held only by the system user",
+      "(metadata/user-roles). Deletes are never granted: ballots are never deleted."
+    ]
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Ballot Selections",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "E2EB7E46-A4F4-444A-B010-6759CC2E350E"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Contest Running Tallies",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "518A1BCF-D0C1-4170-BAD4-A246DF798F39"
+    }
+  },
+  {
+    "fields": {
+      "EntityID": "@lookup:MJ: Entities.Name=MJ_BizApps_Voting: Ballot Attributions",
+      "RoleID": "@lookup:MJ: Roles.Name=Voting Ballot Engine",
+      "Type": "Allow",
+      "CanCreate": 1,
+      "CanRead": 1,
+      "CanUpdate": 1,
+      "CanDelete": 0
+    },
+    "primaryKey": {
+      "ID": "A3E131BC-6919-4D9E-8226-3C9025014A36"
+    }
+  }
+]

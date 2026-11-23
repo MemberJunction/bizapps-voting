@@ -1,0 +1,44 @@
+[
+  {
+    "_comments": [
+      "THE MJAPI CEILING FOR THE VOTING SCOPES. An API key's scopes are intersected with what its application allows, so a scope with no application row is refused on every key. Include on every resource (`*`), as MJ grants its own scopes; which keys carry them is the host's choice."
+    ],
+    "fields": {
+      "ApplicationID": "@lookup:MJ: API Applications.Name=MJAPI",
+      "ScopeID": "@lookup:MJ: API Scopes.FullPath=voting:vote",
+      "ResourcePattern": "*",
+      "PatternType": "Include",
+      "IsDeny": false,
+      "Priority": 0
+    },
+    "primaryKey": {
+      "ID": "86F1934F-5D3B-40FB-A9A8-6A2CE0EABFF2"
+    }
+  },
+  {
+    "fields": {
+      "ApplicationID": "@lookup:MJ: API Applications.Name=MJAPI",
+      "ScopeID": "@lookup:MJ: API Scopes.FullPath=voting:admin",
+      "ResourcePattern": "*",
+      "PatternType": "Include",
+      "IsDeny": false,
+      "Priority": 0
+    },
+    "primaryKey": {
+      "ID": "576D0246-4162-4729-A563-71784458D9A9"
+    }
+  },
+  {
+    "fields": {
+      "ApplicationID": "@lookup:MJ: API Applications.Name=MJAPI",
+      "ScopeID": "@lookup:MJ: API Scopes.FullPath=voting:trustee",
+      "ResourcePattern": "*",
+      "PatternType": "Include",
+      "IsDeny": false,
+      "Priority": 0
+    },
+    "primaryKey": {
+      "ID": "ED903D20-53C1-41A0-94C9-C68AA8633E90"
+    }
+  }
+]
