@@ -55,9 +55,14 @@ const SUBMISSION: BallotSubmission = { Contests: [{ ContestID: C1, Selections: [
 const chairUser = { ID: CHAIR_ID, Name: 'Committee Chair' } as unknown as UserInfo;
 const systemUser = { ID: SYSTEM_USER_ID, Name: 'System' } as unknown as UserInfo;
 
-function fakeGraph() {
+function fakeGraph(overrides: { AllowRevote?: boolean; SecrecyMode?: string } = {}) {
     return {
-        Election: { ID: E1, SecrecyMode: 'Open', Status: 'Open' },
+        Election: {
+            ID: E1,
+            SecrecyMode: overrides.SecrecyMode ?? 'Open',
+            Status: 'Open',
+            AllowRevote: overrides.AllowRevote ?? true,
+        },
         ElectionType: { ID: 'type-1', Code: 'motion' },
         Configuration: {},
         Contests: [{ ID: C1, Name: 'Motion 1', Sequence: 1 }],
@@ -65,6 +70,23 @@ function fakeGraph() {
         ContestTallyCodes: {},
         ContestVotingClassFilters: {},
     };
+}
+
+function makeProvider(tables: {
+    voters?: Array<{ ID: string; VotingClass: string | null }>;
+    participations?: Array<{ ID: string; Channel: string; CastAt: Date }>;
+    voterObj?: Record<string, unknown>;
+} = {}): VotingContext['Provider'] {
+    return {
+        GetEntityObject: vi.fn(async () => tables.voterObj ?? null),
+        RunView: vi.fn(async (params: { EntityName: string }) => {
+            if (params.EntityName === 'MJ_BizApps_Voting: Participations') {
+                return { Success: true, Results: tables.participations ?? [] };
+            }
+            return { Success: true, Results: tables.voters ?? [] };
+        }),
+        RunViews: vi.fn(),
+    } as unknown as VotingContext['Provider'];
 }
 
 beforeEach(() => {
@@ -140,11 +162,7 @@ describe('CastEngine.CastForVoter', () => {
             SourceKey: 'membership-42',
             Load: vi.fn(async () => true),
         };
-        const provider = {
-            GetEntityObject: vi.fn(async () => voterObj),
-            RunView: vi.fn(),
-            RunViews: vi.fn(),
-        } as unknown as VotingContext['Provider'];
+        const provider = makeProvider({ voterObj });
 
         const res = await CastEngine.Instance.CastForVoter(
             { ElectionID: E1, EligibleVoterID: V1, Submission: SUBMISSION },
@@ -216,6 +234,57 @@ describe('CastEngine.CastForVoter', () => {
         );
         expect(res.Success).toBe(false);
         if (!res.Success) expect(res.Code).toBe('AlreadyVoted');
+        expect(mockAuditRecord).not.toHaveBeenCalled();
+    });
+
+    it('refuses to overwrite an existing Online participation on revote unless AllowOverrideOnline is set', async () => {
+        const castSpy = vi.spyOn(CastEngine.Instance, 'Cast').mockResolvedValue({ Success: true, Value: { ReceiptCode: 'AAAA-BBBB-CCCC-DDDD-EEEE' } });
+        const provider = makeProvider({
+            voters: [{ ID: V1, VotingClass: 'voting-member' }],
+            participations: [{ ID: 'part-online-1', Channel: 'Online', CastAt: new Date('2026-11-20T15:00:00Z') }],
+        });
+
+        const refused = await CastEngine.Instance.CastForVoter(
+            { ElectionID: E1, SourceKey: 'membership-42', Submission: SUBMISSION },
+            { ContextUser: chairUser, Provider: provider }
+        );
+        expect(refused.Success).toBe(false);
+        if (!refused.Success) expect(refused.Code).toBe('OnlineOverrideNotAllowed');
+        expect(castSpy).not.toHaveBeenCalled();
+        expect(mockAuditRecord).not.toHaveBeenCalled();
+
+        const allowed = await CastEngine.Instance.CastForVoter(
+            { ElectionID: E1, SourceKey: 'membership-42', Submission: SUBMISSION, AllowOverrideOnline: true },
+            { ContextUser: chairUser, Provider: provider }
+        );
+        expect(allowed.Success).toBe(true);
+        expect(castSpy).toHaveBeenCalledTimes(1);
+        expect(mockAuditRecord).toHaveBeenCalledWith(
+            expect.objectContaining({ Actor: { UserID: CHAIR_ID } }),
+            E1,
+            'BallotEntered',
+            { Channel: 'InPerson', EligibleVoterID: V1, OverrideOnline: true }
+        );
+    });
+
+    it('returns Fail instead of throwing when LoadElectionGraph or BallotStyleBuilder throws', async () => {
+        const provider = makeProvider({ voters: [{ ID: V1, VotingClass: null }] });
+
+        mockLoadElectionGraph.mockRejectedValueOnce(new Error('db transient failure'));
+        const graphErr = await CastEngine.Instance.CastForVoter(
+            { ElectionID: E1, SourceKey: 'mem-1', Submission: SUBMISSION },
+            { ContextUser: chairUser, Provider: provider }
+        );
+        expect(graphErr.Success).toBe(false);
+        if (!graphErr.Success) expect(graphErr.Code).toBe('CastFailed');
+
+        mockBuildStyle.mockRejectedValueOnce(new Error('style explosion'));
+        const styleErr = await CastEngine.Instance.CastForVoter(
+            { ElectionID: E1, SourceKey: 'mem-1', Submission: SUBMISSION },
+            { ContextUser: chairUser, Provider: provider }
+        );
+        expect(styleErr.Success).toBe(false);
+        if (!styleErr.Success) expect(styleErr.Code).toBe('CastFailed');
         expect(mockAuditRecord).not.toHaveBeenCalled();
     });
 });

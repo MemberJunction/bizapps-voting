@@ -115,7 +115,10 @@ system principal, since inspectors hold only R on Elections (`CertificationEngin
 
 Named roll-call reads (`Voting.GetRollCall` / `ResultsEngine.GetRollCall`) are restricted to **`Open`-secrecy, Standard-tier**
 elections with a frozen roll; `Confidential` and `Secret` elections are refused unconditionally before any ballot-box or
-attribution table is touched (`wire-secrecy.X14`). The Remote Operation authorizes `Voting Administrator` and
+attribution table is touched (`wire-secrecy.X14`). Pre-tally reads (`Open`/`Closed`) also follow `ResultsTiming`: only
+`Live` and `AdministratorsOnly` allow live decryption while voting is open (`AfterClose` and `AfterVoting` are refused
+until `Tallied`/`Certified`). Every successful `GetRollCall` call writes a `RollCallViewed` audit event (actor, status,
+timing, live/materialized — never voter choices). The Remote Operation authorizes `Voting Administrator` and
 `Election Inspector` and reads `Ballot Attributions`, `Cast Ballots` (decrypting while Open/Closed) or `Ballot Selections`
 (after tally) as the system principal. A host service calling `ResultsEngine.Instance.GetRollCall` directly owns its own
 caller authorization.

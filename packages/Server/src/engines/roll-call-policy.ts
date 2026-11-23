@@ -14,19 +14,23 @@ import {
 
 /** Why a roll-call read is refused, or null when it may proceed. */
 export interface RollCallRefusalReason {
-    Code: 'NotOpenBallot' | 'RollNotFrozen' | 'TierNotSupported';
+    Code: 'NotOpenBallot' | 'RollNotFrozen' | 'TierNotSupported' | 'ResultsNotVisible';
     Message: string;
 }
 
 /**
  * Named roll calls are permitted ONLY for Open-secrecy, Standard-assurance elections whose roll has been frozen.
  * Confidential and Secret elections are unconditionally refused so attributed ballots can never leak through this path.
+ *
+ * Before the election is Tallied or Certified, live reads honor ResultsTiming: only Live and AdministratorsOnly allow
+ * pre-tally roll-call access (AfterClose and AfterVoting are refused until Tallied or Certified).
  */
 export function RollCallRefusal(
     secrecyMode: string,
     status: string,
     rollFrozenAt: Date | string | null,
-    assuranceTier: string
+    assuranceTier: string,
+    resultsTiming: string
 ): RollCallRefusalReason | null {
     if (secrecyMode !== 'Open') {
         return { Code: 'NotOpenBallot', Message: 'Named roll-call votes are available only for Open elections.' };
@@ -36,6 +40,12 @@ export function RollCallRefusal(
     }
     if (assuranceTier !== 'Standard') {
         return { Code: 'TierNotSupported', Message: 'Named roll-call reads are available only for Standard assurance elections.' };
+    }
+    if (!UsesMaterializedSelections(status) && resultsTiming !== 'Live' && resultsTiming !== 'AdministratorsOnly') {
+        return {
+            Code: 'ResultsNotVisible',
+            Message: 'Named roll-call votes cannot be read before the election is tallied unless results timing is Live or AdministratorsOnly.',
+        };
     }
     return null;
 }

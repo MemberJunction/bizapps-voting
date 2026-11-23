@@ -19,13 +19,13 @@ describe.skipIf(!h)('13. Named roll call (V1), Common person link (V2), and host
     it('CastForVoter enters InPerson ballots by SourceKey and EligibleVoterID, audits actor without ballot content, and GetRollCall reads live, after revote, and after tally', async () => {
         if (!h) return;
         const schema = await VotingSchema(h);
-        const voters = await CreatePeople(h, 3, 'rc');
+        const voters = await CreatePeople(h, 4, 'rc');
         const electionID = await CreateOpenElection(h, {
             Voters: voters,
-            Overrides: { SecrecyMode: 'Open', Configuration: { AllowRevote: true } },
+            Overrides: { SecrecyMode: 'Open', ResultsTiming: 'AdministratorsOnly', Configuration: { AllowRevote: true } },
         });
         const roll = await LoadRoll(h, electionID);
-        expect(roll).toHaveLength(3);
+        expect(roll).toHaveLength(4);
 
         const graph = Must(await LoadElectionGraph(electionID, h.Ctx), 'LoadElectionGraph');
         const style = await BallotStyleBuilder.Instance.Build(graph, null, 'en', h.Ctx);
@@ -96,12 +96,12 @@ describe.skipIf(!h)('13. Named roll call (V1), Common person link (V2), and host
             expect((ev.Details ?? '').toLowerCase()).not.toContain(yesID.toLowerCase());
         }
 
-        // 3. GetRollCall while Open (live decryption)
-        const live = Must(await ResultsEngine.Instance.GetRollCall(electionID, h.Ctx), 'GetRollCall live');
+        // 3. GetRollCall while Open (live decryption under AdministratorsOnly) + RollCallViewed audit
+        const live = Must(await ResultsEngine.Instance.GetRollCall(electionID, hostActorCtx), 'GetRollCall live');
         expect(live.Status).toBe('Open');
         expect(live.Contests).toHaveLength(1);
         const liveEntries = live.Contests[0].Entries;
-        expect(liveEntries).toHaveLength(3);
+        expect(liveEntries).toHaveLength(4);
         const e0 = liveEntries.find((e) => e.EligibleVoterID.toLowerCase() === cast0.EligibleVoterID.toLowerCase())!;
         const e1 = liveEntries.find((e) => e.EligibleVoterID.toLowerCase() === v1.EligibleVoterID.toLowerCase())!;
         const e2 = liveEntries.find((e) => e.PersonID.toLowerCase() === voters[2].ID.toLowerCase())!;
@@ -110,6 +110,16 @@ describe.skipIf(!h)('13. Named roll call (V1), Common person link (V2), and host
         expect(e0.EnteredByUserID?.toLowerCase()).toBe(enteringUserID.toLowerCase());
         expect(e1).toMatchObject({ HasVoted: true, Abstain: true, Selections: [], Channel: 'InPerson' });
         expect(e2).toMatchObject({ HasVoted: false, Abstain: false, Selections: [] });
+
+        const rcAuditRows = await Rows<{ ActorUserID: string | null; Details: string | null }>(
+            h,
+            `SELECT ActorUserID, Details FROM [${schema}].[ElectionAuditEvent] WHERE ElectionID = @e AND EventType = 'RollCallViewed'`,
+            { e: electionID }
+        );
+        expect(rcAuditRows.length).toBeGreaterThanOrEqual(1);
+        expect(rcAuditRows[0].ActorUserID?.toLowerCase()).toBe(enteringUserID.toLowerCase());
+        expect((rcAuditRows[0].Details ?? '').toLowerCase()).not.toContain(yesID.toLowerCase());
+        expect((rcAuditRows[0].Details ?? '').toLowerCase()).not.toContain(cast0.EligibleVoterID.toLowerCase());
 
         // 4. Revote k0 from Yes -> No via Actor context (no explicit EnteredByUserID) and verify live GetRollCall reflects only the Counted ballot
         Must(
@@ -123,23 +133,76 @@ describe.skipIf(!h)('13. Named roll call (V1), Common person link (V2), and host
             ),
             'CastForVoter revote'
         );
-        const afterRevote = Must(await ResultsEngine.Instance.GetRollCall(electionID, h.Ctx), 'GetRollCall after revote');
+        const afterRevote = Must(await ResultsEngine.Instance.GetRollCall(electionID, hostActorCtx), 'GetRollCall after revote');
         const e0Revoted = afterRevote.Contests[0].Entries.find((e) => e.EligibleVoterID.toLowerCase() === cast0.EligibleVoterID.toLowerCase())!;
         expect(e0Revoted.Selections.map((s) => s.OptionID.toLowerCase())).toEqual([noID.toLowerCase()]);
+
+        // 4b. Online participation cannot be overwritten by CastForVoter unless AllowOverrideOnline: true
+        const v3 = roll.find((r) => r.PersonID.toLowerCase() === voters[3].ID.toLowerCase())!;
+        expect((await CastVote(h, electionID, v3.EligibleVoterID, 0)).Success).toBe(true);
+        const blockedOverride = await CastEngine.Instance.CastForVoter(
+            {
+                ElectionID: electionID,
+                EligibleVoterID: v3.EligibleVoterID,
+                Submission: { Contests: [{ ContestID: contestID, Selections: [{ OptionID: noID }] }] },
+            },
+            hostActorCtx
+        );
+        expect(blockedOverride.Success).toBe(false);
+        if (!blockedOverride.Success) expect(blockedOverride.Code).toBe('OnlineOverrideNotAllowed');
+        Must(
+            await CastEngine.Instance.CastForVoter(
+                {
+                    ElectionID: electionID,
+                    EligibleVoterID: v3.EligibleVoterID,
+                    Submission: { Contests: [{ ContestID: contestID, Selections: [{ OptionID: noID }] }] },
+                    AllowOverrideOnline: true,
+                },
+                hostActorCtx
+            ),
+            'CastForVoter with AllowOverrideOnline'
+        );
 
         // 5. Close + Tally, then verify GetRollCall reads materialized Ballot Selections identically
         Must(await ElectionAdministrationEngine.Instance.CloseElection(electionID, h.Ctx), 'CloseElection');
         const tallied = Must(await TallyEngine.Instance.Tally(electionID, undefined, h.Ctx), 'Tally');
-        expect(tallied.BallotsCounted).toBe(2);
+        expect(tallied.BallotsCounted).toBe(3);
 
-        const afterTally = Must(await ResultsEngine.Instance.GetRollCall(electionID, h.Ctx), 'GetRollCall after tally');
+        const afterTally = Must(await ResultsEngine.Instance.GetRollCall(electionID, hostActorCtx), 'GetRollCall after tally');
         expect(afterTally.Status).toBe('Tallied');
         const e0Final = afterTally.Contests[0].Entries.find((e) => e.EligibleVoterID.toLowerCase() === cast0.EligibleVoterID.toLowerCase())!;
         const e1Final = afterTally.Contests[0].Entries.find((e) => e.EligibleVoterID.toLowerCase() === v1.EligibleVoterID.toLowerCase())!;
         const e2Final = afterTally.Contests[0].Entries.find((e) => e.PersonID.toLowerCase() === voters[2].ID.toLowerCase())!;
+        const e3Final = afterTally.Contests[0].Entries.find((e) => e.EligibleVoterID.toLowerCase() === v3.EligibleVoterID.toLowerCase())!;
         expect(e0Final.Selections.map((s) => s.OptionID.toLowerCase())).toEqual([noID.toLowerCase()]);
         expect(e1Final.Abstain).toBe(true);
         expect(e2Final.HasVoted).toBe(false);
+        expect(e3Final.Selections.map((s) => s.OptionID.toLowerCase())).toEqual([noID.toLowerCase()]);
+    });
+
+    it('GetRollCall refuses Open elections while Open/Closed when ResultsTiming is AfterClose, then allows after Tally', async () => {
+        if (!h) return;
+        const voters = await CreatePeople(h, 2, 'rc-afterclose');
+        const electionID = await CreateOpenElection(h, {
+            Voters: voters,
+            Overrides: { SecrecyMode: 'Open', ResultsTiming: 'AfterClose' },
+        });
+        const roll = await LoadRoll(h, electionID);
+        expect((await CastVote(h, electionID, roll[0].EligibleVoterID, 0)).Success).toBe(true);
+
+        const whileOpen = await ResultsEngine.Instance.GetRollCall(electionID, h.Ctx);
+        expect(whileOpen.Success).toBe(false);
+        if (!whileOpen.Success) expect(whileOpen.Code).toBe('ResultsNotVisible');
+
+        Must(await ElectionAdministrationEngine.Instance.CloseElection(electionID, h.Ctx), 'CloseElection');
+        const whileClosed = await ResultsEngine.Instance.GetRollCall(electionID, h.Ctx);
+        expect(whileClosed.Success).toBe(false);
+        if (!whileClosed.Success) expect(whileClosed.Code).toBe('ResultsNotVisible');
+
+        Must(await TallyEngine.Instance.Tally(electionID, undefined, h.Ctx), 'Tally');
+        const afterTally = Must(await ResultsEngine.Instance.GetRollCall(electionID, h.Ctx), 'GetRollCall after tally');
+        expect(afterTally.Status).toBe('Tallied');
+        expect(afterTally.Contests[0].Entries.filter((e) => e.HasVoted)).toHaveLength(1);
     });
 
     it('GetRollCall refuses Confidential and Secret elections both while Open and after Tally', async () => {

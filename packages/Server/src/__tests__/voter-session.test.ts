@@ -191,6 +191,17 @@ describe('OpenVoterSession: signed-in members (Common ResolvePersonIDForUser)', 
         expect(found).toEqual({ ID: PERSON_A, DisplayName: 'Alice Voter' });
         expect(Calls[0]?.ExtraFilter).toBe(`ID = '${PERSON_A}'`);
     });
+
+    it('FindPersonForUser does not fall back to email when an explicit People link points to a missing Person', async () => {
+        const { Provider, Calls } = stubProvider({ 'MJ_BizApps_Common: People': [] });
+        const u = member(MEMBER_USER_ID, 'alice@example.org', {
+            LinkedEntityID: PEOPLE_ENTITY_ID,
+            LinkedEntityRecordID: PERSON_A,
+        });
+        const found = await FindPersonForUser({ ContextUser: u, Provider });
+        expect(found).toBeNull();
+        expect(Calls.some((c) => c.ExtraFilter.includes('LOWER(Email)'))).toBe(false);
+    });
 });
 
 describe('EngineContextAfterAuthorization and the refusal reason', () => {

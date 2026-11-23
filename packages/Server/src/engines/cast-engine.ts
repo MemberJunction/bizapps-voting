@@ -210,6 +210,11 @@ export interface CastForVoterParams {
     EnteredByUserID?: string;
     /** Ballot language used when building the voter's style hash. Defaults to 'en'. */
     Language?: string;
+    /**
+     * When false (default), refuses to overwrite an existing Online (self-cast) participation on a revote
+     * so a host call cannot replace a voter's own online ballot unless the caller opts in explicitly.
+     */
+    AllowOverrideOnline?: boolean;
 }
 
 const ENTERED_CHANNELS: ReadonlySet<string> = new Set(['InPerson', 'Paper', 'Proxy']);
@@ -330,45 +335,69 @@ export class CastEngine extends BaseSingleton<CastEngine> {
         const inputFailure = ValidateCastForVoterInput(p, enteredByUserID);
         if (inputFailure) return Fail(inputFailure.Code, inputFailure.Message);
 
-        const baseSys = SystemContext(ctx);
-        const sys: VotingContext = {
-            ContextUser: baseSys.ContextUser,
-            Provider: baseSys.Provider,
-            Actor: { UserID: enteredByUserID! },
-        };
+        try {
+            const baseSys = SystemContext(ctx);
+            const sys: VotingContext = {
+                ContextUser: baseSys.ContextUser,
+                Provider: baseSys.Provider,
+                Actor: { UserID: enteredByUserID! },
+            };
 
-        const graphRes = await LoadElectionGraph(p.ElectionID, sys);
-        if (IsFailure(graphRes)) return PassFailure(graphRes);
-        const graph = graphRes.Value;
+            const graphRes = await LoadElectionGraph(p.ElectionID, sys);
+            if (IsFailure(graphRes)) return PassFailure(graphRes);
+            const graph = graphRes.Value;
 
-        const voterRes = await this.resolveRollEntryForHostCast(graph.Election.ID, p.EligibleVoterID, p.SourceKey, sys);
-        if (IsFailure(voterRes)) return PassFailure(voterRes);
-        const voter = voterRes.Value;
+            const voterRes = await this.resolveRollEntryForHostCast(graph.Election.ID, p.EligibleVoterID, p.SourceKey, sys);
+            if (IsFailure(voterRes)) return PassFailure(voterRes);
+            const voter = voterRes.Value;
 
-        const language = p.Language ?? DEFAULT_BALLOT_LANGUAGE;
-        const style = await BallotStyleBuilder.Instance.Build(graph, voter.VotingClass, language, sys);
+            const existing = await this.findParticipation(graph.Election.ID, voter.ID, sys);
+            const overridingOnline =
+                !!existing &&
+                existing.Channel === 'Online' &&
+                DecideCastKind({
+                    HasParticipation: true,
+                    AllowRevote: graph.Election.AllowRevote,
+                    SecrecyMode: graph.Election.SecrecyMode,
+                }).Kind === 'Revote';
+            if (overridingOnline && !p.AllowOverrideOnline) {
+                return Fail(
+                    'OnlineOverrideNotAllowed',
+                    'Cannot overwrite a voter\'s online ballot unless AllowOverrideOnline is explicitly set.'
+                );
+            }
 
-        const castRes = await this.Cast(
-            {
-                ElectionID: graph.Election.ID,
-                EligibleVoterID: voter.ID,
-                BallotStyleHash: style.Hash,
-                Submission: p.Submission,
+            const language = p.Language ?? DEFAULT_BALLOT_LANGUAGE;
+            const style = await BallotStyleBuilder.Instance.Build(graph, voter.VotingClass, language, sys);
+
+            const castRes = await this.Cast(
+                {
+                    ElectionID: graph.Election.ID,
+                    EligibleVoterID: voter.ID,
+                    BallotStyleHash: style.Hash,
+                    Submission: p.Submission,
+                    Channel: channel,
+                    ProxyDesignationID: p.ProxyDesignationID,
+                    EnteredByUserID: enteredByUserID!,
+                    Language: language,
+                },
+                sys
+            );
+            if (IsFailure(castRes)) return PassFailure(castRes);
+
+            await ElectionAudit.Record(sys, graph.Election.ID, 'BallotEntered', {
                 Channel: channel,
-                ProxyDesignationID: p.ProxyDesignationID,
-                EnteredByUserID: enteredByUserID!,
-                Language: language,
-            },
-            sys
-        );
-        if (IsFailure(castRes)) return PassFailure(castRes);
+                EligibleVoterID: voter.ID,
+                ...(overridingOnline ? { OverrideOnline: true } : {}),
+            });
 
-        await ElectionAudit.Record(sys, graph.Election.ID, 'BallotEntered', {
-            Channel: channel,
-            EligibleVoterID: voter.ID,
-        });
-
-        return Ok({ ReceiptCode: castRes.Value.ReceiptCode, EligibleVoterID: voter.ID });
+            return Ok({ ReceiptCode: castRes.Value.ReceiptCode, EligibleVoterID: voter.ID });
+        } catch (e) {
+            if (e instanceof SelectionCryptoError) return Fail(e.Code, 'Ballots cannot be recorded for this election right now.');
+            // Deliberately only the error name: a driver or database message could echo ballot content.
+            LogError(`CastEngine: CastForVoter failed (${e instanceof Error ? e.name : 'unknown'}).`);
+            return Fail('CastFailed', 'The ballot could not be recorded. Please try again.');
+        }
     }
 
     /** The voter's own poll-book state. */
