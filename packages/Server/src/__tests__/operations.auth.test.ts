@@ -25,6 +25,7 @@ import { VerifyReceiptOperation } from '../operations/VerifyReceiptOperation.js'
 import { GetMyBallotOperation } from '../operations/GetMyBallotOperation.js';
 import { CastBallotOperation } from '../operations/CastBallotOperation.js';
 import { CreateElectionOperation } from '../operations/CreateElectionOperation.js';
+import { GetRollCallOperation } from '../operations/GetRollCallOperation.js';
 import { SubmitKeyShareOperation } from '../operations/SubmitKeyShareOperation.js';
 
 // Mock user factory
@@ -203,6 +204,17 @@ describe('Remote Operations — Authorization', () => {
 
             const authorized = await op['Authorize'](input, user);
             expect(authorized).toBe(false);
+        });
+
+        it('GetRollCall: allows Voting Administrator and Election Inspector; refuses Developer, Integration, regular users, and guests', async () => {
+            const op = new GetRollCallOperation();
+            const input = { ElectionID: 'election-123' };
+            expect(await op['Authorize'](input, createUser({ UserRoles: [{ Role: 'Voting Administrator' }] }))).toBe(true);
+            expect(await op['Authorize'](input, createUser({ UserRoles: [{ Role: 'Election Inspector' }] }))).toBe(true);
+            expect(await op['Authorize'](input, createUser({ UserRoles: [{ Role: 'Developer' }] }))).toBe(false);
+            expect(await op['Authorize'](input, createUser({ UserRoles: [{ Role: 'Integration' }] }))).toBe(false);
+            expect(await op['Authorize'](input, createUser({ UserRoles: [{ Role: 'Regular User' }] }))).toBe(false);
+            expect(await op['Authorize'](input, guestFor('election-123:voter-1'))).toBe(false);
         });
     });
 

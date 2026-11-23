@@ -39,7 +39,9 @@ const chromium = (playwrightModule.default ?? playwrightModule).chromium;
 const wire = await import(pathToFileURL(path.join(testsPackage, 'dist/client-index.js')).href);
 const entities = await importResolved('@mj-biz-apps/voting-entities');
 const axeSource = readFileSync(
-    requireFromTests.resolve('axe-core/axe.min.js', { paths: [path.resolve(repoRoot, '../node_modules/.pnpm/axe-core@4.13.0/node_modules')] }),
+    requireFromTests.resolve('axe-core/axe.min.js', {
+        paths: [testsPackage, repoRoot, path.resolve(repoRoot, '../node_modules/.pnpm/axe-core@4.13.0/node_modules')],
+    }),
     'utf8'
 );
 
