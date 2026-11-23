@@ -4,7 +4,7 @@
   "name": "mj-bizapps-voting",
   "displayName": "BizApps Voting",
   "description": "Secret, verifiable, embeddable voting (motions, elections, referendums and polls) for any app built on MemberJunction",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "license": "BUSL-1.1",
   "icon": "fa-solid fa-check-to-slot",
   "color": "#264FAF",
