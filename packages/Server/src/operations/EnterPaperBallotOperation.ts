@@ -11,9 +11,9 @@ import {
     type VotingEnterPaperBallotInput,
     type VotingEnterPaperBallotOutput,
 } from '@mj-biz-apps/voting-entities';
-import { type VotingContext, IsFailure, LoadElectionGraph, SystemContext } from '../shared/index.js';
+import { type VotingContext, IsFailure } from '../shared/index.js';
 import { VotingAuthorization } from '../shared/authorization.js';
-import { CredentialEngine, CastEngine, BallotStyleBuilder, VoterRollEngine } from '../engines/index.js';
+import { CredentialEngine, CastEngine } from '../engines/index.js';
 import { DEFAULT_BALLOT_LANGUAGE } from '../engines/ballot-style-builder.js';
 import { ErrorName, FailOperation } from './operation-support.js';
 import { LogError } from '@memberjunction/core';
@@ -46,22 +46,10 @@ export class EnterPaperBallotOperation extends VotingEnterPaperBallotOperationBa
             }
             const eligibleVoterID = voterResult.Value.EligibleVoterID;
 
-            // The hash the engine will require is the one of THIS voter's ballot style (their voting class).
-            const graphResult = await LoadElectionGraph(input.ElectionID, ctx);
-            if (IsFailure(graphResult)) {
-                return { Success: false, Message: graphResult.ErrorMessage };
-            }
-            const voter = await VoterRollEngine.Instance.GetVoter(eligibleVoterID, SystemContext(ctx));
-            if (IsFailure(voter)) {
-                return { Success: false, Message: voter.ErrorMessage };
-            }
-            const style = await BallotStyleBuilder.Instance.Build(graphResult.Value, voter.Value.VotingClass, DEFAULT_BALLOT_LANGUAGE, ctx);
-
-            const castResult = await CastEngine.Instance.Cast(
+            const castResult = await CastEngine.Instance.CastForVoter(
                 {
                     ElectionID: input.ElectionID,
                     EligibleVoterID: eligibleVoterID,
-                    BallotStyleHash: style.Hash,
                     Submission: input.Submission,
                     Channel: input.Channel,
                     ProxyDesignationID: input.ProxyDesignationID,

@@ -45,7 +45,11 @@ Only limitations verified in the code are listed.
 - **Administrator tie-breaks are drawn by lot.** A contest with `TieBreakMethod = Administrator` records the lot result with a
   note that it is *provisional*; no operation lets an administrator decide the tie.
 - **`HostMembers` is approximated** as any signed-in, non-guest MJ user: Voting has no host-membership concept.
-- **`PollBookVisible` is a contract helper only**; no operation exposes the poll book, so the rule is not enforced anywhere.
+- **`PollBookVisible` is a contract helper only**; no operation exposes the raw poll book, so the rule is not enforced anywhere.
+  For `Open`-secrecy, Standard-tier elections, `Voting.GetRollCall` exposes named per-voter selections to administrators and
+  inspectors (and to authorized host services via `ResultsEngine.GetRollCall`); `Confidential` and `Secret` elections are
+  refused unconditionally (`wire-secrecy.X14`), as are `HighAssurance` and `Verifiable` elections (unit-tested in
+  `roll-call.test.ts`).
 - **Proxies have no revoke workflow.** An administrator accepts or rejects a Pending designation (`DecideProxy`), but a
   voter cannot withdraw one and no operation revokes an Accepted one. The proxy's ballot is still entered by an
   administrator through `EnterPaperBallot`; there is no proxy sign-in.

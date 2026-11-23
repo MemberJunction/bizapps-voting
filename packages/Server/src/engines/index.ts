@@ -4,11 +4,11 @@
  */
 export { ElectionAdministrationEngine } from './election-administration-engine.js';
 export { BallotStyleBuilder } from './ballot-style-builder.js';
-export { CastEngine } from './cast-engine.js';
+export { CastEngine, type CastParams, type CastForVoterParams } from './cast-engine.js';
 export { VoterRollEngine } from './voter-roll-engine.js';
 export { CredentialEngine } from './credential-engine.js';
 export { TallyEngine } from './tally-engine.js';
-export { ResultsEngine } from './results-engine.js';
+export { ResultsEngine, type RollCallSummary } from './results-engine.js';
 export { CertificationEngine } from './certification-engine.js';
 export { NominationEngine } from './nomination-engine.js';
 export { TrusteeEngine } from './trustee-engine.js';

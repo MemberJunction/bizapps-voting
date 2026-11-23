@@ -4,6 +4,7 @@
  */
 
 import { type BaseEntity } from '@memberjunction/core';
+import { LinkedPersonRecordID, ResolvePersonIDForUser } from '@mj-biz-apps/common-entities';
 import {
     type mjBizAppsVotingElectionAnchorEntity,
     type mjBizAppsVotingElectionEntity,
@@ -43,23 +44,19 @@ export interface PersonRef {
 }
 
 /**
- * The Person linked to the acting user (LinkedUserID first, then email). Null when none.
- * `caller` supplies the claims (user id, email); `reader` runs the lookups (defaults to the caller itself). Voter-facing
- * operations pass the system context as `reader`: a member holds no permission on the roll or trustee tables.
+ * The Person linked to the acting user via Common's ResolvePersonIDForUser (the user's own People link first,
+ * then deprecated People.LinkedUserID; falls back to email only when the user carries no People link). Null when none.
+ * `caller` supplies the claims (user link, user id, email); `reader` runs the lookups (defaults to the caller itself).
+ * Voter-facing operations pass the system context as `reader`: a member holds no permission on the roll or trustee tables.
  */
 export async function FindPersonForUser(caller: VotingContext, reader: VotingContext = caller): Promise<PersonRef | null> {
     const user = caller.ContextUser;
-    const rv = RunViewOf(reader);
-    if (user.ID) {
-        const linked = await rv.RunView<PersonRef>(
-            { EntityName: PEOPLE_ENTITY, ExtraFilter: `LinkedUserID = ${SqlLiteral(user.ID)}`, Fields: ['ID', 'DisplayName'], MaxRows: 1, ResultType: 'simple' },
-            reader.ContextUser
-        );
-        if (linked.Success && linked.Results[0]) return linked.Results[0];
-    }
+    const linkedID = await ResolvePersonIDForUser(user, reader.Provider, reader.ContextUser);
+    if (linkedID) return GetPerson(linkedID, reader);
+    if (LinkedPersonRecordID(user, reader.Provider)) return null;
     const email = user.Email?.trim();
     if (!email) return null;
-    const byEmail = await rv.RunView<PersonRef>(
+    const byEmail = await RunViewOf(reader).RunView<PersonRef>(
         { EntityName: PEOPLE_ENTITY, ExtraFilter: `LOWER(Email) = ${SqlLiteral(email.toLowerCase())}`, Fields: ['ID', 'DisplayName'], MaxRows: 1, ResultType: 'simple' },
         reader.ContextUser
     );

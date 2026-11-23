@@ -1,7 +1,7 @@
 /**
  * @mj-biz-apps/voting-server — Remote Operations barrel
  *
- * All 29 Remote Operations: 7 voter (guest-scoped), 21 administrator, 1 trustee.
+ * All 30 Remote Operations: 7 voter (guest-scoped), 22 administrator, 1 trustee.
  */
 
 // Voter operations (AllowScopedPrincipal: true)
@@ -24,6 +24,7 @@ export { OpenElectionOperation } from './OpenElectionOperation.js';
 export { CloseElectionOperation } from './CloseElectionOperation.js';
 export { CancelElectionOperation } from './CancelElectionOperation.js';
 export { GetTurnoutOperation } from './GetTurnoutOperation.js';
+export { GetRollCallOperation } from './GetRollCallOperation.js';
 export { EnterPaperBallotOperation } from './EnterPaperBallotOperation.js';
 export { TallyOperation } from './TallyOperation.js';
 export { CertifyOperation } from './CertifyOperation.js';
@@ -57,6 +58,7 @@ import { LoadOpenElectionOperation } from './OpenElectionOperation.js';
 import { LoadCloseElectionOperation } from './CloseElectionOperation.js';
 import { LoadCancelElectionOperation } from './CancelElectionOperation.js';
 import { LoadGetTurnoutOperation } from './GetTurnoutOperation.js';
+import { LoadGetRollCallOperation } from './GetRollCallOperation.js';
 import { LoadEnterPaperBallotOperation } from './EnterPaperBallotOperation.js';
 import { LoadTallyOperation } from './TallyOperation.js';
 import { LoadCertifyOperation } from './CertifyOperation.js';
@@ -92,6 +94,7 @@ export function LoadVotingOperations(): void {
     LoadCloseElectionOperation();
     LoadCancelElectionOperation();
     LoadGetTurnoutOperation();
+    LoadGetRollCallOperation();
     LoadEnterPaperBallotOperation();
     LoadTallyOperation();
     LoadCertifyOperation();
