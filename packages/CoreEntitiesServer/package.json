@@ -1,6 +1,6 @@
 {
   "name": "@mj-biz-apps/voting-core-entities-server",
-  "version": "0.0.0",
+  "version": "6.3.0-edge.1",
   "type": "module",
   "description": "Server-side entity subclass overrides (validation, computed fields, save hooks). TODO(template): rename.",
   "main": "dist/index.js",
@@ -21,7 +21,7 @@
   },
   "license": "BUSL-1.1",
   "dependencies": {
-    "@mj-biz-apps/voting-entities": "0.0.0"
+    "@mj-biz-apps/voting-entities": "6.3.0-edge.1"
   },
   "peerDependencies": {
     "@memberjunction/core": "^6.3.0-edge.1",
