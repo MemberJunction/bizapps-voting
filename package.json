@@ -1,6 +1,6 @@
 {
   "name": "bizapps-voting",
-  "version": "0.0.0",
+  "version": "6.3.0-edge.1",
   "private": true,
   "license": "BUSL-1.1",
   "description": "Template repository for MemberJunction Open Apps - clone, rename, fill in. See README.md and docs/.",

@@ -4,7 +4,7 @@
   "name": "mj-bizapps-voting",
   "displayName": "BizApps Voting",
   "description": "Secret, verifiable, embeddable voting (motions, elections, referendums and polls) for any app built on MemberJunction",
-  "version": "0.0.0",
+  "version": "6.3.0-edge.1",
   "license": "BUSL-1.1",
   "icon": "fa-solid fa-check-to-slot",
   "color": "#264FAF",
@@ -17,7 +17,7 @@
   "mjVersionRange": ">=6.3.0-edge.1 <7.0.0",
   "dependencies": {
     "mj-bizapps-common": {
-      "version": ">=5.59.0 <6.0.0",
+      "version": ">=5.59.0 <7.0.0",
       "repository": "https://github.com/MemberJunction/bizapps-common"
     }
   },

@@ -1,6 +1,6 @@
 {
   "name": "@mj-biz-apps/voting-server",
-  "version": "0.0.0",
+  "version": "6.3.0-edge.1",
   "type": "module",
   "description": "Server bootstrap package - loaded by MJAPI at startup via the manifest's startupExport. TODO(template): rename.",
   "main": "dist/index.js",
@@ -32,11 +32,11 @@
   },
   "license": "BUSL-1.1",
   "dependencies": {
-    "@mj-biz-apps/voting-actions": "0.0.0",
-    "@mj-biz-apps/voting-core-entities-server": "0.0.0",
-    "@mj-biz-apps/voting-entities": "0.0.0",
+    "@mj-biz-apps/voting-actions": "6.3.0-edge.1",
+    "@mj-biz-apps/voting-core-entities-server": "6.3.0-edge.1",
+    "@mj-biz-apps/voting-entities": "6.3.0-edge.1",
     "class-validator": "^0.14.3",
-    "@mj-biz-apps/voting-engine-base": "0.0.0",
+    "@mj-biz-apps/voting-engine-base": "6.3.0-edge.1",
     "body-parser": "^2.2.0"
   },
   "peerDependencies": {
@@ -55,7 +55,7 @@
     "@memberjunction/scheduling-base-types": "^6.3.0-edge.1",
     "@memberjunction/actions": "^6.3.0-edge.1",
     "@memberjunction/actions-base": "^6.3.0-edge.1",
-    "@mj-biz-apps/common-entities": "^5.59.0"
+    "@mj-biz-apps/common-entities": ">=5.59.0 <7.0.0"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

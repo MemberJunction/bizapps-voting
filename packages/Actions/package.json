@@ -1,6 +1,6 @@
 {
   "name": "@mj-biz-apps/voting-actions",
-  "version": "0.0.0",
+  "version": "6.3.0-edge.1",
   "type": "module",
   "description": "MJ Actions exposed by this app (generated subclasses + hand-written actions). TODO(template): rename.",
   "main": "dist/index.js",
@@ -22,7 +22,7 @@
   "license": "BUSL-1.1",
   "dependencies": {
     "zod": "^3.25.76",
-    "@mj-biz-apps/voting-entities": "0.0.0"
+    "@mj-biz-apps/voting-entities": "6.3.0-edge.1"
   },
   "peerDependencies": {
     "@memberjunction/actions": "^6.3.0-edge.1",
