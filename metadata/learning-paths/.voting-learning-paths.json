@@ -1,0 +1,44 @@
+[
+  {
+    "fields": {
+      "Name": "Elections & Cryptographic Voting",
+      "PathKey": "voting.essentials",
+      "Description": "Master the voter ballot and receipt verification flow alongside election administration, threshold trustee shares, and certified tallies.",
+      "ApplicationID": "@lookup:MJ: Applications.Name=BizApps Voting",
+      "Status": "Active",
+      "Configuration": {
+        "AllowSkipOptional": true,
+        "ShowNextConcreteStep": true
+      }
+    },
+    "primaryKey": {
+      "ID": "5E465251-FEF5-4F08-A55A-8547E3B4E026"
+    },
+    "relatedEntities": {
+      "MJ: Tour Learning Path Tour Links": [
+        {
+          "fields": {
+            "TourID": "@lookup:MJ: Tours.TourKey=voting.cast-ballot",
+            "Sequence": 1,
+            "IsRequired": true,
+            "TourLearningPathID": "@parent:ID"
+          },
+          "primaryKey": {
+            "ID": "D049D137-09D9-40C3-9B7B-05163338E251"
+          }
+        },
+        {
+          "fields": {
+            "TourID": "@lookup:MJ: Tours.TourKey=voting.elections-admin",
+            "Sequence": 2,
+            "IsRequired": true,
+            "TourLearningPathID": "@parent:ID"
+          },
+          "primaryKey": {
+            "ID": "21189840-4B66-465E-A48D-E5C3C315D93B"
+          }
+        }
+      ]
+    }
+  }
+]
