@@ -11,6 +11,9 @@
     "entity-permissions",
     "user-roles",
     "api-scopes",
-    "api-application-scopes"
+    "api-application-scopes",
+    "tours",
+    "learning-paths",
+    "tour-publications"
   ]
 }

@@ -1,0 +1,303 @@
+[
+  {
+    "fields": {
+      "Name": "Voter Experience: Ranked, Approval & Secret Ballots",
+      "TourKey": "voting.cast-ballot",
+      "Description": "Walk through the voter ballot experience in My Ballot: open election discovery, eligibility verification, ranked and approval contests, ballot submission, and cryptographic receipts.",
+      "ApplicationID": "@lookup:MJ: Applications.Name=BizApps Voting",
+      "RunInAuthenticatedHosts": true,
+      "Status": "Draft",
+      "EstimatedMinutes": 2,
+      "Priority": 85,
+      "DefaultGuideMode": "Visual",
+      "AllowAgentActions": false,
+      "Goal": {
+        "Type": "Navigation",
+        "AppName": "BizApps Voting",
+        "Description": "Voter learns VotingBallotResource: checking eligibility, completing ranked/approval contests, submitting ballots, and verifying receipts."
+      },
+      "StartLocation": {
+        "Application": "BizApps Voting",
+        "DriverClass": "VotingBallotResource"
+      }
+    },
+    "primaryKey": {
+      "ID": "128B8750-E658-4C4A-BD99-2C832B84742C"
+    },
+    "relatedEntities": {
+      "MJ: Tour Steps": [
+        {
+          "fields": {
+            "TourID": "@parent:ID",
+            "StepKey": "voting-ballot-welcome",
+            "Sequence": 1,
+            "StepTypeID": "@lookup:MJ: Tour Step Types.Name=Modal",
+            "Title": "Welcome to My Ballot",
+            "Body": "In **My Ballot**, voters see every open election they are eligible to vote in — supporting single-choice, approval, and ranked-choice contests with **Open**, **Confidential**, or **Secret** secrecy modes.",
+            "Configuration": {
+              "Variant": "welcome",
+              "PrimaryButtonText": "Explore My Ballot",
+              "ShowProgress": true
+            },
+            "Placement": "Center",
+            "Mode": "Show",
+            "Completion": {
+              "Type": "NextButton"
+            },
+            "OnMissing": "Center",
+            "IsOptional": false
+          },
+          "primaryKey": {
+            "ID": "84ABFA40-98B3-45AF-9C11-E87CC6BD2616"
+          }
+        },
+        {
+          "fields": {
+            "TourID": "@parent:ID",
+            "StepKey": "voting-ballot-eligibility",
+            "Sequence": 2,
+            "StepTypeID": "@lookup:MJ: Tour Step Types.Name=Spotlight",
+            "Title": "Eligible Voter Verification & Contests",
+            "Body": "Opening an election runs server-authoritative eligibility verification (`Voting.GetMyBallot`) and displays live contest validation so undervotes, overvotes, and ranking rules are checked before review.",
+            "Configuration": {
+              "ShowProgress": true
+            },
+            "Anchor": {
+              "Strategy": "Registered",
+              "Key": "voting.ballot.open-elections"
+            },
+            "Placement": "Bottom",
+            "Mode": "Guide",
+            "Completion": {
+              "Type": "NextButton"
+            },
+            "OnMissing": "Center",
+            "IsOptional": false
+          },
+          "primaryKey": {
+            "ID": "AE7EB5FD-C65E-4C28-A60E-FDE0C3C2AC6D"
+          }
+        },
+        {
+          "fields": {
+            "TourID": "@parent:ID",
+            "StepKey": "voting-ballot-submit",
+            "Sequence": 3,
+            "StepTypeID": "@lookup:MJ: Tour Step Types.Name=Spotlight",
+            "Title": "Review, Cast & Cryptographic Receipt",
+            "Body": "Confirm your selections on the **Review your ballot** screen before `Voting.CastBallot` records your vote. Secret ballots separate your choices from your identity and return a unique receipt code.",
+            "Configuration": {
+              "ShowProgress": true
+            },
+            "Anchor": {
+              "Strategy": "Registered",
+              "Key": "voting.ballot.review-cast"
+            },
+            "Placement": "Bottom",
+            "Mode": "Guide",
+            "Completion": {
+              "Type": "NextButton"
+            },
+            "OnMissing": "Center",
+            "IsOptional": false
+          },
+          "primaryKey": {
+            "ID": "AB75115E-AF35-463F-A028-59B26FB6D0B7"
+          }
+        },
+        {
+          "fields": {
+            "TourID": "@parent:ID",
+            "StepKey": "voting-ballot-summary",
+            "Sequence": 4,
+            "StepTypeID": "@lookup:MJ: Tour Step Types.Name=Modal",
+            "Title": "Verify Inclusion Without Revealing Choices",
+            "Body": "Use your receipt code anytime in **Receipt Verification** to confirm your ballot was included in the tally — next, explore election administration, threshold trustee keys, and certification.",
+            "Configuration": {
+              "Variant": "summary",
+              "PrimaryButtonText": "Finish",
+              "NextTourKey": "voting.elections-admin",
+              "ShowProgress": true
+            },
+            "Placement": "Center",
+            "Mode": "Show",
+            "Completion": {
+              "Type": "NextButton"
+            },
+            "OnMissing": "Center",
+            "IsOptional": false
+          },
+          "primaryKey": {
+            "ID": "7ADC0195-1A70-4944-95A6-74C2E5998230"
+          }
+        }
+      ],
+      "MJ: Tour Triggers": [
+        {
+          "fields": {
+            "TourID": "@parent:ID",
+            "TriggerType": "FirstVisit",
+            "Configuration": {
+              "Application": "BizApps Voting"
+            },
+            "Delivery": "Offer",
+            "CooldownDays": 30,
+            "Priority": 85,
+            "Status": "Active"
+          },
+          "primaryKey": {
+            "ID": "8F9F0526-AD88-498C-A073-1B08E048DD82"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "fields": {
+      "Name": "Election Administration, Tallies & Trustee Shares",
+      "TourKey": "voting.elections-admin",
+      "Description": "Configure elections, orchestrate k-of-n threshold trustee key ceremonies, run reproducible tallies, and certify official results.",
+      "ApplicationID": "@lookup:MJ: Applications.Name=BizApps Voting",
+      "RunInAuthenticatedHosts": true,
+      "Status": "Draft",
+      "EstimatedMinutes": 3,
+      "Priority": 80,
+      "DefaultGuideMode": "Visual",
+      "AllowAgentActions": false,
+      "Goal": {
+        "Type": "Navigation",
+        "AppName": "BizApps Voting",
+        "Description": "Administrator learns VotingElectionsResource and VotingTrusteeShareResource: key ceremonies, threshold shares, tallies, and certification."
+      },
+      "StartLocation": {
+        "Application": "BizApps Voting",
+        "DriverClass": "VotingElectionsResource"
+      }
+    },
+    "primaryKey": {
+      "ID": "71CC8D87-11D0-4557-ADDE-A969EC7966E2"
+    },
+    "relatedEntities": {
+      "MJ: Tour Steps": [
+        {
+          "fields": {
+            "TourID": "@parent:ID",
+            "StepKey": "voting-admin-welcome",
+            "Sequence": 1,
+            "StepTypeID": "@lookup:MJ: Tour Step Types.Name=Modal",
+            "Title": "Election Administration & Lifecycle",
+            "Body": "The **Elections** console guides administrators from setup wizard and voter-roll management through high-assurance key ceremonies, closing polls, tallying, and formal certification.",
+            "Configuration": {
+              "Variant": "welcome",
+              "PrimaryButtonText": "Explore Elections Admin",
+              "ShowProgress": true
+            },
+            "Placement": "Center",
+            "Mode": "Show",
+            "Completion": {
+              "Type": "NextButton"
+            },
+            "OnMissing": "Center",
+            "IsOptional": false
+          },
+          "primaryKey": {
+            "ID": "59DFEA9E-EBC3-41AE-A4BF-5856D70729F1"
+          }
+        },
+        {
+          "fields": {
+            "TourID": "@parent:ID",
+            "StepKey": "voting-admin-trustees",
+            "Sequence": 2,
+            "StepTypeID": "@lookup:MJ: Tour Step Types.Name=Spotlight",
+            "Title": "Threshold Trustee Key Ceremonies",
+            "Body": "For high-assurance elections, select trustees and a **k-of-n threshold** in the **Trustees** tab. Trustees submit their individual shares in **Trustee Share** (`VotingTrusteeShareResource`) to unlock the ballot box.",
+            "Configuration": {
+              "ShowProgress": true
+            },
+            "Anchor": {
+              "Strategy": "Registered",
+              "Key": "voting.elections.trustees"
+            },
+            "Placement": "Bottom",
+            "Mode": "Guide",
+            "Completion": {
+              "Type": "NextButton"
+            },
+            "OnMissing": "Center",
+            "IsOptional": false
+          },
+          "primaryKey": {
+            "ID": "1FE35079-39D2-4E11-9CEA-13DF6C56896A"
+          }
+        },
+        {
+          "fields": {
+            "TourID": "@parent:ID",
+            "StepKey": "voting-admin-tally",
+            "Sequence": 3,
+            "StepTypeID": "@lookup:MJ: Tour Step Types.Name=Spotlight",
+            "Title": "Close Voting & Reproducible Tallies",
+            "Body": "In **Close & Tally**, close the election to freeze ballot intake and compute contest outcomes. You can supply a tie-break seed so any draw by lot is deterministically reproducible by auditors.",
+            "Configuration": {
+              "ShowProgress": true
+            },
+            "Anchor": {
+              "Strategy": "Registered",
+              "Key": "voting.elections.tally"
+            },
+            "Placement": "Bottom",
+            "Mode": "Guide",
+            "Completion": {
+              "Type": "NextButton"
+            },
+            "OnMissing": "Center",
+            "IsOptional": false
+          },
+          "primaryKey": {
+            "ID": "610D3546-9EF6-4776-BFF5-A6BC7199F37E"
+          }
+        },
+        {
+          "fields": {
+            "TourID": "@parent:ID",
+            "StepKey": "voting-admin-summary",
+            "Sequence": 4,
+            "StepTypeID": "@lookup:MJ: Tour Step Types.Name=Modal",
+            "Title": "Certify & Print Official Reports",
+            "Body": "Lock final outcomes in **Results & Certification** (`VotingResultsResource`), generate printable audit reports, and verify voter receipt proofs against the certified tally.",
+            "Configuration": {
+              "Variant": "summary",
+              "PrimaryButtonText": "Finish",
+              "ShowProgress": true
+            },
+            "Placement": "Center",
+            "Mode": "Show",
+            "Completion": {
+              "Type": "NextButton"
+            },
+            "OnMissing": "Center",
+            "IsOptional": false
+          },
+          "primaryKey": {
+            "ID": "63AC3C67-CEFD-441C-866D-CC170F83AE28"
+          }
+        }
+      ],
+      "MJ: Tour Prerequisites": [
+        {
+          "fields": {
+            "TourID": "@parent:ID",
+            "PrerequisiteType": "Tour",
+            "RequiredTourID": "@lookup:MJ: Tours.TourKey=voting.cast-ballot",
+            "Strength": "Recommended",
+            "Sequence": 1
+          },
+          "primaryKey": {
+            "ID": "9229179E-9303-4D49-A291-964316961D92"
+          }
+        }
+      ]
+    }
+  }
+]
