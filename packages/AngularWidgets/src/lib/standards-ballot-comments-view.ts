@@ -84,14 +84,28 @@ export class StandardsBallotCommentsViewComponent extends BaseElectionResultsVie
     this.cdr.markForCheck();
     try {
       const rv = new RunView(this.RunViewToUse);
-      const election = await rv.RunView<{ SecrecyMode: string }>({
-        EntityName: ELECTIONS,
-        ExtraFilter: IdListFilter('ID', [this.ElectionID]),
-        Fields: ['SecrecyMode'],
-        ResultType: 'simple',
-      });
-      this.IsOpenBallot = election.Success && election.Results[0]?.SecrecyMode === 'Open';
-      this.Rows = this.IsOpenBallot ? await this.LoadRows(rv) : [];
+      const [election, contests] = await rv.RunViews([
+        {
+          EntityName: ELECTIONS,
+          ExtraFilter: IdListFilter('ID', [this.ElectionID]),
+          Fields: ['SecrecyMode'],
+          ResultType: 'simple',
+        },
+        {
+          EntityName: CONTESTS,
+          ExtraFilter: `ElectionID = '${this.ElectionID.replace(/[^0-9a-fA-F-]/g, '')}'`,
+          Fields: ['ID', 'Name', 'Sequence'],
+          ResultType: 'simple',
+        },
+      ]);
+      const electionRows = election.Success ? (election.Results as Array<{ SecrecyMode: string }>) : [];
+      this.IsOpenBallot = election.Success && electionRows[0]?.SecrecyMode === 'Open';
+      if (!this.IsOpenBallot) {
+        this.Rows = [];
+      } else {
+        if (!contests.Success) throw new Error(contests.ErrorMessage || 'The items could not be loaded.');
+        this.Rows = await this.LoadRows(rv, contests.Results as ContestRowSource[]);
+      }
       this.Summary = SummarizeComments(this.Rows);
     } catch (e) {
       this.ErrorMessage = e instanceof Error ? e.message : 'The comments could not be loaded.';
@@ -101,18 +115,11 @@ export class StandardsBallotCommentsViewComponent extends BaseElectionResultsVie
     }
   }
 
-  private async LoadRows(rv: RunView): Promise<CommentRow[]> {
-    const contests = await rv.RunView<ContestRowSource>({
-      EntityName: CONTESTS,
-      ExtraFilter: `ElectionID = '${this.ElectionID.replace(/[^0-9a-fA-F-]/g, '')}'`,
-      Fields: ['ID', 'Name', 'Sequence'],
-      ResultType: 'simple',
-    });
-    if (!contests.Success) throw new Error(contests.ErrorMessage || 'The items could not be loaded.');
-    if (contests.Results.length === 0) return [];
+  private async LoadRows(rv: RunView, contestRows: ContestRowSource[]): Promise<CommentRow[]> {
+    if (contestRows.length === 0) return [];
     const comments = await rv.RunView<CommentRowSource>({
       EntityName: BALLOT_COMMENTS,
-      ExtraFilter: IdListFilter('ContestID', contests.Results.map((c) => c.ID)),
+      ExtraFilter: IdListFilter('ContestID', contestRows.map((c) => c.ID)),
       Fields: ['ID', 'ContestID', 'Sequence', 'CommentType', 'DocumentReference', 'Comment', 'ProposedChange'],
       ResultType: 'simple',
     });
@@ -125,6 +132,6 @@ export class StandardsBallotCommentsViewComponent extends BaseElectionResultsVie
       ResultType: 'simple',
     });
     if (!resolutions.Success) throw new Error(resolutions.ErrorMessage || 'The resolutions could not be loaded.');
-    return BuildCommentRows(comments.Results, resolutions.Results, contests.Results);
+    return BuildCommentRows(comments.Results, resolutions.Results, contestRows);
   }
 }

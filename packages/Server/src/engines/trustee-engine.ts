@@ -29,10 +29,11 @@ import { ElectionAudit } from '../shared/audit.js';
 import { SystemContext } from '../shared/system-user.js';
 import { type EngineResult, type VotingContext, Fail, IsFailure, Ok, PassFailure, RunViewOf } from '../shared/types.js';
 import { SqlLiteral } from '../shared/voter-identity.js';
-import { ErrorText, FindPersonForUser, GetPerson, LoadElectionEntity, SaveOrThrow, RunTransactional } from './person-support.js';
+import { ErrorText, FindPersonForUser, LoadElectionEntity, SaveOrThrow, RunTransactional } from './person-support.js';
 
 const TRUSTEES_ENTITY = 'MJ_BizApps_Voting: Election Trustees';
 const COMMITMENTS_ENTITY = 'MJ_BizApps_Voting: Trustee Key Commitments';
+const PEOPLE_ENTITY = 'MJ_BizApps_Common: People';
 const RSA_MODULUS_BITS = 3072;
 
 export interface CreateTrusteeKeysValue {
@@ -96,10 +97,19 @@ export class TrusteeEngine extends BaseSingleton<TrusteeEngine> {
             return Fail('KeysLocked', 'Trustee keys can be created only while the election is in Draft or Ready.');
         }
         if (election.ElectionPublicKey) return Fail('KeysAlreadyCreated', 'This election already has trustee keys.');
-        const existing = await this.loadTrustees(election.ID, ctx);
-        if (existing.length > 0) return Fail('KeysAlreadyCreated', 'This election already has trustees.');
+        const [existingRes, peopleRes] = await RunViewOf(ctx).RunViews(
+            [
+                { EntityName: TRUSTEES_ENTITY, ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)}`, Fields: ['ID'], MaxRows: 1, ResultType: 'simple' },
+                { EntityName: PEOPLE_ENTITY, ExtraFilter: `ID IN (${trusteeIDs.map(SqlLiteral).join(',')})`, Fields: ['ID'], ResultType: 'simple' },
+            ],
+            ctx.ContextUser
+        );
+        if (existingRes.Success && existingRes.Results.length > 0) return Fail('KeysAlreadyCreated', 'This election already has trustees.');
+        const foundPersonIds = new Set(
+            (peopleRes.Success ? (peopleRes.Results as Array<{ ID: string }>) : []).map((p) => p.ID.toLowerCase())
+        );
         for (const personID of trusteeIDs) {
-            if (!(await GetPerson(personID, ctx))) return Fail('TrusteeNotFound', 'A named trustee is not a known person.');
+            if (!foundPersonIds.has(personID.toLowerCase())) return Fail('TrusteeNotFound', 'A named trustee is not a known person.');
         }
 
         const pair = await generateRsaPair();

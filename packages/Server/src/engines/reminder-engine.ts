@@ -86,16 +86,17 @@ export class ReminderEngine extends BaseSingleton<ReminderEngine> {
         if (!providerName || !from) return Fail('NoMailProvider', 'No email provider or sender is configured for reminders.');
 
         const rv = RunViewOf(ctx);
-        const roll = await rv.RunView<VoterRef>(
-            { EntityName: VOTERS_ENTITY, ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)} AND Status = 'Eligible'`, Fields: ['ID', 'PersonID'], ResultType: 'simple' },
-            ctx.ContextUser
-        );
-        const voted = await rv.RunView<{ EligibleVoterID: string }>(
-            { EntityName: PARTICIPATIONS_ENTITY, ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)}`, Fields: ['EligibleVoterID'], ResultType: 'simple' },
+        const [roll, voted] = await rv.RunViews(
+            [
+                { EntityName: VOTERS_ENTITY, ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)} AND Status = 'Eligible'`, Fields: ['ID', 'PersonID'], ResultType: 'simple' },
+                { EntityName: PARTICIPATIONS_ENTITY, ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)}`, Fields: ['EligibleVoterID'], ResultType: 'simple' },
+            ],
             ctx.ContextUser
         );
         if (!roll.Success || !voted.Success) return Fail('LoadFailed', 'The poll book could not be read.');
-        const nonVoters = SelectNonVoters(roll.Results, new Set(voted.Results.map((v) => v.EligibleVoterID.toLowerCase())));
+        const rollRows = roll.Results as VoterRef[];
+        const votedRows = voted.Results as Array<{ EligibleVoterID: string }>;
+        const nonVoters = SelectNonVoters(rollRows, new Set(votedRows.map((v) => v.EligibleVoterID.toLowerCase())));
 
         const contacts = await this.loadContacts(nonVoters.map((v) => v.PersonID), ctx);
         const content = BuildReminderText(election.Name, election.ClosesAt ? new Date(election.ClosesAt) : null, options.BallotUrl);

@@ -1,6 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import type { IMetadataProvider, IRunViewProvider, RunViewParams, UserInfo } from '@memberjunction/core';
 import type { BallotStyle, BallotSubmission } from '@mj-biz-apps/voting-entities';
 import {
+    RunViewStandardsBallotFactSource,
     StandardsBallotServerDriver,
     StandardsCastIssues,
     StandardsContestShapeIssues,
@@ -11,7 +13,7 @@ import {
     type StandardsContestFacts,
     type StandardsExtensionFacts,
 } from '../drivers/standards-ballot-server-driver.js';
-import type { BallotStyleContext, CastValidationContext, ElectionChangeContext } from '../drivers/base-election-type-server-driver.js';
+import type { BallotStyleContext, CastValidationContext, DriverBaseContext, ElectionChangeContext } from '../drivers/base-election-type-server-driver.js';
 
 const item = (id: string, overrides: Partial<StandardsContestFacts> = {}): StandardsContestFacts => ({
     ContestID: id,
@@ -152,5 +154,31 @@ describe('StandardsBallotServerDriver', () => {
         expect(await d.ValidateBallotStyle({ Style: style } as unknown as BallotStyleContext)).toMatch(/comment/);
         const cast = { Submission: { Contests: [{ ContestID: 'c1', Selections: [{ OptionID: 'c1-d' }] }] }, Election: { ID: 'e', IsSaved: true } } as unknown as CastValidationContext;
         expect(await d.ValidateCast(cast)).toMatch(/comment/);
+    });
+});
+
+describe('RunViewStandardsBallotFactSource.LoadPrior', () => {
+    it('batches Election and Standards Ballot Extension reads into a single RunViews call', async () => {
+        const runView = vi.fn();
+        const runViews = vi.fn(async (params: RunViewParams[]) => [
+            { Success: true, Results: [{ ID: 'p-1', Status: 'Certified', ElectionTypeID: 't-1' }] },
+            { Success: true, Results: [{ DocumentTitle: 'Std 100' }] },
+        ]);
+        const provider = { RunView: runView, RunViews: runViews } as unknown as IMetadataProvider & IRunViewProvider;
+        const ctx = {
+            Provider: provider,
+            ContextUser: { ID: 'u-1' } as UserInfo,
+        } as unknown as DriverBaseContext;
+
+        const facts = await new RunViewStandardsBallotFactSource().LoadPrior(ctx, '11111111-1111-1111-1111-111111111111');
+        expect(runView).not.toHaveBeenCalled();
+        expect(runViews).toHaveBeenCalledTimes(1);
+        expect(runViews.mock.calls[0][0]).toHaveLength(2);
+        expect(facts).toEqual({
+            ElectionID: 'p-1',
+            Status: 'Certified',
+            ElectionTypeID: 't-1',
+            DocumentTitle: 'Std 100',
+        });
     });
 });

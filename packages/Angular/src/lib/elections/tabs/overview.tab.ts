@@ -453,7 +453,8 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
         this.LoadError = null;
         try {
             const rv = RunView.FromMetadataProvider(this.ProviderToUse);
-            const [e, c] = await rv.RunViews([
+            const includeAnchors = this.CanRead(ANCHOR_ENTITY);
+            const [e, c, a] = await rv.RunViews([
                 {
                     EntityName: 'MJ_BizApps_Voting: Elections',
                     ExtraFilter: `ID='${this.ElectionID}'`,
@@ -471,9 +472,20 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
                     ResultType: 'simple',
                     Fields: ['ID', 'Name', 'Kind', 'Seats', 'TallyMethod', 'Threshold'],
                 },
+                ...(includeAnchors
+                    ? [
+                          {
+                              EntityName: ANCHOR_ENTITY,
+                              ExtraFilter: `ElectionID='${this.ElectionID}'`,
+                              OrderBy: 'Sequence',
+                              ResultType: 'simple' as const,
+                              Fields: ['ID', 'Entity', 'RecordID', 'Role', 'IsPrimary'],
+                          },
+                      ]
+                    : []),
             ]);
-            if (!e.Success || !c.Success) {
-                throw new Error(e.ErrorMessage || c.ErrorMessage || 'The election could not be loaded.');
+            if (!e.Success || !c.Success || (includeAnchors && a && !a.Success)) {
+                throw new Error(e.ErrorMessage || c.ErrorMessage || a?.ErrorMessage || 'The election could not be loaded.');
             }
             const rows = e.Results as ElectionRow[];
             this.Election = rows[0] ?? null;
@@ -481,7 +493,7 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
                 throw new Error('The election was not found, or you do not have access to it.');
             }
             this.Contests = c.Results as ContestRow[];
-            this.Anchors = await this.LoadAnchors();
+            this.Anchors = includeAnchors && a ? (a.Results as AnchorRow[]) : [];
             await this.LoadNominations();
         } catch (error) {
             LogError('[VotingElections] Overview load failed', undefined, error);
@@ -500,24 +512,6 @@ export class OverviewTabComponent extends BaseElectionAdminTab implements OnChan
         const user = this.ProviderToUse.CurrentUser;
         const entity = this.ProviderToUse.Entities.find((x) => x.Name === entityName);
         return !!user && !!entity && entity.GetUserPermisions(user).CanRead;
-    }
-
-    /** The election's linked records, when the user may read them. */
-    private async LoadAnchors(): Promise<AnchorRow[]> {
-        if (!this.CanRead(ANCHOR_ENTITY)) {
-            return [];
-        }
-        const res = await RunView.FromMetadataProvider(this.ProviderToUse).RunView<AnchorRow>({
-            EntityName: ANCHOR_ENTITY,
-            ExtraFilter: `ElectionID='${this.ElectionID}'`,
-            OrderBy: 'Sequence',
-            ResultType: 'simple',
-            Fields: ['ID', 'Entity', 'RecordID', 'Role', 'IsPrimary'],
-        });
-        if (!res.Success) {
-            throw new Error(res.ErrorMessage || 'The election could not be loaded.');
-        }
-        return res.Results;
     }
 
     /** Nominations of the election's office contests. A failure shows in the panel and does not block the overview. */

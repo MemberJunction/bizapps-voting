@@ -44,6 +44,16 @@ free. Lazy-load with `await MyEngine.Instance.Config(false, user, provider)`
 at every entry point. Don't bulk-cache entities with huge columns — use
 targeted `RunView` filters for those.
 
+## The 5-Rule BizApps Performance & Caching Standard
+
+In `bizapps-voting`, follow these five rules everywhere (full details in [`AGENTS.md`](../../AGENTS.md) and [`CLAUDE.md`](../../CLAUDE.md)):
+
+1. **`BaseEngine` taxonomy & lookup caching:** Use `VotingEngineBase` (`@mj-biz-apps/voting-engine-base`) with `CacheLocal: true` and O(1) lazy maps for the four shared non-RLS taxonomy tables (`Election Types`, `Tally Methods`, `Eligibility Source Types`, `Voter Credential Methods`). Never re-query them via `RunView`.
+2. **Multi-provider, impersonation & RLS `CacheLocal` safety:** Override `ProviderToUse` (`return this._activeProvider ?? Metadata.Provider;`), invalidate automatically on `_loadedForUserId` switch, expose `InvalidateCache()`, gate entity loads with `CanRead` (clearing restricted slices), and keep `CacheLocal: false` on any RLS-scoped entity.
+3. **`rv.RunViews([...])` batching:** Zero `Promise.all([rv.RunView(...), ...])`, sequential independent `await rv.RunView(...)` waterfalls, or N+1 `RunView` loops. Always batch with `rv.RunViews([...])` on the active provider (`RunView.FromMetadataProvider(provider)` / `RunViewOf(ctx)`), defaulting to `ResultType: 'simple'` + `Fields: [...]`.
+4. **`ConversationEngine`-style bounded container caching:** Use a bounded per-container cache with an explicit entry cap and `BaseEntity` event invalidation when needed — NEVER bulk-cache unbounded transactional tables (`Cast Ballots`, `Ballot Selections`, `Participations`, `Voter Credentials`, `Election Audit Events`) or arbitrary filtered lists.
+5. **RLS-safe two-step entity reads:** Never bypass RLS with raw SQL subqueries over restricted base views. Resolve accessible parent IDs via first-class `RunView`, query children with chunked `IN (...)` filters, and handle `!res.Success` explicitly.
+
 ## Server-side caching (know it exists)
 
 MJAPI trusts its local cache completely (BaseEntity events invalidate it);

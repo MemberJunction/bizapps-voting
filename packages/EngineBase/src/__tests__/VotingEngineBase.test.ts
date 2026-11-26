@@ -1,10 +1,12 @@
 /**
  * Unit tests for VotingEngineBase.
- * Tests caching, lookup logic, active filtering, and configuration parsing
- * WITHOUT a database: uses a test subclass with a protected seam for injecting test data.
+ * Tests caching, lookup logic, active filtering, configuration parsing, active ProviderToUse,
+ * user-switch invalidation, InvalidateCache, and CanRead permission gating WITHOUT a database.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { BaseEnginePropertyConfig, IMetadataProvider, UserInfo } from '@memberjunction/core';
+import { ElectionSubtypeDirectory } from '@mj-biz-apps/voting-entities';
 import type {
     mjBizAppsVotingElectionTypeEntity,
     mjBizAppsVotingTallyMethodEntity,
@@ -14,37 +16,114 @@ import type {
 import { VotingEngineBase } from '../VotingEngineBase.js';
 import type { IElectionTypeConfiguration } from '@mj-biz-apps/voting-entities/contracts';
 
+interface RecordedLoadCall {
+    Configs: Array<Partial<BaseEnginePropertyConfig>>;
+    Provider: IMetadataProvider | undefined;
+    ForceRefresh: boolean;
+    ContextUser: UserInfo | undefined;
+}
+
 /**
- * Test subclass that allows us to inject test data without a database.
- * Exposes the protected SetCachesForTest method to load test fixtures.
+ * Test subclass that allows injecting test data and observing Load() invocations without a database.
  */
 class VotingEngineBaseForTest extends VotingEngineBase {
-    /**
-     * Test seam: directly set the internal caches.
-     * This simulates what Config() would load from the database.
-     */
-    protected SetCachesForTest(
+    public LoadCalls: RecordedLoadCall[] = [];
+    public NextLoadData: {
+        electionTypes?: mjBizAppsVotingElectionTypeEntity[];
+        tallyMethods?: mjBizAppsVotingTallyMethodEntity[];
+        eligibilitySourceTypes?: mjBizAppsVotingEligibilitySourceTypeEntity[];
+        voterCredentialMethods?: mjBizAppsVotingVoterCredentialMethodEntity[];
+    } = {};
+    private _simulatedLoaded = false;
+
+    public constructor() {
+        super();
+    }
+
+    public override get Loaded(): boolean {
+        return this._simulatedLoaded;
+    }
+
+    protected override async Load(
+        configs: Array<Partial<BaseEnginePropertyConfig>>,
+        provider?: IMetadataProvider,
+        forceRefresh?: boolean,
+        contextUser?: UserInfo
+    ): Promise<void> {
+        this.LoadCalls.push({
+            Configs: configs,
+            Provider: provider,
+            ForceRefresh: Boolean(forceRefresh),
+            ContextUser: contextUser,
+        });
+
+        if (forceRefresh || !this._simulatedLoaded) {
+            for (const cfg of configs) {
+                if (cfg.PropertyName === '_electionTypes' && this.NextLoadData.electionTypes) {
+                    this.SetField('_electionTypes', this.NextLoadData.electionTypes);
+                } else if (cfg.PropertyName === '_tallyMethods' && this.NextLoadData.tallyMethods) {
+                    this.SetField('_tallyMethods', this.NextLoadData.tallyMethods);
+                } else if (cfg.PropertyName === '_eligibilitySourceTypes' && this.NextLoadData.eligibilitySourceTypes) {
+                    this.SetField('_eligibilitySourceTypes', this.NextLoadData.eligibilitySourceTypes);
+                } else if (cfg.PropertyName === '_voterCredentialMethods' && this.NextLoadData.voterCredentialMethods) {
+                    this.SetField('_voterCredentialMethods', this.NextLoadData.voterCredentialMethods);
+                }
+            }
+            this._simulatedLoaded = true;
+            await this.AdditionalLoading(contextUser);
+        }
+    }
+
+    private SetField(name: string, value: object[]): void {
+        Reflect.set(this, name, value);
+    }
+
+    public SetCachesForTest(
         electionTypes: mjBizAppsVotingElectionTypeEntity[],
         tallyMethods: mjBizAppsVotingTallyMethodEntity[],
         eligibilitySourceTypes: mjBizAppsVotingEligibilitySourceTypeEntity[],
         voterCredentialMethods: mjBizAppsVotingVoterCredentialMethodEntity[]
     ): void {
-        // Access private properties via bracket notation (allowed in tests)
-        (this as any)._electionTypes = electionTypes;
-        (this as any)._tallyMethods = tallyMethods;
-        (this as any)._eligibilitySourceTypes = eligibilitySourceTypes;
-        (this as any)._voterCredentialMethods = voterCredentialMethods;
+        this.SetField('_electionTypes', electionTypes);
+        this.SetField('_tallyMethods', tallyMethods);
+        this.SetField('_eligibilitySourceTypes', eligibilitySourceTypes);
+        this.SetField('_voterCredentialMethods', voterCredentialMethods);
+        this._simulatedLoaded = true;
 
-        // Invalidate memoized indexes so they rebuild from the new data
-        (this as any)._electionTypesById = null;
-        (this as any)._electionTypesByCode = null;
-        (this as any)._tallyMethodsById = null;
-        (this as any)._tallyMethodsByCode = null;
-        (this as any)._eligibilitySourceTypesById = null;
-        (this as any)._eligibilitySourceTypesByCode = null;
-        (this as any)._voterCredentialMethodsById = null;
-        (this as any)._voterCredentialMethodsByCode = null;
+        Reflect.set(this, '_electionTypesById', null);
+        Reflect.set(this, '_electionTypesByCode', null);
+        Reflect.set(this, '_tallyMethodsById', null);
+        Reflect.set(this, '_tallyMethodsByCode', null);
+        Reflect.set(this, '_eligibilitySourceTypesById', null);
+        Reflect.set(this, '_eligibilitySourceTypesByCode', null);
+        Reflect.set(this, '_voterCredentialMethodsById', null);
+        Reflect.set(this, '_voterCredentialMethodsByCode', null);
     }
+
+    public GetElectionTypesByIdMapForTest(): Map<string, mjBizAppsVotingElectionTypeEntity> | null {
+        return Reflect.get(this, '_electionTypesById') as Map<string, mjBizAppsVotingElectionTypeEntity> | null;
+    }
+}
+
+function createMockUser(id: string): UserInfo {
+    return { ID: id, Name: `User ${id}` } as UserInfo;
+}
+
+function createMockProvider(
+    userId: string,
+    permissions: Record<string, boolean> = {}
+): IMetadataProvider {
+    const currentUser = createMockUser(userId);
+    const provider = {
+        CurrentUser: currentUser,
+        EntityByName: vi.fn((entityName: string) => ({
+            Name: entityName,
+            GetUserPermisions: (_user: UserInfo) => ({
+                CanRead: permissions[entityName] ?? true,
+            }),
+        })),
+    };
+    return provider as unknown as IMetadataProvider;
 }
 
 /**
@@ -66,7 +145,7 @@ function createMockElectionType(overrides: Partial<mjBizAppsVotingElectionTypeEn
         __mj_UpdatedAt: new Date(),
         ElectionExtensionEntity: null,
         ...overrides,
-    } as any;
+    } as mjBizAppsVotingElectionTypeEntity;
 }
 
 function createMockTallyMethod(overrides: Partial<mjBizAppsVotingTallyMethodEntity> = {}): mjBizAppsVotingTallyMethodEntity {
@@ -79,7 +158,7 @@ function createMockTallyMethod(overrides: Partial<mjBizAppsVotingTallyMethodEnti
         __mj_CreatedAt: new Date(),
         __mj_UpdatedAt: new Date(),
         ...overrides,
-    } as any;
+    } as mjBizAppsVotingTallyMethodEntity;
 }
 
 function createMockEligibilitySourceType(
@@ -94,7 +173,7 @@ function createMockEligibilitySourceType(
         __mj_CreatedAt: new Date(),
         __mj_UpdatedAt: new Date(),
         ...overrides,
-    } as any;
+    } as mjBizAppsVotingEligibilitySourceTypeEntity;
 }
 
 function createMockVoterCredentialMethod(
@@ -109,7 +188,7 @@ function createMockVoterCredentialMethod(
         __mj_CreatedAt: new Date(),
         __mj_UpdatedAt: new Date(),
         ...overrides,
-    } as any;
+    } as mjBizAppsVotingVoterCredentialMethodEntity;
 }
 
 describe('VotingEngineBase', () => {
@@ -401,15 +480,15 @@ describe('VotingEngineBase', () => {
             const result1 = engine.GetElectionTypeByID('id-1');
             expect(result1).toBeDefined();
 
-            // Verify the map is cached (accessing private property for test)
-            const cachedMap = (engine as any)._electionTypesById;
+            // Verify the map is cached
+            const cachedMap = engine.GetElectionTypesByIdMapForTest();
             expect(cachedMap).not.toBeNull();
             expect(cachedMap?.size).toBe(1);
 
             // Second call uses the cached map
             const result2 = engine.GetElectionTypeByID('id-1');
             expect(result2).toBe(result1);
-            expect((engine as any)._electionTypesById).toBe(cachedMap);
+            expect(engine.GetElectionTypesByIdMapForTest()).toBe(cachedMap);
         });
 
         it('should invalidate memoized indexes after SetCachesForTest', () => {
@@ -418,7 +497,7 @@ describe('VotingEngineBase', () => {
 
             // Build the index
             engine.GetElectionTypeByID('id-1');
-            const oldMap = (engine as any)._electionTypesById;
+            const oldMap = engine.GetElectionTypesByIdMapForTest();
             expect(oldMap).not.toBeNull();
 
             // Set new caches, which should invalidate the index
@@ -426,13 +505,13 @@ describe('VotingEngineBase', () => {
             engine.SetCachesForTest([type2], [], [], []);
 
             // Index should be null
-            expect((engine as any)._electionTypesById).toBeNull();
+            expect(engine.GetElectionTypesByIdMapForTest()).toBeNull();
 
             // Next lookup rebuilds it
             const result = engine.GetElectionTypeByID('id-2');
             expect(result).toBeDefined();
-            expect((engine as any)._electionTypesById).not.toBeNull();
-            expect((engine as any)._electionTypesById).not.toBe(oldMap);
+            expect(engine.GetElectionTypesByIdMapForTest()).not.toBeNull();
+            expect(engine.GetElectionTypesByIdMapForTest()).not.toBe(oldMap);
         });
     });
 
@@ -455,6 +534,144 @@ describe('VotingEngineBase', () => {
             expect(firstResult?.ID).toBe('id-0');
             expect(lastResult?.ID).toBe('id-999');
             expect(middleResult?.Code).toBe('code-500');
+        });
+    });
+
+    describe('Active ProviderToUse, User-Switch Invalidation, InvalidateCache, and CanRead Gating', () => {
+        it('routes ProviderToUse to the latest provider passed to Config() instead of latching the first', async () => {
+            const providerA = createMockProvider('user-a');
+            const providerB = createMockProvider('user-a');
+
+            await engine.Config(false, undefined, providerA);
+            expect(engine.ProviderToUse).toBe(providerA);
+            expect(engine.LoadCalls[0].Provider).toBe(providerA);
+
+            await engine.Config(false, undefined, providerB);
+            expect(engine.ProviderToUse).toBe(providerB);
+            expect(engine.LoadCalls[1].Provider).toBe(providerB);
+        });
+
+        it('uses CacheLocal: true on all four shared non-RLS taxonomy entities', async () => {
+            const provider = createMockProvider('user-a');
+            await engine.Config(false, undefined, provider);
+
+            expect(engine.LoadCalls).toHaveLength(1);
+            const configs = engine.LoadCalls[0].Configs;
+            expect(configs).toHaveLength(4);
+            expect(configs.map((c) => c.EntityName)).toEqual([
+                'MJ_BizApps_Voting: Election Types',
+                'MJ_BizApps_Voting: Tally Methods',
+                'MJ_BizApps_Voting: Eligibility Source Types',
+                'MJ_BizApps_Voting: Voter Credential Methods',
+            ]);
+            for (const cfg of configs) {
+                expect(cfg.CacheLocal).toBe(true);
+            }
+        });
+
+        it('forces a refresh automatically when the active user changes and tracks IsConfiguredForUser', async () => {
+            const providerA = createMockProvider('user-a');
+            const providerB = createMockProvider('user-b');
+
+            expect(engine.IsConfiguredForUser('user-a')).toBe(false);
+
+            await engine.Config(false, undefined, providerA);
+            expect(engine.LoadCalls[0].ForceRefresh).toBe(false);
+            expect(engine.IsConfiguredForUser('user-a')).toBe(true);
+            expect(engine.IsConfiguredForUser('USER-A')).toBe(true);
+            expect(engine.IsConfiguredForUser('user-b')).toBe(false);
+
+            // Same user again: does not force refresh
+            await engine.Config(false, undefined, providerA);
+            expect(engine.LoadCalls[1].ForceRefresh).toBe(false);
+
+            // Different user: automatically forces refresh
+            await engine.Config(false, undefined, providerB);
+            expect(engine.LoadCalls[2].ForceRefresh).toBe(true);
+            expect(engine.IsConfiguredForUser('user-b')).toBe(true);
+            expect(engine.IsConfiguredForUser('user-a')).toBe(false);
+        });
+
+        it('clears cached collections, lookup indexes, subtype directory, and forces next refresh on InvalidateCache()', async () => {
+            const type1 = createMockElectionType({
+                ID: 'type-1',
+                Code: 'standards',
+                ElectionExtensionEntity: 'MJ_BizApps_Voting: Standards Ballot Elections',
+            });
+            engine.NextLoadData = {
+                electionTypes: [type1],
+                tallyMethods: [createMockTallyMethod({ ID: 'tm-1', Code: 'plurality' })],
+                eligibilitySourceTypes: [createMockEligibilitySourceType({ ID: 'es-1', Code: 'csv' })],
+                voterCredentialMethods: [createMockVoterCredentialMethod({ ID: 'vc-1', Code: 'sso' })],
+            };
+            const provider = createMockProvider('user-a');
+
+            await engine.Config(false, undefined, provider);
+            expect(engine.GetElectionTypeByID('type-1')?.Code).toBe('standards');
+            expect(ElectionSubtypeDirectory.Instance.Get('type-1')).toBe('MJ_BizApps_Voting: Standards Ballot Elections');
+            expect(engine.IsConfiguredForUser('user-a')).toBe(true);
+
+            engine.InvalidateCache();
+            expect(engine.ElectionTypes).toHaveLength(0);
+            expect(engine.TallyMethods).toHaveLength(0);
+            expect(engine.EligibilitySourceTypes).toHaveLength(0);
+            expect(engine.VoterCredentialMethods).toHaveLength(0);
+            expect(engine.GetElectionTypesByIdMapForTest()).toBeNull();
+            expect(ElectionSubtypeDirectory.Instance.Get('type-1')).toBeUndefined();
+            expect(engine.IsConfiguredForUser('user-a')).toBe(false);
+
+            await engine.Config(false, undefined, provider);
+            expect(engine.LoadCalls[1].ForceRefresh).toBe(true);
+        });
+
+        it('skips entities where CanRead is false and clears stale slices across user switches', async () => {
+            engine.NextLoadData = {
+                electionTypes: [createMockElectionType({ ID: 'et-1', Code: 'motion' })],
+                tallyMethods: [createMockTallyMethod({ ID: 'tm-1', Code: 'plurality' })],
+                eligibilitySourceTypes: [createMockEligibilitySourceType({ ID: 'es-1', Code: 'csv' })],
+                voterCredentialMethods: [createMockVoterCredentialMethod({ ID: 'vc-1', Code: 'emailed-link' })],
+            };
+
+            const adminProvider = createMockProvider('admin-user');
+            await engine.Config(false, undefined, adminProvider);
+            expect(engine.VoterCredentialMethods).toHaveLength(1);
+            expect(engine.GetVoterCredentialMethodByCode('emailed-link')).toBeDefined();
+
+            // Switch to restricted user who cannot read Voter Credential Methods or Eligibility Source Types
+            const restrictedProvider = createMockProvider('restricted-user', {
+                'MJ_BizApps_Voting: Voter Credential Methods': false,
+                'MJ_BizApps_Voting: Eligibility Source Types': false,
+            });
+            await engine.Config(false, undefined, restrictedProvider);
+
+            expect(engine.LoadCalls[1].ForceRefresh).toBe(true);
+            expect(engine.LoadCalls[1].Configs.map((c) => c.EntityName)).toEqual([
+                'MJ_BizApps_Voting: Election Types',
+                'MJ_BizApps_Voting: Tally Methods',
+            ]);
+            // Stale restricted slices from admin user were cleared
+            expect(engine.VoterCredentialMethods).toHaveLength(0);
+            expect(engine.EligibilitySourceTypes).toHaveLength(0);
+            expect(engine.GetVoterCredentialMethodByCode('emailed-link')).toBeUndefined();
+            // Readable slices still populated
+            expect(engine.ElectionTypes).toHaveLength(1);
+            expect(engine.TallyMethods).toHaveLength(1);
+        });
+
+        it('handles a fully restricted user with CanRead=false on all taxonomy entities without calling Load()', async () => {
+            const fullyRestricted = createMockProvider('guest-user', {
+                'MJ_BizApps_Voting: Election Types': false,
+                'MJ_BizApps_Voting: Tally Methods': false,
+                'MJ_BizApps_Voting: Eligibility Source Types': false,
+                'MJ_BizApps_Voting: Voter Credential Methods': false,
+            });
+
+            await engine.Config(false, undefined, fullyRestricted);
+            expect(engine.LoadCalls).toHaveLength(0);
+            expect(engine.ElectionTypes).toHaveLength(0);
+            expect(engine.TallyMethods).toHaveLength(0);
+            expect(engine.EligibilitySourceTypes).toHaveLength(0);
+            expect(engine.VoterCredentialMethods).toHaveLength(0);
         });
     });
 });

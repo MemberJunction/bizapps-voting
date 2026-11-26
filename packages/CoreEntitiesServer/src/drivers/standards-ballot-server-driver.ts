@@ -227,19 +227,18 @@ export class RunViewStandardsBallotFactSource implements StandardsBallotFactSour
     public async LoadPrior(ctx: DriverBaseContext, electionId: string): Promise<PriorElectionFacts | null> {
         const rv = runViewOf(ctx);
         const filter = `ID = ${uuidLiteral(electionId)}`;
-        const [election, ext] = await Promise.all([
-            rv.RunView<{ ID: string; Status: string; ElectionTypeID: string }>(
+        const [election, ext] = await rv.RunViews(
+            [
                 { EntityName: ELECTIONS, ExtraFilter: filter, Fields: ['ID', 'Status', 'ElectionTypeID'], ResultType: 'simple' },
-                ctx.ContextUser
-            ),
-            rv.RunView<{ DocumentTitle: string }>(
                 { EntityName: STANDARDS_BALLOT_EXTENSION_ENTITY, ExtraFilter: filter, Fields: ['DocumentTitle'], ResultType: 'simple' },
-                ctx.ContextUser
-            ),
-        ]);
-        const row = election.Success ? election.Results?.[0] : undefined;
+            ],
+            ctx.ContextUser
+        );
+        const electionRows = election.Success ? (election.Results as Array<{ ID: string; Status: string; ElectionTypeID: string }>) : undefined;
+        const row = electionRows?.[0];
         if (!row) return null;
-        return { ElectionID: row.ID, Status: row.Status, ElectionTypeID: row.ElectionTypeID, DocumentTitle: ext.Success ? (ext.Results?.[0]?.DocumentTitle ?? null) : null };
+        const extRows = ext.Success ? (ext.Results as Array<{ DocumentTitle: string }>) : undefined;
+        return { ElectionID: row.ID, Status: row.Status, ElectionTypeID: row.ElectionTypeID, DocumentTitle: extRows?.[0]?.DocumentTitle ?? null };
     }
 }
 

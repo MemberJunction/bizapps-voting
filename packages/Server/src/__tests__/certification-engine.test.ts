@@ -36,11 +36,13 @@ vi.mock('@mj-biz-apps/voting-core-entities-server', () => ({
 }));
 vi.mock('../shared/types.js', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../shared/types.js')>();
+    const runSingle = (params: { ResultType?: string }) =>
+        params.ResultType === 'count_only' ? { Success: true, Results: [], TotalRowCount: 0 } : { Success: true, Results: [] };
     return {
         ...actual,
         RunViewOf: () => ({
-            RunView: async (params: { ResultType?: string }) =>
-                params.ResultType === 'count_only' ? { Success: true, Results: [], TotalRowCount: 0 } : { Success: true, Results: [] },
+            RunView: async (params: { ResultType?: string }) => runSingle(params),
+            RunViews: async (paramsList: Array<{ ResultType?: string }>) => paramsList.map(runSingle),
         }),
     };
 });

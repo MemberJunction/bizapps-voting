@@ -297,19 +297,31 @@ export class VotingResultsResourceComponent extends BaseResourceComponent implem
     public async LoadElections(quiet = false): Promise<void> {
         this.IsLoadingElections = !quiet;
         this.ElectionsError = null;
+        this.StandardsElectionIDs = new Set<string>();
         try {
             const rv = RunView.FromMetadataProvider(this.ProviderToUse);
-            const res = await rv.RunView<ElectionPick>({
-                EntityName: 'MJ_BizApps_Voting: Elections',
-                ResultType: 'simple',
-                Fields: ['ID', 'Name', 'Status', 'ResultsTiming', 'ResultsAudience', 'SecrecyMode', 'ClosesAt'],
-                OrderBy: '__mj_CreatedAt DESC',
-            });
-            if (!res.Success) {
-                throw new Error(res.ErrorMessage || 'Elections could not be loaded.');
+            const [electionsRes, standardsRes] = await rv.RunViews([
+                {
+                    EntityName: 'MJ_BizApps_Voting: Elections',
+                    ResultType: 'simple',
+                    Fields: ['ID', 'Name', 'Status', 'ResultsTiming', 'ResultsAudience', 'SecrecyMode', 'ClosesAt'],
+                    OrderBy: '__mj_CreatedAt DESC',
+                },
+                {
+                    EntityName: 'MJ_BizApps_Voting: Contests',
+                    ExtraFilter: `Kind='StandardsItem'`,
+                    ResultType: 'simple',
+                    Fields: ['ElectionID'],
+                },
+            ]);
+            if (!electionsRes.Success) {
+                throw new Error(electionsRes.ErrorMessage || 'Elections could not be loaded.');
             }
-            this.Elections = res.Results;
-            await this.LoadStandardsElections();
+            this.Elections = electionsRes.Results as ElectionPick[];
+            if (standardsRes.Success) {
+                const rows = standardsRes.Results as Array<{ ElectionID: string }>;
+                this.StandardsElectionIDs = new Set(rows.map((c) => c.ElectionID.toLowerCase()));
+            }
         } catch (error) {
             LogError('[VotingResults] Failed to load elections', undefined, error);
             this.ElectionsError = error instanceof Error ? error.message : 'Elections could not be loaded.';
@@ -317,22 +329,6 @@ export class VotingResultsResourceComponent extends BaseResourceComponent implem
             this.IsLoadingElections = false;
             this.cdr.detectChanges();
         }
-    }
-
-    /** Which elections contain standards-item contests (the ones whose comments are worth listing). */
-    private async LoadStandardsElections(): Promise<void> {
-        this.StandardsElectionIDs = new Set<string>();
-        const rv = RunView.FromMetadataProvider(this.ProviderToUse);
-        const res = await rv.RunView<{ ElectionID: string }>({
-            EntityName: 'MJ_BizApps_Voting: Contests',
-            ExtraFilter: `Kind='StandardsItem'`,
-            ResultType: 'simple',
-            Fields: ['ElectionID'],
-        });
-        if (res.Success) {
-            this.StandardsElectionIDs = new Set(res.Results.map((c) => c.ElectionID.toLowerCase()));
-        }
-        this.cdr.detectChanges();
     }
 
     public async OnElectionChosen(id: string | null): Promise<void> {

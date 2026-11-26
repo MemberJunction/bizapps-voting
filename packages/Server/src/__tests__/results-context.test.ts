@@ -3,18 +3,27 @@ import type { VotingContext } from '../shared/types.js';
 import type { ElectionGraph } from '../shared/election-graph.js';
 import { BuildResultsContext } from '../engines/person-support.js';
 
-/** A provider that records which entities were read (RunViewOf binds RunView to it). */
-function recordingCtx(): { ctx: VotingContext; reads: string[] } {
+/** A provider that records which entities were read and how many batch calls occurred. */
+function recordingCtx(): { ctx: VotingContext; reads: string[]; batchSizes: number[] } {
     const reads: string[] = [];
+    const batchSizes: number[] = [];
+    const runSingle = (params: { EntityName: string }) => {
+        reads.push(params.EntityName);
+        return { Success: true, Results: params.EntityName.endsWith('Contest Results') ? [{ ID: 'R', ContestID: 'C1', Outcome: 'Failed' }] : [] };
+    };
     const provider = {
-        RunView: async (params: { EntityName: string }) => {
-            reads.push(params.EntityName);
-            return { Success: true, Results: params.EntityName.endsWith('Contest Results') ? [{ ID: 'R', ContestID: 'C1', Outcome: 'Failed' }] : [] };
+        RunView: async (params: { EntityName: string }) => runSingle(params),
+        RunViews: async (paramsList: Array<{ EntityName: string }>) => {
+            batchSizes.push(paramsList.length);
+            return paramsList.map(runSingle);
         },
-        RunViews: async () => [],
         EntityByID: () => undefined,
     };
-    return { ctx: { ContextUser: {} as VotingContext['ContextUser'], Provider: provider as unknown as VotingContext['Provider'] }, reads };
+    return {
+        ctx: { ContextUser: {} as VotingContext['ContextUser'], Provider: provider as unknown as VotingContext['Provider'] },
+        reads,
+        batchSizes,
+    };
 }
 
 const graph = {
@@ -35,9 +44,10 @@ describe('BuildResultsContext', () => {
         ]);
     });
 
-    it('reads the stored finals when none are given (certification)', async () => {
-        const { ctx, reads } = recordingCtx();
+    it('batches Election Anchors and stored Contest Results into a single RunViews call when none are given (certification)', async () => {
+        const { ctx, reads, batchSizes } = recordingCtx();
         const out = await BuildResultsContext(graph, ctx);
+        expect(batchSizes).toEqual([2]);
         expect(reads.some((r) => r.endsWith('Contest Results'))).toBe(true);
         expect(out.Results).toEqual([{ ContestID: 'C1', ContestName: 'Motion', Outcome: 'Failed' }]);
     });

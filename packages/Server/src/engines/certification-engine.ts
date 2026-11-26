@@ -73,7 +73,15 @@ export class CertificationEngine extends BaseSingleton<CertificationEngine> {
 
         const ballotSetHash = await this.computeBallotSetHash(election.ID, ctx);
         if (IsFailure(ballotSetHash)) return PassFailure(ballotSetHash);
-        const snapshotCount = await this.countSnapshots(election.ID, ctx);
+
+        const [snapshotRes, existingRes] = await RunViewOf(ctx).RunViews(
+            [
+                { EntityName: SNAPSHOTS_ENTITY, ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)}`, ResultType: 'count_only' },
+                { EntityName: CERTIFICATIONS_ENTITY, ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)}`, MaxRows: 1, ResultType: 'entity_object' },
+            ],
+            ctx.ContextUser
+        );
+        const snapshotCount = snapshotRes.Success ? snapshotRes.TotalRowCount : 0;
         const disclosure = DescribeResultsTimingDisclosure({
             Timing: election.ResultsTiming,
             Audience: election.ResultsAudience,
@@ -87,7 +95,9 @@ export class CertificationEngine extends BaseSingleton<CertificationEngine> {
         if (!driverLookup.driver) return Fail('DriverUnavailable', driverLookup.error ?? 'The election type driver is not available.');
         const driver = driverLookup.driver;
 
-        const existing = await this.loadCertification(election.ID, ctx);
+        const existing = existingRes.Success && existingRes.Results[0]
+            ? (existingRes.Results[0] as mjBizAppsVotingElectionCertificationEntity)
+            : null;
         if (existing?.Status === 'Certified') return Fail('AlreadyCertified', 'This election is already certified.');
         if (existing?.Status === 'Revoked') return Fail('CertificationRevoked', 'The certification was revoked.');
         if (existing && (existing.BallotSetHash !== ballotSetHash.Value || existing.RollHash !== election.RollHash)) {
@@ -181,22 +191,6 @@ export class CertificationEngine extends BaseSingleton<CertificationEngine> {
             sys.ContextUser
         );
         return res.Success ? Ok(ComputeBallotSetHash(res.Results)) : Fail('LoadFailed', 'The counted ballots could not be listed.');
-    }
-
-    private async countSnapshots(electionID: string, ctx: VotingContext): Promise<number> {
-        const res = await RunViewOf(ctx).RunView(
-            { EntityName: SNAPSHOTS_ENTITY, ExtraFilter: `ElectionID = ${SqlLiteral(electionID)}`, ResultType: 'count_only' },
-            ctx.ContextUser
-        );
-        return res.Success ? res.TotalRowCount : 0;
-    }
-
-    private async loadCertification(electionID: string, ctx: VotingContext): Promise<mjBizAppsVotingElectionCertificationEntity | null> {
-        const res = await RunViewOf(ctx).RunView<mjBizAppsVotingElectionCertificationEntity>(
-            { EntityName: CERTIFICATIONS_ENTITY, ExtraFilter: `ElectionID = ${SqlLiteral(electionID)}`, MaxRows: 1, ResultType: 'entity_object' },
-            ctx.ContextUser
-        );
-        return res.Success && res.Results[0] ? res.Results[0] : null;
     }
 
     private async loadCertifiers(certificationID: string, ctx: VotingContext): Promise<Array<{ PersonID: string }>> {
