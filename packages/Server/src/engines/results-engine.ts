@@ -297,8 +297,23 @@ export class ResultsEngine extends BaseSingleton<ResultsEngine> {
         }
         if (election.Status !== 'Open') return Ok({ Published: false, Reason: 'Snapshots are published only while voting is open.' });
 
-        const ballotCount = await this.countParticipations(election.ID, ctx);
-        const last = await this.latestSnapshot(election.ID, ctx);
+        const rv = RunViewOf(ctx);
+        const [countRes, lastRes] = await rv.RunViews(
+            [
+                { EntityName: PARTICIPATIONS_ENTITY, ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)}`, ResultType: 'count_only' },
+                {
+                    EntityName: SNAPSHOTS_ENTITY,
+                    ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)}`,
+                    Fields: ['SnapshotAt', 'BallotCount', 'Results'],
+                    OrderBy: 'SnapshotAt DESC',
+                    MaxRows: 1,
+                    ResultType: 'simple',
+                },
+            ],
+            ctx.ContextUser
+        );
+        const ballotCount = countRes.Success ? countRes.TotalRowCount : 0;
+        const last = lastRes.Success ? ((lastRes.Results as SnapshotRow[])[0] ?? null) : null;
         const decision = ShouldPublishSnapshot({
             BallotCount: ballotCount,
             MinCast: election.ResultsMinCast,
@@ -376,26 +391,25 @@ export class ResultsEngine extends BaseSingleton<ResultsEngine> {
         const graph = loaded.Value;
         const rv = RunViewOf(ctx);
 
-        const eligible = await rv.RunView(
-            { EntityName: ELIGIBLE_VOTERS_ENTITY, ExtraFilter: `ElectionID = ${SqlLiteral(graph.Election.ID)} AND Status = 'Eligible'`, ResultType: 'count_only' },
+        const [eligible, participation] = await rv.RunViews(
+            [
+                { EntityName: ELIGIBLE_VOTERS_ENTITY, ExtraFilter: `ElectionID = ${SqlLiteral(graph.Election.ID)} AND Status = 'Eligible'`, ResultType: 'count_only' },
+                {
+                    EntityName: PARTICIPATIONS_ENTITY,
+                    ExtraFilter: `ElectionID = ${SqlLiteral(graph.Election.ID)}`,
+                    Fields: ['Channel', 'VoterCredentialMethodID'],
+                    ResultType: 'simple',
+                },
+            ],
             ctx.ContextUser
         );
         if (!eligible.Success) return Fail('LoadFailed', 'The voter roll could not be counted.');
-        const participation = await rv.RunView<{ Channel: string; VoterCredentialMethodID: string | null }>(
-            {
-                EntityName: PARTICIPATIONS_ENTITY,
-                ExtraFilter: `ElectionID = ${SqlLiteral(graph.Election.ID)}`,
-                Fields: ['Channel', 'VoterCredentialMethodID'],
-                ResultType: 'simple',
-            },
-            ctx.ContextUser
-        );
         if (!participation.Success) return Fail('LoadFailed', 'The poll book could not be read.');
 
         return Ok(
             ComputeTurnout(
                 eligible.TotalRowCount,
-                participation.Results,
+                participation.Results as Array<{ Channel: string; VoterCredentialMethodID: string | null }>,
                 (id) => VotingEngineBase.Instance.GetVoterCredentialMethodByID(id)?.Code ?? null,
                 graph.Configuration.Quorum
             )
@@ -429,37 +443,29 @@ export class ResultsEngine extends BaseSingleton<ResultsEngine> {
         if (refusal) return Fail(refusal.Code, refusal.Message);
 
         const rv = RunViewOf(sys);
-        const votersRes = await rv.RunView<RollCallVoterRow>(
-            {
-                EntityName: ELIGIBLE_VOTERS_ENTITY,
-                ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)}`,
-                Fields: ['ID', 'PersonID', 'SourceKey', 'VotingClass', 'Weight', 'Status'],
-                ResultType: 'simple',
-                BypassCache: true,
-            },
+        const [votersRes, partsRes] = await rv.RunViews(
+            [
+                {
+                    EntityName: ELIGIBLE_VOTERS_ENTITY,
+                    ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)}`,
+                    Fields: ['ID', 'PersonID', 'SourceKey', 'VotingClass', 'Weight', 'Status'],
+                    ResultType: 'simple',
+                    BypassCache: true,
+                },
+                {
+                    EntityName: PARTICIPATIONS_ENTITY,
+                    ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)}`,
+                    Fields: ['ID', 'EligibleVoterID', 'Channel', 'EnteredByUserID', 'CastAt'],
+                    ResultType: 'simple',
+                    BypassCache: true,
+                },
+            ],
             sys.ContextUser
         );
         if (!votersRes.Success) return Fail('LoadFailed', 'The voter roll could not be read.');
-
-        const partsRes = await rv.RunView<{
-            ID: string;
-            EligibleVoterID: string;
-            Channel: ParticipationChannel;
-            EnteredByUserID: string | null;
-            CastAt: Date | string;
-        }>(
-            {
-                EntityName: PARTICIPATIONS_ENTITY,
-                ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)}`,
-                Fields: ['ID', 'EligibleVoterID', 'Channel', 'EnteredByUserID', 'CastAt'],
-                ResultType: 'simple',
-                BypassCache: true,
-            },
-            sys.ContextUser
-        );
         if (!partsRes.Success) return Fail('LoadFailed', 'The poll book could not be read.');
 
-        const participations: RollCallParticipationRow[] = partsRes.Results;
+        const participations = partsRes.Results as RollCallParticipationRow[];
         let attributions: RollCallAttributionRow[] = [];
         const countedBallotIDs = new Set<string>();
         let votesByBallotID: Map<string, Map<string, ContestVoteRecord>> = new Map();
@@ -483,15 +489,15 @@ export class ResultsEngine extends BaseSingleton<ResultsEngine> {
 
             if (countedRows.length > 0) {
                 const rawIDs = countedRows.map((b) => b.ID);
-                const attrsRes = await this.loadRollCallAttributions(rawIDs, sys);
-                if (IsFailure(attrsRes)) return PassFailure(attrsRes);
-                attributions = attrsRes.Value;
-
                 if (useSelections) {
-                    const selsRes = await this.loadRollCallSelections(rawIDs, sys);
-                    if (IsFailure(selsRes)) return PassFailure(selsRes);
-                    votesByBallotID = VotesFromSelectionRows(selsRes.Value);
+                    const paired = await this.loadRollCallAttributionsAndSelections(rawIDs, sys);
+                    if (IsFailure(paired)) return PassFailure(paired);
+                    attributions = paired.Value.Attributions;
+                    votesByBallotID = VotesFromSelectionRows(paired.Value.Selections);
                 } else {
+                    const attrsRes = await this.loadRollCallAttributions(rawIDs, sys);
+                    if (IsFailure(attrsRes)) return PassFailure(attrsRes);
+                    attributions = attrsRes.Value;
                     const attributedIDs = new Set(attributions.map((a) => a.CastBallotID.toLowerCase()));
                     const decryptedRes = await this.decryptRollCallBallots(
                         countedRows.filter((b) => attributedIDs.has(b.ID.toLowerCase())),
@@ -510,7 +516,7 @@ export class ResultsEngine extends BaseSingleton<ResultsEngine> {
                 Name: c.Name,
                 VotingClassFilter: VotingClassFilterOf(graph, c.ID),
             })),
-            Voters: votersRes.Results,
+            Voters: votersRes.Results as RollCallVoterRow[],
             Participations: participations,
             Attributions: attributions,
             CountedBallotIDs: countedBallotIDs,
@@ -524,6 +530,42 @@ export class ResultsEngine extends BaseSingleton<ResultsEngine> {
         });
 
         return Ok({ ElectionID: election.ID, Status: election.Status, Contests: contests });
+    }
+
+    private async loadRollCallAttributionsAndSelections(
+        ballotIDs: readonly string[],
+        sys: VotingContext
+    ): Promise<EngineResult<{ Attributions: RollCallAttributionRow[]; Selections: StoredSelectionRow[] }>> {
+        const rv = RunViewOf(sys);
+        const attributions: RollCallAttributionRow[] = [];
+        const selections: StoredSelectionRow[] = [];
+        for (let i = 0; i < ballotIDs.length; i += ROLL_CALL_IN_BATCH_SIZE) {
+            const batch = ballotIDs.slice(i, i + ROLL_CALL_IN_BATCH_SIZE).map(SqlLiteral).join(',');
+            const [attrRes, selRes] = await rv.RunViews(
+                [
+                    {
+                        EntityName: BALLOT_ATTRIBUTIONS_ENTITY,
+                        ExtraFilter: `CastBallotID IN (${batch})`,
+                        Fields: ['ParticipationID', 'CastBallotID'],
+                        ResultType: 'simple',
+                        BypassCache: true,
+                    },
+                    {
+                        EntityName: BALLOT_SELECTIONS_ENTITY,
+                        ExtraFilter: `CastBallotID IN (${batch})`,
+                        Fields: ['CastBallotID', 'ContestID', 'ContestOptionID', 'Rank', 'WriteInText', 'IsAbstain'],
+                        ResultType: 'simple',
+                        BypassCache: true,
+                    },
+                ],
+                sys.ContextUser
+            );
+            if (!attrRes.Success) return Fail('LoadFailed', 'The ballot attributions could not be read.');
+            if (!selRes.Success) return Fail('LoadFailed', 'The ballot selections could not be read.');
+            attributions.push(...(attrRes.Results as RollCallAttributionRow[]));
+            selections.push(...(selRes.Results as StoredSelectionRow[]));
+        }
+        return Ok({ Attributions: attributions, Selections: selections });
     }
 
     private async loadRollCallAttributions(ballotIDs: readonly string[], sys: VotingContext): Promise<EngineResult<RollCallAttributionRow[]>> {
@@ -542,27 +584,6 @@ export class ResultsEngine extends BaseSingleton<ResultsEngine> {
                 sys.ContextUser
             );
             if (!res.Success) return Fail('LoadFailed', 'The ballot attributions could not be read.');
-            rows.push(...res.Results);
-        }
-        return Ok(rows);
-    }
-
-    private async loadRollCallSelections(ballotIDs: readonly string[], sys: VotingContext): Promise<EngineResult<StoredSelectionRow[]>> {
-        const rv = RunViewOf(sys);
-        const rows: StoredSelectionRow[] = [];
-        for (let i = 0; i < ballotIDs.length; i += ROLL_CALL_IN_BATCH_SIZE) {
-            const batch = ballotIDs.slice(i, i + ROLL_CALL_IN_BATCH_SIZE).map(SqlLiteral).join(',');
-            const res = await rv.RunView<StoredSelectionRow>(
-                {
-                    EntityName: BALLOT_SELECTIONS_ENTITY,
-                    ExtraFilter: `CastBallotID IN (${batch})`,
-                    Fields: ['CastBallotID', 'ContestID', 'ContestOptionID', 'Rank', 'WriteInText', 'IsAbstain'],
-                    ResultType: 'simple',
-                    BypassCache: true,
-                },
-                sys.ContextUser
-            );
-            if (!res.Success) return Fail('LoadFailed', 'The ballot selections could not be read.');
             rows.push(...res.Results);
         }
         return Ok(rows);

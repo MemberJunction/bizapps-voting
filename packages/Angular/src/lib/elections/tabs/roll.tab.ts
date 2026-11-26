@@ -6,7 +6,7 @@ import { Component, EventEmitter, OnChanges, Output, SimpleChanges, inject, Chan
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EscapeSQLString } from '@memberjunction/global';
-import { LogError, RunView } from '@memberjunction/core';
+import { LogError, RunView, type RunViewParams } from '@memberjunction/core';
 import { SharedGenericModule } from '@memberjunction/ng-shared-generic';
 import { MJButtonDirective } from '@memberjunction/ng-ui-components';
 import { BaseElectionAdminTab } from '@mj-biz-apps/voting-ng-widgets';
@@ -386,44 +386,95 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
     }
 
     public async LoadAll(): Promise<void> {
-        await Promise.all([this.LoadRollState(), this.LoadPage(), this.LoadProxies()]);
-        this.cdr.detectChanges();
-    }
-
-    private async LoadProxies(): Promise<void> {
         if (!this.ElectionID) {
             return;
         }
+        this.IsLoading = true;
+        this.LoadError = null;
         this.ProxyError = null;
-        const rv = RunView.FromMetadataProvider(this.ProviderToUse);
-        const res = await rv.RunView<ProxyRow>({
-            EntityName: 'MJ_BizApps_Voting: Proxy Designations',
-            ExtraFilter: `ElectionID='${this.ElectionID}'`,
-            OrderBy: 'ReceivedAt',
-            ResultType: 'simple',
-            Fields: ['ID', 'GrantorEligibleVoterID', 'ProxyPerson', 'Scope', 'Instructions', 'ReceivedAt', 'Status'],
-        });
-        if (!res.Success) {
-            this.ProxyError = res.ErrorMessage || 'Proxy designations could not be loaded.';
-            this.Proxies = [];
+        try {
+            const rv = RunView.FromMetadataProvider(this.ProviderToUse);
+            const [rollRes, votersRes, proxiesRes] = await rv.RunViews([
+                {
+                    EntityName: 'MJ_BizApps_Voting: Elections',
+                    ExtraFilter: `ID='${this.ElectionID}'`,
+                    ResultType: 'simple',
+                    Fields: ['RollFrozenAt', 'RollHash'],
+                },
+                this.BuildVoterPageParams(),
+                {
+                    EntityName: 'MJ_BizApps_Voting: Proxy Designations',
+                    ExtraFilter: `ElectionID='${this.ElectionID}'`,
+                    OrderBy: 'ReceivedAt',
+                    ResultType: 'simple',
+                    Fields: ['ID', 'GrantorEligibleVoterID', 'ProxyPerson', 'Scope', 'Instructions', 'ReceivedAt', 'Status'],
+                },
+            ]);
+
+            this.Roll = rollRes.Success ? ((rollRes.Results as RollState[])[0] ?? null) : null;
+
+            if (!votersRes.Success) {
+                this.LoadError = votersRes.ErrorMessage || 'The roll could not be loaded.';
+            } else {
+                this.Voters = votersRes.Results as VoterRow[];
+                this.Total = votersRes.TotalRowCount ?? this.Voters.length;
+            }
+
+            if (!proxiesRes.Success) {
+                this.ProxyError = proxiesRes.ErrorMessage || 'Proxy designations could not be loaded.';
+                this.Proxies = [];
+            } else {
+                const proxyRows = proxiesRes.Results as ProxyRow[];
+                const names = await this.LoadGrantorNames(
+                    proxyRows.map((r) => r.GrantorEligibleVoterID),
+                    this.Voters
+                );
+                this.Proxies = proxyRows.map((r) => ({
+                    ...r,
+                    Grantor: names.get(r.GrantorEligibleVoterID.toLowerCase()) ?? 'Unknown voter',
+                }));
+            }
+        } catch (error) {
+            LogError('[VotingElections] Roll load failed', undefined, error);
+            this.LoadError = error instanceof Error ? error.message : 'The roll could not be loaded.';
+        } finally {
+            this.IsLoading = false;
             this.cdr.detectChanges();
-            return;
         }
-        const names = await this.LoadGrantorNames(res.Results.map((r) => r.GrantorEligibleVoterID));
-        this.Proxies = res.Results.map((r) => ({ ...r, Grantor: names.get(r.GrantorEligibleVoterID.toLowerCase()) ?? 'Unknown voter' }));
-        this.cdr.detectChanges();
     }
 
-    private async LoadGrantorNames(ids: string[]): Promise<Map<string, string>> {
+    private BuildVoterPageParams(): RunViewParams {
+        const filters = [`ElectionID='${this.ElectionID}'`];
+        if (this.StatusFilter) {
+            filters.push(`Status='${EscapeSQLString(this.StatusFilter)}'`);
+        }
+        if (this.Search.trim()) {
+            filters.push(`Person LIKE '%${EscapeSQLString(this.Search.trim())}%'`);
+        }
+        return {
+            EntityName: 'MJ_BizApps_Voting: Eligible Voters',
+            ExtraFilter: filters.join(' AND '),
+            OrderBy: 'Person',
+            ResultType: 'simple',
+            Fields: ['ID', 'PersonID', 'Person', 'RepresentingOrganization', 'VotingClass', 'Weight', 'Status', 'StatusReason', 'AddedAfterFreeze'],
+            StartRow: (this.Page - 1) * PAGE_SIZE,
+            MaxRows: PAGE_SIZE,
+        };
+    }
+
+    private async LoadGrantorNames(ids: string[], knownVoters: readonly VoterRow[] = []): Promise<Map<string, string>> {
         const names = new Map<string, string>();
-        const unique = Array.from(new Set(ids));
-        if (unique.length === 0) {
+        for (const v of knownVoters) {
+            names.set(v.ID.toLowerCase(), v.Person);
+        }
+        const missing = Array.from(new Set(ids)).filter((id) => !names.has(id.toLowerCase()));
+        if (missing.length === 0) {
             return names;
         }
         const rv = RunView.FromMetadataProvider(this.ProviderToUse);
         const res = await rv.RunView<{ ID: string; Person: string }>({
             EntityName: 'MJ_BizApps_Voting: Eligible Voters',
-            ExtraFilter: `ID IN (${unique.map((id) => `'${id}'`).join(',')})`,
+            ExtraFilter: `ID IN (${missing.map((id) => `'${id}'`).join(',')})`,
             ResultType: 'simple',
             Fields: ['ID', 'Person'],
         });
@@ -476,23 +527,8 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
         this.IsLoading = true;
         this.LoadError = null;
         try {
-            const filters = [`ElectionID='${this.ElectionID}'`];
-            if (this.StatusFilter) {
-                filters.push(`Status='${EscapeSQLString(this.StatusFilter)}'`);
-            }
-            if (this.Search.trim()) {
-                filters.push(`Person LIKE '%${EscapeSQLString(this.Search.trim())}%'`);
-            }
             const rv = RunView.FromMetadataProvider(this.ProviderToUse);
-            const res = await rv.RunView<VoterRow>({
-                EntityName: 'MJ_BizApps_Voting: Eligible Voters',
-                ExtraFilter: filters.join(' AND '),
-                OrderBy: 'Person',
-                ResultType: 'simple',
-                Fields: ['ID', 'PersonID', 'Person', 'RepresentingOrganization', 'VotingClass', 'Weight', 'Status', 'StatusReason', 'AddedAfterFreeze'],
-                StartRow: (this.Page - 1) * PAGE_SIZE,
-                MaxRows: PAGE_SIZE,
-            });
+            const res = await rv.RunView<VoterRow>(this.BuildVoterPageParams());
             if (!res.Success) {
                 throw new Error(res.ErrorMessage || 'The roll could not be loaded.');
             }
@@ -505,18 +541,6 @@ export class RollTabComponent extends BaseElectionAdminTab implements OnChanges 
             this.IsLoading = false;
             this.cdr.detectChanges();
         }
-    }
-
-    private async LoadRollState(): Promise<void> {
-        const rv = RunView.FromMetadataProvider(this.ProviderToUse);
-        const res = await rv.RunView<RollState>({
-            EntityName: 'MJ_BizApps_Voting: Elections',
-            ExtraFilter: `ID='${this.ElectionID}'`,
-            ResultType: 'simple',
-            Fields: ['RollFrozenAt', 'RollHash'],
-        });
-        this.Roll = res.Success ? (res.Results[0] ?? null) : null;
-        this.cdr.detectChanges();
     }
 
     public async Freeze(): Promise<void> {

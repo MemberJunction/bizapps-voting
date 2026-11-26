@@ -306,18 +306,48 @@ export class PaperTabComponent extends BaseElectionAdminTab implements OnChanges
                 return { ...c, TallyCode: method?.Code ?? '', IsRanked: method?.IsRanked ?? false };
             });
             this.options = [];
+            const proxyRows = pRes.Results as Array<{ ID: string; GrantorEligibleVoterID: string; ProxyPerson: string }>;
+            const uniqueGrantorIds = Array.from(new Set(proxyRows.map((p) => p.GrantorEligibleVoterID)));
+
+            const followUpParams = [];
+            const optionsIndex = contestRows.length > 0 ? followUpParams.length : -1;
             if (contestRows.length > 0) {
-                const oRes = await rv.RunView<PaperOptionRow>({
+                followUpParams.push({
                     EntityName: 'MJ_BizApps_Voting: Contest Options',
                     ExtraFilter: `ContestID IN (${contestRows.map((c) => `'${c.ID}'`).join(',')})`,
-                    ResultType: 'simple',
+                    ResultType: 'simple' as const,
                     Fields: ['ID', 'ContestID', 'Label', 'Description', 'Sequence', 'IsWriteIn', 'Status'],
                 });
-                if (!oRes.Success) throw new Error(oRes.ErrorMessage || 'Contest options could not be loaded.');
-                this.options = oRes.Results;
             }
-            const grantors = await this.LoadGrantorNames((pRes.Results as Array<{ GrantorEligibleVoterID: string }>).map((p) => p.GrantorEligibleVoterID));
-            this.Proxies = (pRes.Results as Array<{ ID: string; GrantorEligibleVoterID: string; ProxyPerson: string }>).map((p) => ({
+            const grantorsIndex = uniqueGrantorIds.length > 0 ? followUpParams.length : -1;
+            if (uniqueGrantorIds.length > 0) {
+                followUpParams.push({
+                    EntityName: 'MJ_BizApps_Voting: Eligible Voters',
+                    ExtraFilter: `ID IN (${uniqueGrantorIds.map((id) => `'${id}'`).join(',')})`,
+                    ResultType: 'simple' as const,
+                    Fields: ['ID', 'Person'],
+                });
+            }
+
+            const grantors = new Map<string, string>();
+            if (followUpParams.length > 0) {
+                const followUpResults = await rv.RunViews(followUpParams);
+                if (optionsIndex >= 0) {
+                    const oRes = followUpResults[optionsIndex];
+                    if (!oRes.Success) throw new Error(oRes.ErrorMessage || 'Contest options could not be loaded.');
+                    this.options = oRes.Results as PaperOptionRow[];
+                }
+                if (grantorsIndex >= 0) {
+                    const gRes = followUpResults[grantorsIndex];
+                    if (gRes.Success) {
+                        for (const v of gRes.Results as Array<{ ID: string; Person: string }>) {
+                            grantors.set(v.ID.toLowerCase(), v.Person);
+                        }
+                    }
+                }
+            }
+
+            this.Proxies = proxyRows.map((p) => ({
                 ID: p.ID,
                 Label: `${grantors.get(p.GrantorEligibleVoterID.toLowerCase()) ?? 'Unknown voter'} gives proxy to ${p.ProxyPerson}`,
             }));
@@ -329,23 +359,6 @@ export class PaperTabComponent extends BaseElectionAdminTab implements OnChanges
             this.IsLoading = false;
             this.cdr.detectChanges();
         }
-    }
-
-    private async LoadGrantorNames(ids: string[]): Promise<Map<string, string>> {
-        const names = new Map<string, string>();
-        const unique = Array.from(new Set(ids));
-        if (unique.length === 0) return names;
-        const rv = RunView.FromMetadataProvider(this.ProviderToUse);
-        const res = await rv.RunView<{ ID: string; Person: string }>({
-            EntityName: 'MJ_BizApps_Voting: Eligible Voters',
-            ExtraFilter: `ID IN (${unique.map((id) => `'${id}'`).join(',')})`,
-            ResultType: 'simple',
-            Fields: ['ID', 'Person'],
-        });
-        if (res.Success) {
-            for (const v of res.Results) names.set(v.ID.toLowerCase(), v.Person);
-        }
-        return names;
     }
 
     private RebuildStyle(): void {

@@ -306,22 +306,20 @@ export class VoterRollEngine extends BaseSingleton<VoterRollEngine> {
         if (UUIDsEqual(grantor.PersonID, input.ProxyPersonID)) return Fail('InvalidProxy', 'You cannot designate yourself as your proxy.');
 
         const rv = RunViewOf(system);
-        const person = await rv.RunView<{ ID: string }>(
-            { EntityName: PEOPLE_ENTITY, ExtraFilter: `ID = ${SqlLiteral(input.ProxyPersonID)}`, Fields: ['ID'], MaxRows: 1, ResultType: 'simple' },
+        const [person, active] = await rv.RunViews(
+            [
+                { EntityName: PEOPLE_ENTITY, ExtraFilter: `ID = ${SqlLiteral(input.ProxyPersonID)}`, Fields: ['ID'], MaxRows: 1, ResultType: 'simple' },
+                {
+                    EntityName: PROXIES_ENTITY,
+                    ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)} AND GrantorEligibleVoterID = ${SqlLiteral(grantor.ID)} AND Status IN ('Pending', 'Accepted')`,
+                    Fields: ['ID'],
+                    MaxRows: 1,
+                    ResultType: 'simple',
+                },
+            ],
             system.ContextUser
         );
         if (!person.Success || person.Results.length === 0) return Fail('ProxyPersonNotFound', 'The person chosen as proxy was not found.');
-
-        const active = await rv.RunView<{ ID: string }>(
-            {
-                EntityName: PROXIES_ENTITY,
-                ExtraFilter: `ElectionID = ${SqlLiteral(election.ID)} AND GrantorEligibleVoterID = ${SqlLiteral(grantor.ID)} AND Status IN ('Pending', 'Accepted')`,
-                Fields: ['ID'],
-                MaxRows: 1,
-                ResultType: 'simple',
-            },
-            system.ContextUser
-        );
         if (!active.Success) return Fail('ProxyLookupFailed', 'Could not check existing proxy designations.');
         if (active.Results.length > 0) return Fail('ProxyAlreadyDesignated', 'You already have an active proxy designation; revoke it first.');
 

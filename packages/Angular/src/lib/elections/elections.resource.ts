@@ -285,7 +285,7 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
         this.IsAdministrator = this.ComputeIsAdministrator();
         this.IsObserver = this.IsAdministrator || this.ComputeIsObserver();
         await this.LoadElections();
-        await this.ApplyParams(this.GetQueryParams());
+        await this.ApplyParams(this.GetQueryParams(), true);
         this.NotifyLoadComplete();
         this.cdr.detectChanges();
     }
@@ -344,7 +344,7 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
     public async Reload(): Promise<void> {
         await this.LoadElections();
         if (this.SelectedId) {
-            await this.LoadSelected();
+            await this.LoadSelected(true);
         }
         this.cdr.detectChanges();
     }
@@ -376,10 +376,23 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
         }
     }
 
-    public async LoadSelected(): Promise<void> {
+    public async LoadSelected(useLoadedList = false): Promise<void> {
         const id = this.SelectedId;
         if (!id) {
             return;
+        }
+        if (useLoadedList) {
+            const fromList = this.Elections.find((e) => UUIDsEqual(e.ID, id));
+            if (fromList) {
+                this.DetailError = null;
+                this.Selected = fromList;
+                this.Tabs = this.BuildTabs(fromList);
+                if (!this.Tabs.some((t) => t.Descriptor.key === this.ActiveTab)) {
+                    this.ActiveTab = this.Tabs[0]?.Descriptor.key ?? 'overview';
+                }
+                this.cdr.detectChanges();
+                return;
+            }
         }
         this.IsLoadingDetail = true;
         this.DetailError = null;
@@ -436,7 +449,7 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
 
     // -- navigation + query params --------------------------------------------------------------------------------
 
-    private async ApplyParams(params: Record<string, string>): Promise<void> {
+    private async ApplyParams(params: Record<string, string>, useLoadedList = false): Promise<void> {
         const wizard = params['wizard'] === '1';
         const id = params['electionId'] || null;
         const tab = params['tab'] || null;
@@ -449,7 +462,7 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
                 if (tab) {
                     this.ActiveTab = tab;
                 }
-                await this.LoadSelected();
+                await this.LoadSelected(useLoadedList);
             }
         } else if (!this.WizardOpen && id && tab && tab !== this.ActiveTab) {
             this.ActiveTab = tab;
@@ -502,13 +515,13 @@ export class VotingElectionsResource extends BaseResourceComponent implements On
         await this.LoadElections();
         this.UpdateQueryParams({ wizard: null, electionId, tab: null });
         this.ActiveTab = 'overview';
-        await this.ApplyParams({ electionId });
+        await this.ApplyParams({ electionId }, true);
         this.cdr.detectChanges();
     }
 
     public async OnTabChanged(): Promise<void> {
         await this.LoadElections();
-        await this.LoadSelected();
+        await this.LoadSelected(true);
         this.cdr.detectChanges();
     }
 

@@ -1,8 +1,8 @@
-# BizApps Voting — development guide (template)
+# BizApps Voting — Development Guide
 
-This repository is an **open app** built on top of the
-[MemberJunction](https://github.com/MemberJunction/MJ) platform. TODO(template):
-replace the placeholders in this file when you rename the app.
+This repository is the **BizApps Voting** Open App built on top of the
+[MemberJunction](https://github.com/MemberJunction/MJ) platform. See also
+[`AGENTS.md`](AGENTS.md) for the agent-facing summary and the 5-Rule BizApps Performance & Caching Standard.
 
 **MemberJunction's own `CLAUDE.md` is the authoritative guide — read it first.** The
 `@`-imports below inline it into context; only the path matching this repo's topology
@@ -49,11 +49,13 @@ pnpm-workspace.yaml    - pnpm workspace + resolution settings (see .npmrc)
 migrations/            - Skyway migrations for the app schema (starts empty)
 metadata/              - mj-sync metadata (dev-time; seeds ship as migrations)
 packages/
-  Entities/            - @mj-biz-apps/voting-entities   (CodeGen entity subclasses)
-  CoreEntitiesServer/  - @mj-biz-apps/voting-core-entities-server (server-side entity overrides)
-  Actions/             - @mj-biz-apps/voting-actions    (MJ Actions)
-  Server/              - @mj-biz-apps/voting-server     (server bootstrap -> MJAPI)
-  Angular/             - @mj-biz-apps/voting-ng         (client bootstrap -> MJExplorer)
+  Entities/            - @mj-biz-apps/voting-entities             (CodeGen entity subclasses & pure contracts)
+  EngineBase/          - @mj-biz-apps/voting-engine-base          (VotingEngineBase cached taxonomy engine)
+  CoreEntitiesServer/  - @mj-biz-apps/voting-core-entities-server (server-side entity overrides & drivers)
+  Actions/             - @mj-biz-apps/voting-actions              (MJ Actions)
+  Server/              - @mj-biz-apps/voting-server               (server bootstrap -> MJAPI)
+  AngularWidgets/      - @mj-biz-apps/voting-ng-widgets           (UI drivers, base tabs/steps/views & <mj-ballot>)
+  Angular/             - @mj-biz-apps/voting-ng                   (client bootstrap -> MJExplorer)
 docs/                  - how this repo works (branching, publishing, codegen, linking)
 docs/claude/           - the MemberJunction development guide (topic-split, with TOC)
 ```
@@ -113,12 +115,23 @@ topic before working in its area:
 # this repo (works standalone AND as a workspace member):
 pnpm install                  # at the WORKSPACE PARENT when linked; here when standalone
 pnpm run build:packages       # build this app's packages
+pnpm run test                 # run unit tests across voting packages
 pnpm run mj:migrate           # apply this app's migrations (needs a DB + .env)
 pnpm run mj:codegen           # regenerate entities/resolvers/forms after a schema change
 
 # one package only (from the workspace root):
 pnpm --filter @mj-biz-apps/voting-ng run build
 ```
+
+## 5-Rule BizApps Performance & Caching Standard
+
+Every component, tab, widget, driver, and server engine in `bizapps-voting` MUST follow these five rules (see also [`AGENTS.md`](AGENTS.md) and [`docs/claude/04-performance.md`](docs/claude/04-performance.md)):
+
+1. **`BaseEngine` taxonomy & lookup caching:** Cache bounded, shared, non-RLS reference/taxonomy tables in `VotingEngineBase` (`Election Types`, `Tally Methods`, `Eligibility Source Types`, `Voter Credential Methods`) with `CacheLocal: true` and O(1) lazy lookup maps (`GetElectionTypeByID`, `GetTallyMethodByID`, `GetEligibilitySourceTypeByCode`, `GetVoterCredentialMethodByCode`, etc.). Never re-query these tables via `RunView` in components or engines.
+2. **Multi-provider, impersonation & RLS `CacheLocal` safety:** Override `ProviderToUse` on `BaseEngine` subclasses (`return this._activeProvider ?? Metadata.Provider;`), track `_loadedForUserId` for automatic user-switch invalidation, expose `InvalidateCache()` / `IsConfiguredForUser()`, gate loads with `CanRead` (`md.EntityByName(name)?.GetUserPermisions(effectiveUser)?.CanRead !== false`) while clearing restricted slices, and set `CacheLocal: false` on any RLS-scoped entity (`CacheLocal: true` is permitted ONLY on shared non-RLS taxonomy tables).
+3. **`rv.RunViews([...])` batching:** Eliminate `Promise.all([rv.RunView(...), ...])`, sequential independent `await rv.RunView(...)` waterfalls, and N+1 `RunView` loops by batching independent queries into a single `rv.RunViews([...])` call bound to the active provider (`RunView.FromMetadataProvider(provider)` in Angular, `RunViewOf(ctx)` on Server). Default to `ResultType: 'simple'` + explicit `Fields: [...]` whenever mutation is not needed.
+4. **`ConversationEngine`-style bounded container caching:** When interactive views cache per-container metadata bundles in memory, enforce an explicit entry cap and invalidate on `BaseEntity` save/delete events. **NEVER** cache unbounded transactional tables (`Cast Ballots`, `Ballot Selections`, `Ballot Attributions`, `Participations`, `Voter Credentials`, `Election Audit Events`, `Ballot Comments`) or arbitrary filtered lists.
+5. **RLS-safe two-step entity reads:** Never bypass entity Row-Level Security with raw SQL subqueries over restricted base views on user-facing reads. Resolve accessible parent IDs through a first-class `RunView`, query child records with chunked `IN (...)` filters (batched via `rv.RunViews([...])`), and check/surface `!res.Success` errors explicitly.
 
 The full development workflow (where to add code, capturing codegen
 migrations, releasing) is in the README's "Development workflow" table.

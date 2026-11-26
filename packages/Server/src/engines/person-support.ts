@@ -106,18 +106,39 @@ export async function BuildResultsContext(
     ctx: VotingContext,
     finals?: ReadonlyArray<Pick<FinalContestResultRow, 'ContestID' | 'Outcome'>>
 ): Promise<ElectionResultsContext> {
-    const anchors = await RunViewOf(ctx).RunView<mjBizAppsVotingElectionAnchorEntity>(
-        {
-            EntityName: ANCHORS_ENTITY,
-            ExtraFilter: `ElectionID = ${SqlLiteral(graph.Election.ID)} AND IsPrimary = 1`,
-            MaxRows: 1,
-            ResultType: 'entity_object',
-        },
-        ctx.ContextUser
-    );
-    const anchor = anchors.Success ? anchors.Results[0] : undefined;
+    const rv = RunViewOf(ctx);
+    const needFinals = finals === undefined && graph.Contests.length > 0;
+    const anchorParams = {
+        EntityName: ANCHORS_ENTITY,
+        ExtraFilter: `ElectionID = ${SqlLiteral(graph.Election.ID)} AND IsPrimary = 1`,
+        MaxRows: 1,
+        ResultType: 'entity_object' as const,
+    };
+
+    let anchor: mjBizAppsVotingElectionAnchorEntity | undefined;
+    let known: ReadonlyArray<Pick<FinalContestResultRow, 'ContestID' | 'Outcome'>>;
+    if (needFinals) {
+        const [anchors, finalsRes] = await rv.RunViews(
+            [
+                anchorParams,
+                {
+                    EntityName: CONTEST_RESULTS_ENTITY,
+                    ExtraFilter: `IsFinal = 1 AND ContestID IN (${graph.Contests.map((c) => SqlLiteral(c.ID)).join(',')})`,
+                    Fields: ['ID', 'ContestID', 'Outcome'],
+                    ResultType: 'simple',
+                },
+            ],
+            ctx.ContextUser
+        );
+        anchor = anchors.Success ? (anchors.Results as mjBizAppsVotingElectionAnchorEntity[])[0] : undefined;
+        known = finalsRes.Success ? (finalsRes.Results as FinalContestResultRow[]) : [];
+    } else {
+        const anchors = await rv.RunView<mjBizAppsVotingElectionAnchorEntity>(anchorParams, ctx.ContextUser);
+        anchor = anchors.Success ? anchors.Results[0] : undefined;
+        known = finals ?? [];
+    }
+
     const entityName = anchor ? ctx.Provider.EntityByID(anchor.EntityID)?.Name : undefined;
-    const known = finals ?? (await LoadFinalContestResults(graph.Contests.map((c) => c.ID), ctx));
     const results: ContestResultSummary[] = [];
     for (const contest of graph.Contests) {
         const final = known.find((f) => f.ContestID.toLowerCase() === contest.ID.toLowerCase());

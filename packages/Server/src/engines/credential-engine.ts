@@ -110,9 +110,13 @@ export class CredentialEngine extends BaseSingleton<CredentialEngine> {
         if (!method.Value.RequiresIssuance) return Fail('MethodDoesNotIssue', `The method "${method.Value.Name}" does not issue credentials.`);
 
         try {
-            const voters = await this.loadTargets(election.ID, input.EligibleVoterIDs, ctx);
+            const { Voters: voters, Distribution: distribution } = await this.loadTargetsAndDistribution(
+                election.ID,
+                input.EligibleVoterIDs,
+                method.Value.Code,
+                ctx
+            );
             const emails = await this.loadEmails(voters, ctx);
-            const distribution = await this.findDistribution(election.ID, method.Value.Code, ctx);
             const baseUrl = input.BaseUrl?.trim() || null;
 
             let issued = 0;
@@ -329,19 +333,73 @@ export class CredentialEngine extends BaseSingleton<CredentialEngine> {
         return Ok(attempt.Instance);
     }
 
+    /** Batches eligible voter target chunks and active Ballot Distributions into a single RunViews call. */
+    private async loadTargetsAndDistribution(
+        electionID: string,
+        voterIDs: string[] | undefined,
+        methodCode: string,
+        ctx: VotingContext
+    ): Promise<{ Voters: mjBizAppsVotingEligibleVoterEntity[]; Distribution: mjBizAppsVotingBallotDistributionEntity | null }> {
+        const rv = RunViewOf(ctx);
+        const groups = voterIDs && voterIDs.length > 0 ? chunk(voterIDs, ID_CHUNK) : [null];
+        const batchParams = [
+            ...groups.map((group) => {
+                const idFilter = group ? ` AND ID IN (${group.map(SqlLiteral).join(', ')})` : '';
+                return {
+                    EntityName: ELIGIBLE_VOTERS_ENTITY,
+                    ExtraFilter: `ElectionID = ${SqlLiteral(electionID)} AND Status = 'Eligible'${idFilter}`,
+                    ResultType: 'entity_object' as const,
+                };
+            }),
+            {
+                EntityName: DISTRIBUTIONS_ENTITY,
+                ExtraFilter: `ElectionID = ${SqlLiteral(electionID)} AND Status = 'Active'`,
+                OrderBy: 'Name',
+                ResultType: 'entity_object' as const,
+            },
+        ];
+        const results = await rv.RunViews(batchParams, ctx.ContextUser);
+        const voters: mjBizAppsVotingEligibleVoterEntity[] = [];
+        for (let i = 0; i < groups.length; i++) {
+            const res = results[i];
+            if (!res.Success) throw new Error(`Could not read the voter roll: ${res.ErrorMessage}`);
+            voters.push(...(res.Results as mjBizAppsVotingEligibleVoterEntity[]));
+        }
+        const distRes = results[groups.length];
+        let distribution: mjBizAppsVotingBallotDistributionEntity | null = null;
+        if (distRes.Success && distRes.Results.length > 0) {
+            const dists = distRes.Results as mjBizAppsVotingBallotDistributionEntity[];
+            const allowing = dists.find((d) => ParseAllowedMethods(d.AllowedCredentialMethods).includes(methodCode.toLowerCase()));
+            distribution = allowing ?? dists.find((d) => ParseAllowedMethods(d.AllowedCredentialMethods).length === 0) ?? null;
+        }
+        return { Voters: voters, Distribution: distribution };
+    }
+
     /** Eligible voters of the election, optionally narrowed to the given IDs (IDs from other elections are ignored). */
     private async loadTargets(electionID: string, voterIDs: string[] | undefined, ctx: VotingContext): Promise<mjBizAppsVotingEligibleVoterEntity[]> {
         const rv = RunViewOf(ctx);
         const groups = voterIDs && voterIDs.length > 0 ? chunk(voterIDs, ID_CHUNK) : [null];
-        const voters: mjBizAppsVotingEligibleVoterEntity[] = [];
-        for (const group of groups) {
-            const idFilter = group ? ` AND ID IN (${group.map(SqlLiteral).join(', ')})` : '';
+        if (groups.length === 1) {
+            const idFilter = groups[0] ? ` AND ID IN (${groups[0].map(SqlLiteral).join(', ')})` : '';
             const result = await rv.RunView<mjBizAppsVotingEligibleVoterEntity>(
                 { EntityName: ELIGIBLE_VOTERS_ENTITY, ExtraFilter: `ElectionID = ${SqlLiteral(electionID)} AND Status = 'Eligible'${idFilter}`, ResultType: 'entity_object' },
                 ctx.ContextUser
             );
             if (!result.Success) throw new Error(`Could not read the voter roll: ${result.ErrorMessage}`);
-            voters.push(...result.Results);
+            return result.Results;
+        }
+        const results = await rv.RunViews(
+            groups.map((group) => ({
+                EntityName: ELIGIBLE_VOTERS_ENTITY,
+                ExtraFilter: `ElectionID = ${SqlLiteral(electionID)} AND Status = 'Eligible' AND ID IN (${group!.map(SqlLiteral).join(', ')})`,
+                ResultType: 'entity_object' as const,
+            })),
+            ctx.ContextUser
+        );
+        const voters: mjBizAppsVotingEligibleVoterEntity[] = [];
+        for (const result of results) {
+            if (!result.Success) throw new Error(`Could not read the voter roll: ${result.ErrorMessage}`);
+            voters.push(...(result.Results as mjBizAppsVotingEligibleVoterEntity[]));
         }
         return voters;
     }
@@ -350,28 +408,23 @@ export class CredentialEngine extends BaseSingleton<CredentialEngine> {
         const map = new Map<string, string>();
         const rv = RunViewOf(ctx);
         const personIDs = Array.from(new Set(voters.map((v) => v.PersonID)));
-        for (const group of chunk(personIDs, ID_CHUNK)) {
-            const result = await rv.RunView<{ ID: string; Email: string | null }>(
-                { EntityName: PEOPLE_ENTITY, ExtraFilter: `ID IN (${group.map(SqlLiteral).join(', ')})`, Fields: ['ID', 'Email'], ResultType: 'simple' },
-                ctx.ContextUser
-            );
+        const groups = chunk(personIDs, ID_CHUNK);
+        if (groups.length === 0) return map;
+        const results = await rv.RunViews(
+            groups.map((group) => ({
+                EntityName: PEOPLE_ENTITY,
+                ExtraFilter: `ID IN (${group.map(SqlLiteral).join(', ')})`,
+                Fields: ['ID', 'Email'],
+                ResultType: 'simple' as const,
+            })),
+            ctx.ContextUser
+        );
+        for (const result of results) {
             if (!result.Success) throw new Error(`Could not read voter emails: ${result.ErrorMessage}`);
-            for (const person of result.Results) {
+            for (const person of result.Results as Array<{ ID: string; Email: string | null }>) {
                 if (person.Email?.trim()) map.set(person.ID.toLowerCase(), person.Email.trim());
             }
         }
         return map;
-    }
-
-    /** The Active distribution whose slug the link should use: one that allows the method, else any Active one. */
-    private async findDistribution(electionID: string, methodCode: string, ctx: VotingContext): Promise<mjBizAppsVotingBallotDistributionEntity | null> {
-        const rv = RunViewOf(ctx);
-        const result = await rv.RunView<mjBizAppsVotingBallotDistributionEntity>(
-            { EntityName: DISTRIBUTIONS_ENTITY, ExtraFilter: `ElectionID = ${SqlLiteral(electionID)} AND Status = 'Active'`, OrderBy: 'Name', ResultType: 'entity_object' },
-            ctx.ContextUser
-        );
-        if (!result.Success || result.Results.length === 0) return null;
-        const allowing = result.Results.find((d) => ParseAllowedMethods(d.AllowedCredentialMethods).includes(methodCode.toLowerCase()));
-        return allowing ?? result.Results.find((d) => ParseAllowedMethods(d.AllowedCredentialMethods).length === 0) ?? null;
     }
 }

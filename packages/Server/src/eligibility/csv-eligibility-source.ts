@@ -5,6 +5,7 @@
  * `FileID` (an uploaded file) is not read by this driver: load the file's text into `CsvText` upstream.
  */
 
+import { type RunViewParams } from '@memberjunction/core';
 import { RegisterClass } from '@memberjunction/global';
 import { type VotingContext, SqlLiteral, RunViewOf } from '../shared/index.js';
 import { BaseEligibilitySource } from './base-eligibility-source.js';
@@ -55,9 +56,8 @@ export class CsvEligibilitySource extends BaseEligibilitySource {
     public async BuildRollReport(settings: JsonObject, _recordDate: Date, ctx: VotingContext): Promise<RollBuildReport> {
         const rows = RowsFromSettings(settings);
         const emails = Array.from(new Set(rows.map((r) => (r.email ?? '').toLowerCase()).filter((e) => e.length > 0)));
-        const personByEmail = await this.LookupPeople(emails, ctx);
         const orgNames = Array.from(new Set(rows.map((r) => r.representingorganization ?? '').filter((o) => o && !LooksLikeUUID(o))));
-        const orgByName = await this.LookupOrganizations(orgNames, ctx);
+        const { PeopleByEmail: personByEmail, OrgsByName: orgByName } = await this.LookupPeopleAndOrganizations(emails, orgNames, ctx);
 
         const entries: RollEntry[] = [];
         const unmatched: UnmatchedRow[] = [];
@@ -110,51 +110,53 @@ export class CsvEligibilitySource extends BaseEligibilitySource {
         return { Entries: entries, Unmatched: unmatched };
     }
 
-    private async LookupPeople(emails: string[], ctx: VotingContext): Promise<Map<string, string[]>> {
-        const map = new Map<string, string[]>();
-        const rv = RunViewOf(ctx);
-        for (const group of chunk(emails, LOOKUP_CHUNK)) {
-            const result = await rv.RunView<{ ID: string; Email: string | null }>(
-                {
-                    EntityName: PEOPLE_ENTITY,
-                    ExtraFilter: `LOWER(Email) IN (${group.map(SqlLiteral).join(', ')})`,
-                    Fields: ['ID', 'Email'],
-                    ResultType: 'simple',
-                },
-                ctx.ContextUser
-            );
+    private async LookupPeopleAndOrganizations(
+        emails: string[],
+        orgNames: string[],
+        ctx: VotingContext
+    ): Promise<{ PeopleByEmail: Map<string, string[]>; OrgsByName: Map<string, string[]> }> {
+        const peopleByEmail = new Map<string, string[]>();
+        const orgsByName = new Map<string, string[]>();
+        const emailGroups = chunk(emails, LOOKUP_CHUNK);
+        const orgGroups = chunk(orgNames, LOOKUP_CHUNK);
+        const batchParams: RunViewParams[] = [
+            ...emailGroups.map((group): RunViewParams => ({
+                EntityName: PEOPLE_ENTITY,
+                ExtraFilter: `LOWER(Email) IN (${group.map(SqlLiteral).join(', ')})`,
+                Fields: ['ID', 'Email'],
+                ResultType: 'simple',
+            })),
+            ...orgGroups.map((group): RunViewParams => ({
+                EntityName: ORGANIZATIONS_ENTITY,
+                ExtraFilter: `LOWER(Name) IN (${group.map((n) => SqlLiteral(n.toLowerCase())).join(', ')})`,
+                Fields: ['ID', 'Name'],
+                ResultType: 'simple',
+            })),
+        ];
+        if (batchParams.length === 0) {
+            return { PeopleByEmail: peopleByEmail, OrgsByName: orgsByName };
+        }
+        const results = await RunViewOf(ctx).RunViews(batchParams, ctx.ContextUser);
+        for (let i = 0; i < emailGroups.length; i++) {
+            const result = results[i];
             if (!result.Success) throw new Error(`Looking up people for the CSV roll failed: ${result.ErrorMessage}`);
-            for (const person of result.Results) {
+            for (const person of result.Results as Array<{ ID: string; Email: string | null }>) {
                 const key = (person.Email ?? '').toLowerCase();
-                const list = map.get(key) ?? [];
+                const list = peopleByEmail.get(key) ?? [];
                 list.push(person.ID);
-                map.set(key, list);
+                peopleByEmail.set(key, list);
             }
         }
-        return map;
-    }
-
-    private async LookupOrganizations(names: string[], ctx: VotingContext): Promise<Map<string, string[]>> {
-        const map = new Map<string, string[]>();
-        const rv = RunViewOf(ctx);
-        for (const group of chunk(names, LOOKUP_CHUNK)) {
-            const result = await rv.RunView<{ ID: string; Name: string }>(
-                {
-                    EntityName: ORGANIZATIONS_ENTITY,
-                    ExtraFilter: `LOWER(Name) IN (${group.map((n) => SqlLiteral(n.toLowerCase())).join(', ')})`,
-                    Fields: ['ID', 'Name'],
-                    ResultType: 'simple',
-                },
-                ctx.ContextUser
-            );
+        for (let i = 0; i < orgGroups.length; i++) {
+            const result = results[emailGroups.length + i];
             if (!result.Success) throw new Error(`Looking up organizations for the CSV roll failed: ${result.ErrorMessage}`);
-            for (const org of result.Results) {
+            for (const org of result.Results as Array<{ ID: string; Name: string }>) {
                 const key = org.Name.toLowerCase();
-                const list = map.get(key) ?? [];
+                const list = orgsByName.get(key) ?? [];
                 list.push(org.ID);
-                map.set(key, list);
+                orgsByName.set(key, list);
             }
         }
-        return map;
+        return { PeopleByEmail: peopleByEmail, OrgsByName: orgsByName };
     }
 }

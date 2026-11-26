@@ -20,7 +20,7 @@ import {
     RegisterForStartup,
     type UserInfo,
 } from '@memberjunction/core';
-import { SafeJSONParse, UUIDsEqual } from '@memberjunction/global';
+import { SafeJSONParse } from '@memberjunction/global';
 import { ElectionSubtypeDirectory } from '@mj-biz-apps/voting-entities';
 import type {
     mjBizAppsVotingElectionTypeEntity,
@@ -32,6 +32,13 @@ import type { IElectionTypeConfiguration } from '@mj-biz-apps/voting-entities/co
 
 const normalizeKey = (key: string | null | undefined): string => (key ?? '').trim().toLowerCase();
 
+const ENGINE_ENTITY_NAMES = {
+    ElectionTypes: 'MJ_BizApps_Voting: Election Types',
+    TallyMethods: 'MJ_BizApps_Voting: Tally Methods',
+    EligibilitySourceTypes: 'MJ_BizApps_Voting: Eligibility Source Types',
+    VoterCredentialMethods: 'MJ_BizApps_Voting: Voter Credential Methods',
+} as const;
+
 @RegisterForStartup()
 export class VotingEngineBase extends BaseEngine<VotingEngineBase> {
     private _electionTypes: mjBizAppsVotingElectionTypeEntity[] = [];
@@ -39,7 +46,7 @@ export class VotingEngineBase extends BaseEngine<VotingEngineBase> {
     private _eligibilitySourceTypes: mjBizAppsVotingEligibilitySourceTypeEntity[] = [];
     private _voterCredentialMethods: mjBizAppsVotingVoterCredentialMethodEntity[] = [];
 
-    // O(1) memoized lookup indexes, reset on reload in AdditionalLoading()
+    // O(1) memoized lookup indexes, reset on reload in AdditionalLoading() and InvalidateCache()
     private _electionTypesById: Map<string, mjBizAppsVotingElectionTypeEntity> | null = null;
     private _electionTypesByCode: Map<string, mjBizAppsVotingElectionTypeEntity> | null = null;
     private _tallyMethodsById: Map<string, mjBizAppsVotingTallyMethodEntity> | null = null;
@@ -49,8 +56,25 @@ export class VotingEngineBase extends BaseEngine<VotingEngineBase> {
     private _voterCredentialMethodsById: Map<string, mjBizAppsVotingVoterCredentialMethodEntity> | null = null;
     private _voterCredentialMethodsByCode: Map<string, mjBizAppsVotingVoterCredentialMethodEntity> | null = null;
 
+    private _loadedForUserId: string | null = null;
+    private _cacheInvalidated: boolean = false;
+    private _activeProvider: IMetadataProvider | null = null;
+
+    protected constructor() {
+        super();
+    }
+
     public static get Instance(): VotingEngineBase {
         return super.getInstance<VotingEngineBase>();
+    }
+
+    /**
+     * Always routes RunViews through the active provider passed to `Config()` (or live
+     * `Metadata.Provider` in browser sessions) instead of BaseEngine's first-wins `_provider`
+     * latch — essential for multi-provider environments and persona impersonation.
+     */
+    public override get ProviderToUse(): IMetadataProvider {
+        return this._activeProvider ?? Metadata.Provider;
     }
 
     public async Config(
@@ -58,38 +82,128 @@ export class VotingEngineBase extends BaseEngine<VotingEngineBase> {
         contextUser?: UserInfo,
         provider?: IMetadataProvider
     ): Promise<void> {
-        const md = provider ?? Metadata.Provider;
-        const params: Array<Partial<BaseEnginePropertyConfig>> = [
+        this._activeProvider = provider ?? null;
+        const md = this.ProviderToUse;
+        const effectiveUser = contextUser ?? md?.CurrentUser;
+        const nextUserId = normalizeKey(effectiveUser?.ID);
+        const userChanged =
+            this._loadedForUserId !== null &&
+            nextUserId.length > 0 &&
+            this._loadedForUserId !== nextUserId;
+        const shouldForceRefresh = Boolean(forceRefresh || this._cacheInvalidated || userChanged);
+
+        const canReadEntity = (entityName: string): boolean => {
+            if (!effectiveUser || !md || typeof md.EntityByName !== 'function') {
+                return true;
+            }
+            const entity = md.EntityByName(entityName);
+            if (!entity || typeof entity.GetUserPermisions !== 'function') {
+                return true;
+            }
+            return entity.GetUserPermisions(effectiveUser)?.CanRead !== false;
+        };
+
+        // All four entities below are bounded, shared, non-RLS taxonomy/lookup tables, so
+        // CacheLocal: true is safe. Any RLS-scoped entity added in the future MUST use
+        // CacheLocal: false to prevent cross-user/impersonation IndexedDB bleed.
+        const allConfigs: ReadonlyArray<{
+            config: Partial<BaseEnginePropertyConfig>;
+            clear: () => void;
+        }> = [
             {
-                PropertyName: '_electionTypes',
-                EntityName: 'MJ_BizApps_Voting: Election Types',
-                CacheLocal: true,
-                OrderBy: 'Name',
+                config: {
+                    PropertyName: '_electionTypes',
+                    EntityName: ENGINE_ENTITY_NAMES.ElectionTypes,
+                    CacheLocal: true,
+                    OrderBy: 'Name',
+                },
+                clear: () => {
+                    this._electionTypes = [];
+                },
             },
             {
-                PropertyName: '_tallyMethods',
-                EntityName: 'MJ_BizApps_Voting: Tally Methods',
-                CacheLocal: true,
-                OrderBy: 'Name',
+                config: {
+                    PropertyName: '_tallyMethods',
+                    EntityName: ENGINE_ENTITY_NAMES.TallyMethods,
+                    CacheLocal: true,
+                    OrderBy: 'Name',
+                },
+                clear: () => {
+                    this._tallyMethods = [];
+                },
             },
             {
-                PropertyName: '_eligibilitySourceTypes',
-                EntityName: 'MJ_BizApps_Voting: Eligibility Source Types',
-                CacheLocal: true,
-                OrderBy: 'Name',
+                config: {
+                    PropertyName: '_eligibilitySourceTypes',
+                    EntityName: ENGINE_ENTITY_NAMES.EligibilitySourceTypes,
+                    CacheLocal: true,
+                    OrderBy: 'Name',
+                },
+                clear: () => {
+                    this._eligibilitySourceTypes = [];
+                },
             },
             {
-                PropertyName: '_voterCredentialMethods',
-                EntityName: 'MJ_BizApps_Voting: Voter Credential Methods',
-                CacheLocal: true,
-                OrderBy: 'Name',
+                config: {
+                    PropertyName: '_voterCredentialMethods',
+                    EntityName: ENGINE_ENTITY_NAMES.VoterCredentialMethods,
+                    CacheLocal: true,
+                    OrderBy: 'Name',
+                },
+                clear: () => {
+                    this._voterCredentialMethods = [];
+                },
             },
         ];
-        return await this.Load(params, md, forceRefresh ?? false, contextUser);
+
+        const params: Array<Partial<BaseEnginePropertyConfig>> = [];
+        for (const entry of allConfigs) {
+            const entityName = entry.config.EntityName ?? '';
+            if (canReadEntity(entityName)) {
+                params.push(entry.config);
+            } else {
+                entry.clear();
+            }
+        }
+
+        if (params.length > 0) {
+            await this.Load(params, md, shouldForceRefresh, effectiveUser);
+        } else {
+            await this.AdditionalLoading(effectiveUser);
+        }
+
+        this._loadedForUserId = nextUserId || null;
+        this._cacheInvalidated = false;
     }
 
-    protected override async AdditionalLoading(contextUser?: UserInfo): Promise<void> {
-        // Invalidate memoized lookup indexes on initial load and any reload
+    /**
+     * Clears O(1) lookup maps, cached slices, subtype directory, and provider binding so the
+     * next `Config()` performs a fresh load under the active user and provider.
+     */
+    public InvalidateCache(): void {
+        this._cacheInvalidated = true;
+        this._loadedForUserId = null;
+        this._activeProvider = null;
+        this._electionTypes = [];
+        this._tallyMethods = [];
+        this._eligibilitySourceTypes = [];
+        this._voterCredentialMethods = [];
+        this.resetLookupIndexes();
+        ElectionSubtypeDirectory.Instance.Replace([]);
+    }
+
+    public IsConfiguredForUser(userId: string | null | undefined): boolean {
+        if (!this.Loaded || this._cacheInvalidated) {
+            return false;
+        }
+        const norm = normalizeKey(userId);
+        if (!norm) {
+            return this._loadedForUserId !== null;
+        }
+        return this._loadedForUserId === norm;
+    }
+
+    private resetLookupIndexes(): void {
         this._electionTypesById = null;
         this._electionTypesByCode = null;
         this._tallyMethodsById = null;
@@ -98,6 +212,11 @@ export class VotingEngineBase extends BaseEngine<VotingEngineBase> {
         this._eligibilitySourceTypesByCode = null;
         this._voterCredentialMethodsById = null;
         this._voterCredentialMethodsByCode = null;
+    }
+
+    protected override async AdditionalLoading(_contextUser?: UserInfo): Promise<void> {
+        // Invalidate memoized lookup indexes on initial load and any reload
+        this.resetLookupIndexes();
         // The extension entity each election type names, for the Elections subtype resolver: it answers
         // a load's hint from memory, never by a read.
         ElectionSubtypeDirectory.Instance.Replace(

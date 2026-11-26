@@ -225,7 +225,7 @@ export class CommentsPanelComponent implements OnChanges {
             });
             if (!commentRes.Success) throw new Error(commentRes.ErrorMessage || 'Comments could not be loaded.');
             const comments = commentRes.Results;
-            const [resolutions, commenters] = await Promise.all([this.LoadResolutions(comments), this.LoadCommenters(comments)]);
+            const { Resolutions: resolutions, Commenters: commenters } = await this.LoadResolutionsAndCommenters(rv, comments);
             if (this.ElectionID !== electionId) return;
             this.Groups = contests
                 .map((c) => ({
@@ -250,48 +250,57 @@ export class CommentsPanelComponent implements OnChanges {
         }
     }
 
-    private async LoadResolutions(comments: CommentRow[]): Promise<Map<string, ResolutionRow>> {
-        const out = new Map<string, ResolutionRow>();
-        if (comments.length === 0) return out;
-        const rv = RunView.FromMetadataProvider(this.Provider);
-        const res = await rv.RunView<ResolutionRow>({
-            EntityName: 'MJ_BizApps_Voting: Comment Resolutions',
-            ExtraFilter: `BallotCommentID IN (${comments.map((c) => `'${c.ID}'`).join(',')})`,
-            OrderBy: 'ResolvedAt',
-            ResultType: 'simple',
-            Fields: ['ID', 'BallotCommentID', 'Disposition', 'Response', 'ResolvedAt', 'CommenterResponse'],
-        });
-        if (!res.Success) throw new Error(res.ErrorMessage || 'Resolutions could not be loaded.');
-        for (const r of res.Results) out.set(r.BallotCommentID.toLowerCase(), r); // the latest wins
-        return out;
-    }
+    /** Batches Comment Resolutions and Participations in a single RunViews call, then resolves voter names. */
+    private async LoadResolutionsAndCommenters(
+        rv: RunView,
+        comments: CommentRow[]
+    ): Promise<{ Resolutions: Map<string, ResolutionRow>; Commenters: Map<string, string> }> {
+        const resolutions = new Map<string, ResolutionRow>();
+        const commenters = new Map<string, string>();
+        if (comments.length === 0) return { Resolutions: resolutions, Commenters: commenters };
 
-    /** Participation id -> voter's name, through the participation's eligible voter (Open ballots are attributable). */
-    private async LoadCommenters(comments: CommentRow[]): Promise<Map<string, string>> {
-        const out = new Map<string, string>();
-        const ids = Array.from(new Set(comments.map((c) => c.ParticipationID)));
-        if (ids.length === 0) return out;
-        const rv = RunView.FromMetadataProvider(this.Provider);
-        const pRes = await rv.RunView<{ ID: string; EligibleVoterID: string }>({
-            EntityName: 'MJ_BizApps_Voting: Participations',
-            ExtraFilter: `ID IN (${ids.map((id) => `'${id}'`).join(',')})`,
-            ResultType: 'simple',
-            Fields: ['ID', 'EligibleVoterID'],
-        });
-        if (!pRes.Success || pRes.Results.length === 0) return out;
-        const voterIds = Array.from(new Set(pRes.Results.map((p) => p.EligibleVoterID)));
-        const vRes = await rv.RunView<{ ID: string; Person: string }>({
-            EntityName: 'MJ_BizApps_Voting: Eligible Voters',
-            ExtraFilter: `ID IN (${voterIds.map((id) => `'${id}'`).join(',')})`,
-            ResultType: 'simple',
-            Fields: ['ID', 'Person'],
-        });
-        const names = new Map((vRes.Success ? vRes.Results : []).map((v) => [v.ID.toLowerCase(), v.Person]));
-        for (const p of pRes.Results) {
-            const name = names.get(p.EligibleVoterID.toLowerCase());
-            if (name) out.set(p.ID.toLowerCase(), name);
+        const participationIds = Array.from(new Set(comments.map((c) => c.ParticipationID)));
+        const batchParams = [
+            {
+                EntityName: 'MJ_BizApps_Voting: Comment Resolutions',
+                ExtraFilter: `BallotCommentID IN (${comments.map((c) => `'${c.ID}'`).join(',')})`,
+                OrderBy: 'ResolvedAt',
+                ResultType: 'simple' as const,
+                Fields: ['ID', 'BallotCommentID', 'Disposition', 'Response', 'ResolvedAt', 'CommenterResponse'],
+            },
+            ...(participationIds.length > 0
+                ? [
+                      {
+                          EntityName: 'MJ_BizApps_Voting: Participations',
+                          ExtraFilter: `ID IN (${participationIds.map((id) => `'${id}'`).join(',')})`,
+                          ResultType: 'simple' as const,
+                          Fields: ['ID', 'EligibleVoterID'],
+                      },
+                  ]
+                : []),
+        ];
+        const [resRes, pRes] = await rv.RunViews(batchParams);
+        if (!resRes.Success) throw new Error(resRes.ErrorMessage || 'Resolutions could not be loaded.');
+        for (const r of resRes.Results as ResolutionRow[]) {
+            resolutions.set(r.BallotCommentID.toLowerCase(), r); // the latest wins
         }
-        return out;
+
+        if (pRes && pRes.Success && pRes.Results.length > 0) {
+            const participations = pRes.Results as Array<{ ID: string; EligibleVoterID: string }>;
+            const voterIds = Array.from(new Set(participations.map((p) => p.EligibleVoterID)));
+            const vRes = await rv.RunView<{ ID: string; Person: string }>({
+                EntityName: 'MJ_BizApps_Voting: Eligible Voters',
+                ExtraFilter: `ID IN (${voterIds.map((id) => `'${id}'`).join(',')})`,
+                ResultType: 'simple',
+                Fields: ['ID', 'Person'],
+            });
+            const names = new Map((vRes.Success ? vRes.Results : []).map((v) => [v.ID.toLowerCase(), v.Person]));
+            for (const p of participations) {
+                const name = names.get(p.EligibleVoterID.toLowerCase());
+                if (name) commenters.set(p.ID.toLowerCase(), name);
+            }
+        }
+        return { Resolutions: resolutions, Commenters: commenters };
     }
 
     public async Resolve(c: CommentView): Promise<void> {

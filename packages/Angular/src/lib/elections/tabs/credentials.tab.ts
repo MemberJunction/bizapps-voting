@@ -6,7 +6,7 @@
 import { Component, EventEmitter, OnChanges, OnDestroy, Output, SimpleChanges, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LogError, RunView } from '@memberjunction/core';
+import { LogError, RunView, type RunViewParams } from '@memberjunction/core';
 import { SharedGenericModule } from '@memberjunction/ng-shared-generic';
 import { MJButtonDirective } from '@memberjunction/ng-ui-components';
 import { BaseElectionAdminTab } from '@mj-biz-apps/voting-ng-widgets';
@@ -337,7 +337,7 @@ export class CredentialsTabComponent extends BaseElectionAdminTab implements OnC
     }
 
     private async Init(): Promise<void> {
-        await Promise.all([this.LoadMethods(), this.LoadBaseUrl(), this.LoadLog()]);
+        await Promise.all([this.LoadMethods(), this.LoadBaseUrlAndLog()]);
         this.cdr.detectChanges();
     }
 
@@ -354,20 +354,63 @@ export class CredentialsTabComponent extends BaseElectionAdminTab implements OnC
         this.cdr.detectChanges();
     }
 
-    private async LoadBaseUrl(): Promise<void> {
-        const origin = ResolveApiOrigin(this.ProviderToUse);
-        const rv = RunView.FromMetadataProvider(this.ProviderToUse);
-        const res = await rv.RunView<DistributionSlug>({
-            EntityName: 'MJ_BizApps_Voting: Ballot Distributions',
-            ExtraFilter: `ElectionID='${this.ElectionID}' AND Status<>'Retired'`,
-            OrderBy: 'Status',
+    private BuildLogParams(): RunViewParams {
+        return {
+            EntityName: 'MJ_BizApps_Voting: Voter Credentials',
+            ExtraFilter: `EligibleVoterID IN (SELECT ID FROM ${this.VoterViewName()} WHERE ElectionID='${this.ElectionID}')`,
+            OrderBy: 'IssuedAt DESC',
             ResultType: 'simple',
-            Fields: ['Slug', 'Status'],
-        });
-        const dist = res.Success ? (res.Results.find((d) => d.Status === 'Active') ?? res.Results[0]) : undefined;
-        this.SlugFound = !!dist;
-        this.BaseUrl = dist ? `${origin}/vote/${encodeURIComponent(dist.Slug)}` : `${origin}/vote`;
-        this.cdr.detectChanges();
+            // Deliberately excludes ControlNumberHash and SecretHash.
+            Fields: ['ID', 'EligibleVoterID', 'VoterCredentialMethod', 'IssuedAt', 'ExpiresAt', 'RedeemedAt', 'RevokedAt', 'FailedAttempts', 'LockedUntil'],
+            StartRow: (this.Page - 1) * PAGE_SIZE,
+            MaxRows: PAGE_SIZE,
+        };
+    }
+
+    /** Batches Ballot Distributions and the first page of Voter Credentials into a single RunViews call. */
+    private async LoadBaseUrlAndLog(): Promise<void> {
+        if (!this.ElectionID) {
+            return;
+        }
+        this.IsLoading = true;
+        this.LogError = null;
+        try {
+            const origin = ResolveApiOrigin(this.ProviderToUse);
+            const rv = RunView.FromMetadataProvider(this.ProviderToUse);
+            const [distRes, credRes] = await rv.RunViews([
+                {
+                    EntityName: 'MJ_BizApps_Voting: Ballot Distributions',
+                    ExtraFilter: `ElectionID='${this.ElectionID}' AND Status<>'Retired'`,
+                    OrderBy: 'Status',
+                    ResultType: 'simple',
+                    Fields: ['Slug', 'Status'],
+                },
+                this.BuildLogParams(),
+            ]);
+
+            const distRows = distRes.Success ? (distRes.Results as DistributionSlug[]) : [];
+            const dist = distRows.find((d) => d.Status === 'Active') ?? distRows[0];
+            this.SlugFound = !!dist;
+            this.BaseUrl = dist ? `${origin}/vote/${encodeURIComponent(dist.Slug)}` : `${origin}/vote`;
+
+            if (!credRes.Success) {
+                throw new Error(credRes.ErrorMessage || 'The issuance log could not be loaded.');
+            }
+            const rows = credRes.Results as CredentialRow[];
+            const names = await this.LoadVoterNames(rows.map((r) => r.EligibleVoterID));
+            this.Log = rows.map((r) => ({
+                ...r,
+                VoterName: names.get(r.EligibleVoterID.toLowerCase()) ?? 'Unknown voter',
+                State: this.StateOf(r),
+            }));
+            this.Total = credRes.TotalRowCount ?? rows.length;
+        } catch (error) {
+            LogError('[VotingElections] Issuance log load failed', undefined, error);
+            this.LogError = error instanceof Error ? error.message : 'The issuance log could not be loaded.';
+        } finally {
+            this.IsLoading = false;
+            this.cdr.detectChanges();
+        }
     }
 
     public GoTo(page: number): void {
@@ -386,16 +429,7 @@ export class CredentialsTabComponent extends BaseElectionAdminTab implements OnC
         this.LogError = null;
         try {
             const rv = RunView.FromMetadataProvider(this.ProviderToUse);
-            const res = await rv.RunView<CredentialRow>({
-                EntityName: 'MJ_BizApps_Voting: Voter Credentials',
-                ExtraFilter: `EligibleVoterID IN (SELECT ID FROM ${this.VoterViewName()} WHERE ElectionID='${this.ElectionID}')`,
-                OrderBy: 'IssuedAt DESC',
-                ResultType: 'simple',
-                // Deliberately excludes ControlNumberHash and SecretHash.
-                Fields: ['ID', 'EligibleVoterID', 'VoterCredentialMethod', 'IssuedAt', 'ExpiresAt', 'RedeemedAt', 'RevokedAt', 'FailedAttempts', 'LockedUntil'],
-                StartRow: (this.Page - 1) * PAGE_SIZE,
-                MaxRows: PAGE_SIZE,
-            });
+            const res = await rv.RunView<CredentialRow>(this.BuildLogParams());
             if (!res.Success) {
                 throw new Error(res.ErrorMessage || 'The issuance log could not be loaded.');
             }

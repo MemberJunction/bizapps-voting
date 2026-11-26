@@ -85,16 +85,21 @@ function fakeGraph(
     };
 }
 
-function stubProvider(tables: Record<string, unknown[]>): { Provider: VotingContext['Provider']; Touched: string[] } {
+function stubProvider(tables: Record<string, unknown[]>): { Provider: VotingContext['Provider']; Touched: string[]; BatchSizes: number[] } {
     const touched: string[] = [];
-    const provider = {
-        RunView: vi.fn(async (params: { EntityName: string }) => {
-            touched.push(params.EntityName);
-            return { Success: true, Results: tables[params.EntityName] ?? [] };
-        }),
-        RunViews: vi.fn(),
+    const batchSizes: number[] = [];
+    const runSingle = (params: { EntityName: string }) => {
+        touched.push(params.EntityName);
+        return { Success: true, Results: tables[params.EntityName] ?? [] };
     };
-    return { Provider: provider as unknown as VotingContext['Provider'], Touched: touched };
+    const provider = {
+        RunView: vi.fn(async (params: { EntityName: string }) => runSingle(params)),
+        RunViews: vi.fn(async (paramsList: Array<{ EntityName: string }>) => {
+            batchSizes.push(paramsList.length);
+            return paramsList.map(runSingle);
+        }),
+    };
+    return { Provider: provider as unknown as VotingContext['Provider'], Touched: touched, BatchSizes: batchSizes };
 }
 
 beforeEach(() => {
@@ -356,7 +361,7 @@ describe('ResultsEngine.GetRollCall', () => {
         const graph = fakeGraph({ SecrecyMode: 'Open', Status: 'Tallied', ResultsTiming: 'AfterClose' });
         mockLoadElectionGraph.mockResolvedValueOnce({ Success: true, Value: graph });
 
-        const { Provider, Touched } = stubProvider({
+        const { Provider, Touched, BatchSizes } = stubProvider({
             'MJ_BizApps_Voting: Eligible Voters': [
                 { ID: V1, PersonID: P1, SourceKey: 'mem-1', VotingClass: 'voting-member', Weight: 1 },
             ],
@@ -377,6 +382,8 @@ describe('ResultsEngine.GetRollCall', () => {
             expect(res.Value.Status).toBe('Tallied');
             expect(res.Value.Contests[0].Entries[0].Selections).toEqual([{ OptionID: OPT_NO }]);
         }
+        // Batched [Eligible Voters, Participations] and [Ballot Attributions, Ballot Selections]
+        expect(BatchSizes).toEqual([2, 2]);
         expect(Touched).toContain('MJ_BizApps_Voting: Ballot Selections');
         expect(mockAuditRecord).toHaveBeenCalledTimes(1);
         expect(mockAuditRecord.mock.calls[0][2]).toBe('RollCallViewed');
