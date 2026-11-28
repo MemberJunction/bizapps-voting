@@ -11,6 +11,8 @@
     "entity-permissions",
     "user-roles",
     "api-scopes",
-    "api-application-scopes"
+    "api-application-scopes",
+    "actions",
+    "chief-of-staff-skills"
   ]
 }

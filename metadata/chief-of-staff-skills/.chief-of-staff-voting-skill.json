@@ -1,0 +1,99 @@
+[
+  {
+    "fields": {
+      "Name": "Voting",
+      "Description": "Monitor active elections, motions, and standards ballots, check turnout and quorum, retrieve audience-scoped results, and manage motion votes and election lifecycle transitions. Installed by the BizApps Voting app.",
+      "Instructions": "@file:templates/voting-chief-of-staff.skill.md",
+      "Status": "Active",
+      "ActivationMode": "Auto",
+      "Category": "Governance",
+      "IconClass": "fa-solid fa-check-to-slot",
+      "CreatedByUserID": "@lookup:MJ: Users.Name=System"
+    },
+    "relatedEntities": {
+      "MJ: AI Agent Skills": [
+        {
+          "fields": {
+            "AgentID": "@lookup:MJ: AI Agents.Name=Chief of Staff",
+            "SkillID": "@parent:ID",
+            "Status": "Active"
+          },
+          "primaryKey": {
+            "ID": "9CAC7F74-B20B-46B8-82FA-0387CFDF8721"
+          }
+        }
+      ],
+      "MJ: AI Skill Actions": [
+        {
+          "fields": {
+            "SkillID": "@parent:ID",
+            "ActionID": "@lookup:MJ: Actions.Name=MJ_BizApps_Voting: Create Motion Vote",
+            "Role": "Tool",
+            "ExposeToModel": true
+          },
+          "primaryKey": {
+            "ID": "931586CA-3393-4DB1-8BB3-4C55A78E1C96"
+          }
+        },
+        {
+          "fields": {
+            "SkillID": "@parent:ID",
+            "ActionID": "@lookup:MJ: Actions.Name=MJ_BizApps_Voting: Open Election",
+            "Role": "Tool",
+            "ExposeToModel": true
+          },
+          "primaryKey": {
+            "ID": "3D7EA54F-ECEF-4EC1-90CF-CBF84F38813E"
+          }
+        },
+        {
+          "fields": {
+            "SkillID": "@parent:ID",
+            "ActionID": "@lookup:MJ: Actions.Name=MJ_BizApps_Voting: Close Election",
+            "Role": "Tool",
+            "ExposeToModel": true
+          },
+          "primaryKey": {
+            "ID": "0DF8EA3C-0D7B-45BC-9A09-F09260EFE654"
+          }
+        },
+        {
+          "fields": {
+            "SkillID": "@parent:ID",
+            "ActionID": "@lookup:MJ: Actions.Name=MJ_BizApps_Voting: Get Turnout",
+            "Role": "Tool",
+            "ExposeToModel": true
+          },
+          "primaryKey": {
+            "ID": "E44838C4-9C3F-4D29-A224-1345DAEE9C20"
+          }
+        },
+        {
+          "fields": {
+            "SkillID": "@parent:ID",
+            "ActionID": "@lookup:MJ: Actions.Name=MJ_BizApps_Voting: Get Election Results",
+            "Role": "Tool",
+            "ExposeToModel": true
+          },
+          "primaryKey": {
+            "ID": "0C0937E7-8428-4E41-8290-3376D860E142"
+          }
+        },
+        {
+          "fields": {
+            "SkillID": "@parent:ID",
+            "ActionID": "@lookup:MJ: Actions.Name=MJ_BizApps_Voting: Tally Election",
+            "Role": "Tool",
+            "ExposeToModel": true
+          },
+          "primaryKey": {
+            "ID": "7987F36C-7603-445C-AB77-B1C678E045CE"
+          }
+        }
+      ]
+    },
+    "primaryKey": {
+      "ID": "54443353-1654-45BD-9274-C5B173F4E95E"
+    }
+  }
+]
